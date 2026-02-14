@@ -1,9 +1,5 @@
 <# : batch portion
-@echo off
-cd /d "%~dp0"
-powershell -ExecutionPolicy Bypass "iex (gc '%~f0' -Raw)"
-pause
-exit /b
+@echo off & powershell -ExecutionPolicy Bypass "iex (gc \"%~f0\" -Raw)" & pause & exit /b
 : end batch / begin PowerShell #>
 
 # ============================================================
@@ -17,17 +13,14 @@ Write-Host "  JavaScript Edition"
 Write-Host "========================================"
 Write-Host ""
 
-$dir = Join-Path (Get-Location) "AppleSoftBASIC"
+$dir = "C:\ClaudeCode"
 
 Write-Host "Installing to: $dir"
 Write-Host ""
 
 # Create directory structure
-if (!(Test-Path $dir)) { New-Item -ItemType Directory -Path $dir | Out-Null }
-$cssDir = Join-Path $dir "css"
-$jsDir  = Join-Path $dir "js"
-if (!(Test-Path $cssDir)) { New-Item -ItemType Directory -Path $cssDir | Out-Null }
-if (!(Test-Path $jsDir))  { New-Item -ItemType Directory -Path $jsDir  | Out-Null }
+New-Item -ItemType Directory -Path "$dir\css" -Force | Out-Null
+New-Item -ItemType Directory -Path "$dir\js"  -Force | Out-Null
 
 # --- File 1 of 13 ---
 Write-Host "Writing index.html (1/13)..."
