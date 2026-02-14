@@ -1,28 +1,17 @@
 <# : batch portion
 @echo off & powershell -ExecutionPolicy Bypass "iex (gc \"%~f0\" -Raw)" & pause & exit /b
 : end batch / begin PowerShell #>
-
-# ============================================================
-#  Applesoft BASIC Installer for Windows
-# ============================================================
-
 Write-Host ""
 Write-Host "========================================"
 Write-Host "  Applesoft BASIC Interpreter Installer"
-Write-Host "  JavaScript Edition"
 Write-Host "========================================"
 Write-Host ""
-
 $dir = "C:\ClaudeCode"
-
 Write-Host "Installing to: $dir"
 Write-Host ""
-
-# Create directory structure
 New-Item -ItemType Directory -Path "$dir\css" -Force | Out-Null
 New-Item -ItemType Directory -Path "$dir\js"  -Force | Out-Null
 
-# --- File 1 of 13 ---
 Write-Host "Writing index.html (1/13)..."
 $content = @'
 <!DOCTYPE html>
@@ -68,7 +57,6 @@ $content = @'
 '@
 Set-Content -Path "$dir\index.html" -Value $content -Encoding UTF8
 
-# --- File 2 of 13 ---
 Write-Host "Writing css\style.css (2/13)..."
 $content = @'
 /* ===== RESET & BASE ===== */
@@ -240,7 +228,6 @@ body {
 '@
 Set-Content -Path "$dir\css\style.css" -Value $content -Encoding UTF8
 
-# --- File 3 of 13 ---
 Write-Host "Writing js\constants.js (3/13)..."
 $content = @'
 window.App = window.App || {};
@@ -292,7 +279,6 @@ App.HIRES_COLORS = [
 '@
 Set-Content -Path "$dir\js\constants.js" -Value $content -Encoding UTF8
 
-# --- File 4 of 13 ---
 Write-Host "Writing js\audio.js (4/13)..."
 $content = @'
 window.App = window.App || {};
@@ -325,7 +311,6 @@ App.beep = function(duration, frequency) {
 '@
 Set-Content -Path "$dir\js\audio.js" -Value $content -Encoding UTF8
 
-# --- File 5 of 13 ---
 Write-Host "Writing js\tokenizer.js (5/13)..."
 $content = @'
 window.App = window.App || {};
@@ -475,7 +460,6 @@ App.Tokenizer = Tokenizer;
 '@
 Set-Content -Path "$dir\js\tokenizer.js" -Value $content -Encoding UTF8
 
-# --- File 6 of 13 ---
 Write-Host "Writing js\parser.js (6/13)..."
 $content = @'
 window.App = window.App || {};
@@ -695,7 +679,6 @@ App.Parser = Parser;
 '@
 Set-Content -Path "$dir\js\parser.js" -Value $content -Encoding UTF8
 
-# --- File 7 of 13 ---
 Write-Host "Writing js\filesystem.js (7/13)..."
 $content = @'
 window.App = window.App || {};
@@ -1011,7 +994,6 @@ App.VirtualFileSystem = VirtualFileSystem;
 '@
 Set-Content -Path "$dir\js\filesystem.js" -Value $content -Encoding UTF8
 
-# --- File 8 of 13 ---
 Write-Host "Writing js\samples.js (8/13)..."
 $content = @'
 window.App = window.App || {};
@@ -1243,7 +1225,6 @@ App.getSamples = function() {
 '@
 Set-Content -Path "$dir\js\samples.js" -Value $content -Encoding UTF8
 
-# --- File 9 of 13 ---
 Write-Host "Writing js\tutorial.js (9/13)..."
 $content = @'
 window.App = window.App || {};
@@ -1449,7 +1430,6 @@ App.getTutorialPages = function() {
 '@
 Set-Content -Path "$dir\js\tutorial.js" -Value $content -Encoding UTF8
 
-# --- File 10 of 13 ---
 Write-Host "Writing js\display.js (10/13)..."
 $content = @'
 window.App = window.App || {};
@@ -1685,7 +1665,6 @@ App.Display = Display;
 '@
 Set-Content -Path "$dir\js\display.js" -Value $content -Encoding UTF8
 
-# --- File 11 of 13 ---
 Write-Host "Writing js\interpreter.js (11/13)..."
 $content = @'
 window.App = window.App || {};
@@ -2996,7 +2975,6 @@ App.Interpreter = Interpreter;
 '@
 Set-Content -Path "$dir\js\interpreter.js" -Value $content -Encoding UTF8
 
-# --- File 12 of 13 ---
 Write-Host "Writing js\emulator.js (12/13)..."
 $content = @'
 window.App = window.App || {};
@@ -3821,67 +3799,31 @@ class Emulator {
 
   showHelp() {
     this.display.printLine('');
-    this.display.printLine('=== BASIC COMMANDS ===');
-    this.display.printLine('RUN [LINE]   RUN PROGRAM');
-    this.display.printLine('CONT         CONTINUE AFTER STOP');
-    this.display.printLine('LIST [M-N]   LIST PROGRAM');
-    this.display.printLine('DEL M,N      DELETE LINES M-N');
-    this.display.printLine('NEW          CLEAR PROGRAM');
-    this.display.printLine('TRACE        ENABLE LINE TRACE');
-    this.display.printLine('NOTRACE      DISABLE LINE TRACE');
-    this.display.printLine('FP           APPLESOFT MODE');
-    this.display.printLine('RESET        RESET EMULATOR');
-    this.display.printLine('CTRL+C       BREAK PROGRAM');
+    this.display.printLine('APPLESOFT BASIC / DOS 3.3');
     this.display.printLine('');
-    this.display.printLine('=== DOS 3.3 DISK COMMANDS ===');
-    this.display.printLine('CATALOG      LIST DISK CONTENTS');
-    this.display.printLine('SAVE "X"     SAVE PROGRAM TO DISK');
-    this.display.printLine('LOAD "X"     LOAD PROGRAM FROM DISK');
-    this.display.printLine('DELETE "X"   DELETE FILE');
-    this.display.printLine('LOCK "X"     LOCK FILE');
-    this.display.printLine('UNLOCK "X"   UNLOCK FILE');
-    this.display.printLine('RENAME "A","B"  RENAME FILE');
-    this.display.printLine('VERIFY "X"   VERIFY FILE');
-    this.display.printLine('INIT         FORMAT DISK');
-    this.display.printLine('MAXFILES N   SET MAX OPEN FILES');
+    this.display.printLine('PROGRAM:');
+    this.display.printLine(' RUN [LINE]  LIST [M-N]  NEW');
+    this.display.printLine(' CONT  DEL M,N  TRACE  NOTRACE');
+    this.display.printLine(' FP  CTRL+C=BREAK');
     this.display.printLine('');
-    this.display.printLine('=== FILE I/O ===');
-    this.display.printLine('OPEN "X"     OPEN FILE FOR INPUT');
-    this.display.printLine('WRITE "X"    OPEN FILE FOR OUTPUT');
-    this.display.printLine('APPEND "X"   OPEN FOR APPEND');
-    this.display.printLine('CLOSE        CLOSE ALL FILES');
-    this.display.printLine('CLOSE "X"    CLOSE SPECIFIC FILE');
-    this.display.printLine('EXEC "X"     EXECUTE COMMAND FILE');
-    this.display.printLine('POSITION "X",N  SET FILE POSITION');
+    this.display.printLine('DISK:');
+    this.display.printLine(' CATALOG  SAVE  LOAD  DELETE');
+    this.display.printLine(' LOCK  UNLOCK  RENAME  VERIFY');
+    this.display.printLine(' INIT  MAXFILES');
     this.display.printLine('');
-    this.display.printLine('=== BINARY (SIMULATED) ===');
-    this.display.printLine('BSAVE "X",A$ADDR,L$LEN');
-    this.display.printLine('BLOAD "X"    LOAD BINARY');
-    this.display.printLine('BRUN "X"     RUN BINARY');
+    this.display.printLine('FILE I/O:');
+    this.display.printLine(' OPEN  CLOSE  WRITE  APPEND');
+    this.display.printLine(' EXEC  POSITION');
+    this.display.printLine(' BSAVE  BLOAD  BRUN');
     this.display.printLine('');
-    this.display.printLine('=== DEVICE CONTROL ===');
-    this.display.printLine('PR#N         OUTPUT TO SLOT N');
-    this.display.printLine('IN#N         INPUT FROM SLOT N');
-    this.display.printLine('MON          ENABLE I/O MONITOR');
-    this.display.printLine('NOMON        DISABLE I/O MONITOR');
+    this.display.printLine('DEVICE:');
+    this.display.printLine(' PR#  IN#  MON  NOMON');
     this.display.printLine('');
-    this.display.printLine('=== NAVIGATION (PRODOS) ===');
-    this.display.printLine('PREFIX "X"   SET DIRECTORY');
-    this.display.printLine('CD "X"       CHANGE DIRECTORY');
-    this.display.printLine('CREATE "X"   CREATE SUBDIRECTORY');
+    this.display.printLine('PRODOS:');
+    this.display.printLine(' PREFIX  CREATE  CATALOG');
     this.display.printLine('');
-    this.display.printLine('=== BROWSER BRIDGE ===');
-    this.display.printLine('UPLOAD       UPLOAD FROM PC');
-    this.display.printLine('DOWNLOAD     DOWNLOAD PROGRAM');
-    this.display.printLine('DOWNLOAD "X" DOWNLOAD FILE');
-    this.display.printLine('TYPE "X"     SHOW FILE CONTENTS');
-    this.display.printLine('');
-    this.display.printLine('FILE TYPES: A=APPLESOFT B=BINARY');
-    this.display.printLine('            T=TEXT     I=INTEGER');
-    this.display.printLine('');
-    this.display.printLine('CATALOG SHOWS: *=LOCKED');
-    this.display.printLine('');
-    this.display.printLine('TYPE "TUTORIAL" FOR TUTORIAL');
+    this.display.printLine('CATALOG: *=LOCKED  A=APPLESOFT');
+    this.display.printLine(' B=BINARY T=TEXT I=INTEGER');
     this.display.printLine('');
   }
 
@@ -3911,7 +3853,6 @@ App.Emulator = Emulator;
 '@
 Set-Content -Path "$dir\js\emulator.js" -Value $content -Encoding UTF8
 
-# --- File 13 of 13 ---
 Write-Host "Writing js\main.js (13/13)..."
 $content = @'
 window.App = window.App || {};
@@ -3922,8 +3863,6 @@ window.addEventListener('DOMContentLoaded', function() {
 });
 '@
 Set-Content -Path "$dir\js\main.js" -Value $content -Encoding UTF8
-
-# ============================================================
 Write-Host ""
 Write-Host "========================================"
 Write-Host "  Installation Complete!"
@@ -3931,10 +3870,5 @@ Write-Host "========================================"
 Write-Host ""
 Write-Host "Files installed to: $dir"
 Write-Host ""
-Write-Host "To run the Applesoft BASIC Interpreter:"
-Write-Host "  1. Open the AppleSoftBASIC folder"
-Write-Host "  2. Double-click index.html"
-Write-Host "  3. (Or right-click > Open with browser)"
-Write-Host ""
-Write-Host "Enjoy your Apple ][ experience!"
+Write-Host "Open index.html in your browser."
 Write-Host ""
