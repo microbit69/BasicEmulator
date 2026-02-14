@@ -3,11 +3,13 @@ window.App = window.App || {};
 const KEYWORDS = [
   'PRINT','GOTO','GOSUB','RETURN','IF','THEN','ELSE','FOR','TO','STEP',
   'NEXT','LET','INPUT','DIM','READ','DATA','RESTORE','DEF','FN',
-  'REM','END','STOP','ON','AND','OR','NOT','TAB','SPC','HTAB','VTAB',
+  'REM','END','STOP','CONT','ON','AND','OR','NOT','TAB','SPC','HTAB','VTAB',
   'HOME','CLEAR','CLR','RUN','LIST','NEW','LOAD','SAVE',
-  'GR','COLOR','PLOT','HLIN','VLIN','TEXT','HGR','HCOLOR','HPLOT',
+  'GR','COLOR','PLOT','HLIN','VLIN','TEXT','HGR','HGR2','HCOLOR','HPLOT',
+  'DRAW','XDRAW','ROT','SCALE',
   'POKE','PEEK','CALL','SPEED','NORMAL','INVERSE','FLASH',
-  'POP','ONERR','RESUME','GET','AT'
+  'POP','ONERR','RESUME','GET','AT','WAIT','USR',
+  'TRACE','NOTRACE','STORE','RECALL'
 ];
 
 class Tokenizer {

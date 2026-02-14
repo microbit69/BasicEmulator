@@ -152,6 +152,37 @@ class Display {
     this.canvas.style.display = 'none';
     this.clear();
   }
+
+  // Hi-Res graphics
+  initHiRes() {
+    this.canvas.style.display = 'block';
+    this.canvas.width = App.HIRES_WIDTH;
+    this.canvas.height = App.HIRES_HEIGHT;
+    this.ctx = this.canvas.getContext('2d');
+    this.ctx.fillStyle = '#000000';
+    this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
+    // HGR uses top 160 lines for graphics, bottom 4 text lines
+    this.cursorX = 0;
+    this.cursorY = 20;
+    for (let y = 20; y < this.height; y++) {
+      this.screenBuffer[y] = new Array(this.width).fill(' ');
+    }
+    this.render();
+  }
+
+  drawHiResPixel(x, y, color) {
+    this.ctx.fillStyle = App.HIRES_COLORS[color & 7];
+    this.ctx.fillRect(x, y, 1, 1);
+  }
+
+  drawHiResLine(x1, y1, x2, y2, color) {
+    this.ctx.strokeStyle = App.HIRES_COLORS[color & 7];
+    this.ctx.lineWidth = 1;
+    this.ctx.beginPath();
+    this.ctx.moveTo(x1 + 0.5, y1 + 0.5);
+    this.ctx.lineTo(x2 + 0.5, y2 + 0.5);
+    this.ctx.stroke();
+  }
 }
 
 App.Display = Display;

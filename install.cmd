@@ -69,7 +69,7 @@ $content = @'
 Set-Content -Path "$dir\index.html" -Value $content -Encoding UTF8
 
 # --- File 2 of 13 ---
-Write-Host "Writing css/style.css (2/13)..."
+Write-Host "Writing css\style.css (2/13)..."
 $content = @'
 /* ===== RESET & BASE ===== */
 * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -91,7 +91,7 @@ body {
   border-radius: 24px;
   padding: 32px;
   box-shadow:
-    0 0 60px rgba(0, 255, 0, 0.05),
+    0 0 60px rgba(255, 176, 0, 0.05),
     inset 0 0 80px rgba(0, 0, 0, 0.8),
     0 4px 20px rgba(0, 0, 0, 0.6);
   position: relative;
@@ -108,7 +108,7 @@ body {
 
 /* ===== SCREEN ===== */
 #screen-container {
-  background: #000800;
+  background: #080400;
   border-radius: 12px;
   padding: 16px;
   position: relative;
@@ -157,10 +157,10 @@ body {
   font-family: 'Courier New', 'Lucida Console', monospace;
   font-size: 20px;
   line-height: 1.25;
-  color: #33ff33;
+  color: #ffb000;
   white-space: pre;
   letter-spacing: 1px;
-  text-shadow: 0 0 5px rgba(51, 255, 51, 0.5), 0 0 10px rgba(51, 255, 51, 0.2);
+  text-shadow: 0 0 5px rgba(255, 176, 0, 0.5), 0 0 10px rgba(255, 176, 0, 0.2);
   min-height: 600px;
   width: 660px;
   user-select: none;
@@ -171,8 +171,8 @@ body {
 .cursor {
   display: inline;
   animation: blink 1s step-end infinite;
-  background-color: #33ff33;
-  color: #000800;
+  background-color: #ffb000;
+  color: #080400;
   text-shadow: none;
 }
 
@@ -182,8 +182,8 @@ body {
 }
 
 .inverse {
-  background-color: #33ff33;
-  color: #000800;
+  background-color: #ffb000;
+  color: #080400;
   text-shadow: none;
 }
 
@@ -207,16 +207,16 @@ body {
 #power-led {
   width: 8px;
   height: 8px;
-  background: #33ff33;
+  background: #ffb000;
   border-radius: 50%;
-  box-shadow: 0 0 6px #33ff33;
+  box-shadow: 0 0 6px #ffb000;
   margin-top: 12px;
   animation: led-glow 2s ease-in-out infinite alternate;
 }
 
 @keyframes led-glow {
-  0% { box-shadow: 0 0 4px #33ff33; }
-  100% { box-shadow: 0 0 10px #33ff33, 0 0 20px rgba(51, 255, 51, 0.3); }
+  0% { box-shadow: 0 0 4px #ffb000; }
+  100% { box-shadow: 0 0 10px #ffb000, 0 0 20px rgba(255, 176, 0, 0.3); }
 }
 
 /* ===== RESPONSIVE ===== */
@@ -229,7 +229,7 @@ body {
 Set-Content -Path "$dir\css\style.css" -Value $content -Encoding UTF8
 
 # --- File 3 of 13 ---
-Write-Host "Writing js/constants.js (3/13)..."
+Write-Host "Writing js\constants.js (3/13)..."
 $content = @'
 window.App = window.App || {};
 
@@ -261,11 +261,27 @@ App.LORES_COLORS = [
   '#44ff99', // 14 Aqua
   '#ffffff', // 15 White
 ];
+
+// Hi-Res graphics
+App.HIRES_WIDTH = 280;
+App.HIRES_HEIGHT = 192;
+
+// Apple II Hi-Res color palette (HCOLOR= 0-7)
+App.HIRES_COLORS = [
+  '#000000', // 0  Black
+  '#11dd00', // 1  Green
+  '#dd22dd', // 2  Violet/Purple
+  '#ffffff', // 3  White
+  '#000000', // 4  Black
+  '#ff6600', // 5  Orange
+  '#2222ff', // 6  Blue
+  '#ffffff', // 7  White
+];
 '@
 Set-Content -Path "$dir\js\constants.js" -Value $content -Encoding UTF8
 
 # --- File 4 of 13 ---
-Write-Host "Writing js/audio.js (4/13)..."
+Write-Host "Writing js\audio.js (4/13)..."
 $content = @'
 window.App = window.App || {};
 
@@ -298,18 +314,20 @@ App.beep = function(duration, frequency) {
 Set-Content -Path "$dir\js\audio.js" -Value $content -Encoding UTF8
 
 # --- File 5 of 13 ---
-Write-Host "Writing js/tokenizer.js (5/13)..."
+Write-Host "Writing js\tokenizer.js (5/13)..."
 $content = @'
 window.App = window.App || {};
 
 const KEYWORDS = [
   'PRINT','GOTO','GOSUB','RETURN','IF','THEN','ELSE','FOR','TO','STEP',
   'NEXT','LET','INPUT','DIM','READ','DATA','RESTORE','DEF','FN',
-  'REM','END','STOP','ON','AND','OR','NOT','TAB','SPC','HTAB','VTAB',
+  'REM','END','STOP','CONT','ON','AND','OR','NOT','TAB','SPC','HTAB','VTAB',
   'HOME','CLEAR','CLR','RUN','LIST','NEW','LOAD','SAVE',
-  'GR','COLOR','PLOT','HLIN','VLIN','TEXT','HGR','HCOLOR','HPLOT',
+  'GR','COLOR','PLOT','HLIN','VLIN','TEXT','HGR','HGR2','HCOLOR','HPLOT',
+  'DRAW','XDRAW','ROT','SCALE',
   'POKE','PEEK','CALL','SPEED','NORMAL','INVERSE','FLASH',
-  'POP','ONERR','RESUME','GET','AT'
+  'POP','ONERR','RESUME','GET','AT','WAIT','USR',
+  'TRACE','NOTRACE','STORE','RECALL'
 ];
 
 class Tokenizer {
@@ -446,7 +464,7 @@ App.Tokenizer = Tokenizer;
 Set-Content -Path "$dir\js\tokenizer.js" -Value $content -Encoding UTF8
 
 # --- File 6 of 13 ---
-Write-Host "Writing js/parser.js (6/13)..."
+Write-Host "Writing js\parser.js (6/13)..."
 $content = @'
 window.App = window.App || {};
 
@@ -616,6 +634,15 @@ class Parser {
       return { type: 'builtin_call', name: 'PEEK', args: [arg] };
     }
 
+    // USR function
+    if (token.type === 'KEYWORD' && token.value === 'USR') {
+      this.advance();
+      this.expect('OPERATOR', '(');
+      const arg = this.parseExpression();
+      this.expect('OPERATOR', ')');
+      return { type: 'builtin_call', name: 'USR', args: [arg] };
+    }
+
     // Built-in functions
     if (token.type === 'IDENTIFIER') {
       const builtins = [
@@ -657,7 +684,7 @@ App.Parser = Parser;
 Set-Content -Path "$dir\js\parser.js" -Value $content -Encoding UTF8
 
 # --- File 7 of 13 ---
-Write-Host "Writing js/filesystem.js (7/13)..."
+Write-Host "Writing js\filesystem.js (7/13)..."
 $content = @'
 window.App = window.App || {};
 
@@ -799,7 +826,7 @@ App.VirtualFileSystem = VirtualFileSystem;
 Set-Content -Path "$dir\js\filesystem.js" -Value $content -Encoding UTF8
 
 # --- File 8 of 13 ---
-Write-Host "Writing js/samples.js (8/13)..."
+Write-Host "Writing js\samples.js (8/13)..."
 $content = @'
 window.App = window.App || {};
 
@@ -1031,7 +1058,7 @@ App.getSamples = function() {
 Set-Content -Path "$dir\js\samples.js" -Value $content -Encoding UTF8
 
 # --- File 9 of 13 ---
-Write-Host "Writing js/tutorial.js (9/13)..."
+Write-Host "Writing js\tutorial.js (9/13)..."
 $content = @'
 window.App = window.App || {};
 
@@ -1237,7 +1264,7 @@ App.getTutorialPages = function() {
 Set-Content -Path "$dir\js\tutorial.js" -Value $content -Encoding UTF8
 
 # --- File 10 of 13 ---
-Write-Host "Writing js/display.js (10/13)..."
+Write-Host "Writing js\display.js (10/13)..."
 $content = @'
 window.App = window.App || {};
 
@@ -1393,6 +1420,37 @@ class Display {
     this.canvas.style.display = 'none';
     this.clear();
   }
+
+  // Hi-Res graphics
+  initHiRes() {
+    this.canvas.style.display = 'block';
+    this.canvas.width = App.HIRES_WIDTH;
+    this.canvas.height = App.HIRES_HEIGHT;
+    this.ctx = this.canvas.getContext('2d');
+    this.ctx.fillStyle = '#000000';
+    this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
+    // HGR uses top 160 lines for graphics, bottom 4 text lines
+    this.cursorX = 0;
+    this.cursorY = 20;
+    for (let y = 20; y < this.height; y++) {
+      this.screenBuffer[y] = new Array(this.width).fill(' ');
+    }
+    this.render();
+  }
+
+  drawHiResPixel(x, y, color) {
+    this.ctx.fillStyle = App.HIRES_COLORS[color & 7];
+    this.ctx.fillRect(x, y, 1, 1);
+  }
+
+  drawHiResLine(x1, y1, x2, y2, color) {
+    this.ctx.strokeStyle = App.HIRES_COLORS[color & 7];
+    this.ctx.lineWidth = 1;
+    this.ctx.beginPath();
+    this.ctx.moveTo(x1 + 0.5, y1 + 0.5);
+    this.ctx.lineTo(x2 + 0.5, y2 + 0.5);
+    this.ctx.stroke();
+  }
 }
 
 App.Display = Display;
@@ -1400,7 +1458,7 @@ App.Display = Display;
 Set-Content -Path "$dir\js\display.js" -Value $content -Encoding UTF8
 
 # --- File 11 of 13 ---
-Write-Host "Writing js/interpreter.js (11/13)..."
+Write-Host "Writing js\interpreter.js (11/13)..."
 $content = @'
 window.App = window.App || {};
 
@@ -1429,6 +1487,16 @@ class Interpreter {
     this.textMode = true;
     this.loResScreen = null;
     this.loResColor = 0;
+    this.hiResColor = 3;
+    this.hiResLastX = 0;
+    this.hiResLastY = 0;
+    this.hiResMode = false;
+    this.shapeRotation = 0;
+    this.shapeScale = 1;
+    this.traceMode = false;
+    this.stoppedLineIndex = -1;
+    this.stoppedCallStack = null;
+    this.stoppedForStack = null;
     this.userFunctions = {};
     this.inputCallback = null;
     this.getCallback = null;
@@ -1446,6 +1514,11 @@ class Interpreter {
     this.inputCallback = null;
     this.getCallback = null;
     this.onErrLine = null;
+    this.hiResColor = 3;
+    this.hiResLastX = 0;
+    this.hiResLastY = 0;
+    this.shapeRotation = 0;
+    this.shapeScale = 1;
     this.collectData();
   }
 
@@ -1562,6 +1635,9 @@ class Interpreter {
     try {
       while (this.running && this.lineIndex < this.sortedLines.length && !this.stopped) {
         this.currentLine = this.sortedLines[this.lineIndex];
+        if (this.traceMode) {
+          this.display.printString('#' + this.currentLine + ' ');
+        }
         const source = this.program[this.currentLine];
         const statements = this.splitStatements(source);
 
@@ -1572,6 +1648,10 @@ class Interpreter {
           if (result === 'STOP' || result === 'END') {
             this.running = false;
             if (result === 'STOP') {
+              this.stopped = true;
+              this.stoppedLineIndex = this.lineIndex;
+              this.stoppedCallStack = [...this.callStack];
+              this.stoppedForStack = this.forStack.map(f => ({...f}));
               this.display.printLine(`\nBREAK IN ${this.currentLine}`);
             }
             return;
@@ -1602,6 +1682,24 @@ class Interpreter {
       }
     }
     this.running = false;
+  }
+
+  // ===== CONT (Continue after STOP) =====
+  async cont() {
+    if (this.stoppedLineIndex === -1) {
+      this.display.printLine('?CAN\'T CONTINUE ERROR');
+      return;
+    }
+    this.running = true;
+    this.stopped = false;
+    this.lineIndex = this.stoppedLineIndex + 1;
+    if (this.stoppedCallStack) this.callStack = [...this.stoppedCallStack];
+    if (this.stoppedForStack) this.forStack = this.stoppedForStack.map(f => ({...f}));
+    this.stoppedLineIndex = -1;
+    this.stoppedCallStack = null;
+    this.stoppedForStack = null;
+    this.stepCount = 0;
+    await this.executeLoop();
   }
 
   // ===== EXECUTE A SINGLE STATEMENT =====
@@ -1756,6 +1854,65 @@ class Interpreter {
     if (upperStmt.startsWith('HLIN')) { return this.executeHlin(stmt.substring(4).trim()); }
     if (upperStmt.startsWith('VLIN')) { return this.executeVlin(stmt.substring(4).trim()); }
 
+    // ===== TRACE / NOTRACE =====
+    if (upperStmt.startsWith('TRACE')) { this.traceMode = true; return; }
+    if (upperStmt.startsWith('NOTRACE')) { this.traceMode = false; return; }
+
+    // ===== HI-RES GRAPHICS =====
+    if (upperStmt === 'HGR' || upperStmt === 'HGR2' || (upperStmt.startsWith('HGR') && !upperStmt.startsWith('HGRAPHICS'))) {
+      this.textMode = false;
+      this.hiResMode = true;
+      this.hiResColor = 3;
+      this.display.initHiRes();
+      return;
+    }
+
+    if (upperStmt.startsWith('HCOLOR')) {
+      const eqPos = stmt.indexOf('=');
+      if (eqPos !== -1) {
+        this.hiResColor = Math.floor(this.evaluateExpressionFromString(stmt.substring(eqPos + 1).trim())) & 7;
+      }
+      return;
+    }
+
+    if (upperStmt.startsWith('HPLOT')) {
+      this.executeHplot(stmt.substring(5).trim());
+      return;
+    }
+
+    // ===== DRAW / XDRAW (shape table stubs) =====
+    if (upperStmt.startsWith('DRAW')) {
+      // Shape table drawing - stub: requires AT x,y
+      return;
+    }
+    if (upperStmt.startsWith('XDRAW')) {
+      // XOR shape table drawing - stub
+      return;
+    }
+
+    // ===== ROT= / SCALE= =====
+    if (upperStmt.startsWith('ROT')) {
+      const eqPos = stmt.indexOf('=');
+      if (eqPos !== -1) {
+        this.shapeRotation = Math.floor(this.evaluateExpressionFromString(stmt.substring(eqPos + 1).trim()));
+      }
+      return;
+    }
+    if (upperStmt.startsWith('SCALE')) {
+      const eqPos = stmt.indexOf('=');
+      if (eqPos !== -1) {
+        this.shapeScale = Math.floor(this.evaluateExpressionFromString(stmt.substring(eqPos + 1).trim()));
+      }
+      return;
+    }
+
+    // ===== WAIT (stub) =====
+    if (upperStmt.startsWith('WAIT')) return;
+
+    // ===== STORE / RECALL (cassette stubs) =====
+    if (upperStmt.startsWith('STORE')) return;
+    if (upperStmt.startsWith('RECALL')) return;
+
     if (upperStmt.startsWith('POKE')) return;
     if (upperStmt.startsWith('CALL')) return;
 
@@ -1856,17 +2013,37 @@ class Interpreter {
     return s;
   }
 
-  // ===== IF/THEN =====
+  // ===== IF/THEN/ELSE =====
   async executeIf(argStr, lineNum) {
     const thenPos = this.findKeywordInString(argStr, 'THEN');
     if (thenPos === -1) throw new Error('?SYNTAX ERROR');
 
     const condStr = argStr.substring(0, thenPos).trim();
-    const thenPart = argStr.substring(thenPos + 4).trim();
+    const afterThen = argStr.substring(thenPos + 4).trim();
+
+    // Split THEN part from ELSE part (respecting quotes)
+    let thenPart = afterThen;
+    let elsePart = null;
+    const elsePos = this.findKeywordInString(afterThen, 'ELSE');
+    if (elsePos !== -1) {
+      thenPart = afterThen.substring(0, elsePos).trim();
+      elsePart = afterThen.substring(elsePos + 4).trim();
+    }
 
     const condVal = this.evaluateExpressionFromString(condStr);
     if (condVal) {
       const trimmed = thenPart.trim();
+      if (/^\d+$/.test(trimmed)) {
+        this.gotoLine(parseInt(trimmed));
+        return 'JUMP';
+      }
+      const stmts = this.splitStatements(trimmed);
+      for (const s of stmts) {
+        const result = await this.executeStatement(s.trim(), lineNum);
+        if (result === 'JUMP' || result === 'STOP' || result === 'END') return result;
+      }
+    } else if (elsePart !== null) {
+      const trimmed = elsePart.trim();
       if (/^\d+$/.test(trimmed)) {
         this.gotoLine(parseInt(trimmed));
         return 'JUMP';
@@ -2165,6 +2342,54 @@ class Interpreter {
     }
   }
 
+  // ===== HPLOT =====
+  executeHplot(argStr) {
+    if (!argStr || argStr.trim().length === 0) return;
+    const upper = argStr.toUpperCase().trim();
+
+    // HPLOT TO x,y [TO x,y ...] - draw from last position
+    if (upper.startsWith('TO')) {
+      const segments = argStr.split(/\bTO\b/i).filter(s => s.trim().length > 0);
+      for (const seg of segments) {
+        const commaPos = this.findComma(seg.trim());
+        const x = Math.floor(this.evaluateExpressionFromString(seg.trim().substring(0, commaPos).trim()));
+        const y = Math.floor(this.evaluateExpressionFromString(seg.trim().substring(commaPos + 1).trim()));
+        this.display.drawHiResLine(this.hiResLastX, this.hiResLastY, x, y, this.hiResColor);
+        this.hiResLastX = x;
+        this.hiResLastY = y;
+      }
+      return;
+    }
+
+    // HPLOT x,y [TO x,y ...]
+    const parts = argStr.split(/\bTO\b/i);
+    const firstPart = parts[0].trim();
+    const commaPos = this.findComma(firstPart);
+    const x1 = Math.floor(this.evaluateExpressionFromString(firstPart.substring(0, commaPos).trim()));
+    const y1 = Math.floor(this.evaluateExpressionFromString(firstPart.substring(commaPos + 1).trim()));
+
+    if (parts.length === 1) {
+      // Single point
+      this.display.drawHiResPixel(x1, y1, this.hiResColor);
+      this.hiResLastX = x1;
+      this.hiResLastY = y1;
+    } else {
+      // First point then lines
+      this.display.drawHiResPixel(x1, y1, this.hiResColor);
+      this.hiResLastX = x1;
+      this.hiResLastY = y1;
+      for (let i = 1; i < parts.length; i++) {
+        const seg = parts[i].trim();
+        const cp = this.findComma(seg);
+        const x = Math.floor(this.evaluateExpressionFromString(seg.substring(0, cp).trim()));
+        const y = Math.floor(this.evaluateExpressionFromString(seg.substring(cp + 1).trim()));
+        this.display.drawHiResLine(this.hiResLastX, this.hiResLastY, x, y, this.hiResColor);
+        this.hiResLastX = x;
+        this.hiResLastY = y;
+      }
+    }
+  }
+
   // ===== ASSIGNMENT =====
   isAssignment(stmt) {
     const tokens = new App.Tokenizer(stmt).tokens;
@@ -2356,6 +2581,7 @@ class Interpreter {
       }
       case 'TAB': return ' '.repeat(Math.max(0, Math.floor(args[0])));
       case 'SPC': return ' '.repeat(Math.max(0, Math.floor(args[0])));
+      case 'USR': return 0; // stub - no machine language support
       default: throw new Error('?ILLEGAL QUANTITY ERROR');
     }
   }
@@ -2419,7 +2645,7 @@ App.Interpreter = Interpreter;
 Set-Content -Path "$dir\js\interpreter.js" -Value $content -Encoding UTF8
 
 # --- File 12 of 13 ---
-Write-Host "Writing js/emulator.js (12/13)..."
+Write-Host "Writing js\emulator.js (12/13)..."
 $content = @'
 window.App = window.App || {};
 
@@ -2588,7 +2814,38 @@ class Emulator {
     }
 
     // BASIC commands
-    if (upper === 'RUN') { await this.runProgram(); return; }
+    if (upper === 'RUN' || upper.startsWith('RUN ')) {
+      const arg = upper.substring(3).trim();
+      const startLine = arg ? parseInt(arg) : undefined;
+      await this.runProgram(startLine);
+      return;
+    }
+
+    if (upper === 'CONT') {
+      this.commandMode = false;
+      try {
+        await this.interpreter.cont();
+      } catch (e) {
+        this.display.printLine('\n' + e.message);
+      }
+      this.display.printString('\n');
+      this.showPrompt();
+      return;
+    }
+
+    if (upper === 'TRACE') {
+      this.interpreter.traceMode = true;
+      this.display.printLine('TRACE ON');
+      this.showPrompt();
+      return;
+    }
+
+    if (upper === 'NOTRACE') {
+      this.interpreter.traceMode = false;
+      this.display.printLine('TRACE OFF');
+      this.showPrompt();
+      return;
+    }
 
     if (upper === 'LIST' || upper.startsWith('LIST ') || upper.startsWith('LIST-')) {
       this.listProgram(upper === 'LIST' ? '' : upper.substring(4).trim());
@@ -2916,9 +3173,12 @@ class Emulator {
   showHelp() {
     this.display.printLine('');
     this.display.printLine('=== BASIC COMMANDS ===');
-    this.display.printLine('RUN        RUN PROGRAM');
+    this.display.printLine('RUN [LINE] RUN PROGRAM');
+    this.display.printLine('CONT       CONTINUE AFTER STOP');
     this.display.printLine('LIST       LIST PROGRAM');
     this.display.printLine('NEW        CLEAR PROGRAM');
+    this.display.printLine('TRACE      ENABLE LINE TRACE');
+    this.display.printLine('NOTRACE    DISABLE LINE TRACE');
     this.display.printLine('RESET      RESET EMULATOR');
     this.display.printLine('CTRL+C     BREAK PROGRAM');
     this.display.printLine('');
@@ -2971,7 +3231,7 @@ App.Emulator = Emulator;
 Set-Content -Path "$dir\js\emulator.js" -Value $content -Encoding UTF8
 
 # --- File 13 of 13 ---
-Write-Host "Writing js/main.js (13/13)..."
+Write-Host "Writing js\main.js (13/13)..."
 $content = @'
 window.App = window.App || {};
 

@@ -166,6 +166,15 @@ class Parser {
       return { type: 'builtin_call', name: 'PEEK', args: [arg] };
     }
 
+    // USR function
+    if (token.type === 'KEYWORD' && token.value === 'USR') {
+      this.advance();
+      this.expect('OPERATOR', '(');
+      const arg = this.parseExpression();
+      this.expect('OPERATOR', ')');
+      return { type: 'builtin_call', name: 'USR', args: [arg] };
+    }
+
     // Built-in functions
     if (token.type === 'IDENTIFIER') {
       const builtins = [

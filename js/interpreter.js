@@ -25,6 +25,16 @@ class Interpreter {
     this.textMode = true;
     this.loResScreen = null;
     this.loResColor = 0;
+    this.hiResColor = 3;
+    this.hiResLastX = 0;
+    this.hiResLastY = 0;
+    this.hiResMode = false;
+    this.shapeRotation = 0;
+    this.shapeScale = 1;
+    this.traceMode = false;
+    this.stoppedLineIndex = -1;
+    this.stoppedCallStack = null;
+    this.stoppedForStack = null;
     this.userFunctions = {};
     this.inputCallback = null;
     this.getCallback = null;
@@ -42,6 +52,11 @@ class Interpreter {
     this.inputCallback = null;
     this.getCallback = null;
     this.onErrLine = null;
+    this.hiResColor = 3;
+    this.hiResLastX = 0;
+    this.hiResLastY = 0;
+    this.shapeRotation = 0;
+    this.shapeScale = 1;
     this.collectData();
   }
 
@@ -158,6 +173,9 @@ class Interpreter {
     try {
       while (this.running && this.lineIndex < this.sortedLines.length && !this.stopped) {
         this.currentLine = this.sortedLines[this.lineIndex];
+        if (this.traceMode) {
+          this.display.printString('#' + this.currentLine + ' ');
+        }
         const source = this.program[this.currentLine];
         const statements = this.splitStatements(source);
 
@@ -168,6 +186,10 @@ class Interpreter {
           if (result === 'STOP' || result === 'END') {
             this.running = false;
             if (result === 'STOP') {
+              this.stopped = true;
+              this.stoppedLineIndex = this.lineIndex;
+              this.stoppedCallStack = [...this.callStack];
+              this.stoppedForStack = this.forStack.map(f => ({...f}));
               this.display.printLine(`\nBREAK IN ${this.currentLine}`);
             }
             return;
@@ -198,6 +220,24 @@ class Interpreter {
       }
     }
     this.running = false;
+  }
+
+  // ===== CONT (Continue after STOP) =====
+  async cont() {
+    if (this.stoppedLineIndex === -1) {
+      this.display.printLine('?CAN\'T CONTINUE ERROR');
+      return;
+    }
+    this.running = true;
+    this.stopped = false;
+    this.lineIndex = this.stoppedLineIndex + 1;
+    if (this.stoppedCallStack) this.callStack = [...this.stoppedCallStack];
+    if (this.stoppedForStack) this.forStack = this.stoppedForStack.map(f => ({...f}));
+    this.stoppedLineIndex = -1;
+    this.stoppedCallStack = null;
+    this.stoppedForStack = null;
+    this.stepCount = 0;
+    await this.executeLoop();
   }
 
   // ===== EXECUTE A SINGLE STATEMENT =====
@@ -352,6 +392,65 @@ class Interpreter {
     if (upperStmt.startsWith('HLIN')) { return this.executeHlin(stmt.substring(4).trim()); }
     if (upperStmt.startsWith('VLIN')) { return this.executeVlin(stmt.substring(4).trim()); }
 
+    // ===== TRACE / NOTRACE =====
+    if (upperStmt.startsWith('TRACE')) { this.traceMode = true; return; }
+    if (upperStmt.startsWith('NOTRACE')) { this.traceMode = false; return; }
+
+    // ===== HI-RES GRAPHICS =====
+    if (upperStmt === 'HGR' || upperStmt === 'HGR2' || (upperStmt.startsWith('HGR') && !upperStmt.startsWith('HGRAPHICS'))) {
+      this.textMode = false;
+      this.hiResMode = true;
+      this.hiResColor = 3;
+      this.display.initHiRes();
+      return;
+    }
+
+    if (upperStmt.startsWith('HCOLOR')) {
+      const eqPos = stmt.indexOf('=');
+      if (eqPos !== -1) {
+        this.hiResColor = Math.floor(this.evaluateExpressionFromString(stmt.substring(eqPos + 1).trim())) & 7;
+      }
+      return;
+    }
+
+    if (upperStmt.startsWith('HPLOT')) {
+      this.executeHplot(stmt.substring(5).trim());
+      return;
+    }
+
+    // ===== DRAW / XDRAW (shape table stubs) =====
+    if (upperStmt.startsWith('DRAW')) {
+      // Shape table drawing - stub: requires AT x,y
+      return;
+    }
+    if (upperStmt.startsWith('XDRAW')) {
+      // XOR shape table drawing - stub
+      return;
+    }
+
+    // ===== ROT= / SCALE= =====
+    if (upperStmt.startsWith('ROT')) {
+      const eqPos = stmt.indexOf('=');
+      if (eqPos !== -1) {
+        this.shapeRotation = Math.floor(this.evaluateExpressionFromString(stmt.substring(eqPos + 1).trim()));
+      }
+      return;
+    }
+    if (upperStmt.startsWith('SCALE')) {
+      const eqPos = stmt.indexOf('=');
+      if (eqPos !== -1) {
+        this.shapeScale = Math.floor(this.evaluateExpressionFromString(stmt.substring(eqPos + 1).trim()));
+      }
+      return;
+    }
+
+    // ===== WAIT (stub) =====
+    if (upperStmt.startsWith('WAIT')) return;
+
+    // ===== STORE / RECALL (cassette stubs) =====
+    if (upperStmt.startsWith('STORE')) return;
+    if (upperStmt.startsWith('RECALL')) return;
+
     if (upperStmt.startsWith('POKE')) return;
     if (upperStmt.startsWith('CALL')) return;
 
@@ -452,17 +551,37 @@ class Interpreter {
     return s;
   }
 
-  // ===== IF/THEN =====
+  // ===== IF/THEN/ELSE =====
   async executeIf(argStr, lineNum) {
     const thenPos = this.findKeywordInString(argStr, 'THEN');
     if (thenPos === -1) throw new Error('?SYNTAX ERROR');
 
     const condStr = argStr.substring(0, thenPos).trim();
-    const thenPart = argStr.substring(thenPos + 4).trim();
+    const afterThen = argStr.substring(thenPos + 4).trim();
+
+    // Split THEN part from ELSE part (respecting quotes)
+    let thenPart = afterThen;
+    let elsePart = null;
+    const elsePos = this.findKeywordInString(afterThen, 'ELSE');
+    if (elsePos !== -1) {
+      thenPart = afterThen.substring(0, elsePos).trim();
+      elsePart = afterThen.substring(elsePos + 4).trim();
+    }
 
     const condVal = this.evaluateExpressionFromString(condStr);
     if (condVal) {
       const trimmed = thenPart.trim();
+      if (/^\d+$/.test(trimmed)) {
+        this.gotoLine(parseInt(trimmed));
+        return 'JUMP';
+      }
+      const stmts = this.splitStatements(trimmed);
+      for (const s of stmts) {
+        const result = await this.executeStatement(s.trim(), lineNum);
+        if (result === 'JUMP' || result === 'STOP' || result === 'END') return result;
+      }
+    } else if (elsePart !== null) {
+      const trimmed = elsePart.trim();
       if (/^\d+$/.test(trimmed)) {
         this.gotoLine(parseInt(trimmed));
         return 'JUMP';
@@ -761,6 +880,54 @@ class Interpreter {
     }
   }
 
+  // ===== HPLOT =====
+  executeHplot(argStr) {
+    if (!argStr || argStr.trim().length === 0) return;
+    const upper = argStr.toUpperCase().trim();
+
+    // HPLOT TO x,y [TO x,y ...] - draw from last position
+    if (upper.startsWith('TO')) {
+      const segments = argStr.split(/\bTO\b/i).filter(s => s.trim().length > 0);
+      for (const seg of segments) {
+        const commaPos = this.findComma(seg.trim());
+        const x = Math.floor(this.evaluateExpressionFromString(seg.trim().substring(0, commaPos).trim()));
+        const y = Math.floor(this.evaluateExpressionFromString(seg.trim().substring(commaPos + 1).trim()));
+        this.display.drawHiResLine(this.hiResLastX, this.hiResLastY, x, y, this.hiResColor);
+        this.hiResLastX = x;
+        this.hiResLastY = y;
+      }
+      return;
+    }
+
+    // HPLOT x,y [TO x,y ...]
+    const parts = argStr.split(/\bTO\b/i);
+    const firstPart = parts[0].trim();
+    const commaPos = this.findComma(firstPart);
+    const x1 = Math.floor(this.evaluateExpressionFromString(firstPart.substring(0, commaPos).trim()));
+    const y1 = Math.floor(this.evaluateExpressionFromString(firstPart.substring(commaPos + 1).trim()));
+
+    if (parts.length === 1) {
+      // Single point
+      this.display.drawHiResPixel(x1, y1, this.hiResColor);
+      this.hiResLastX = x1;
+      this.hiResLastY = y1;
+    } else {
+      // First point then lines
+      this.display.drawHiResPixel(x1, y1, this.hiResColor);
+      this.hiResLastX = x1;
+      this.hiResLastY = y1;
+      for (let i = 1; i < parts.length; i++) {
+        const seg = parts[i].trim();
+        const cp = this.findComma(seg);
+        const x = Math.floor(this.evaluateExpressionFromString(seg.substring(0, cp).trim()));
+        const y = Math.floor(this.evaluateExpressionFromString(seg.substring(cp + 1).trim()));
+        this.display.drawHiResLine(this.hiResLastX, this.hiResLastY, x, y, this.hiResColor);
+        this.hiResLastX = x;
+        this.hiResLastY = y;
+      }
+    }
+  }
+
   // ===== ASSIGNMENT =====
   isAssignment(stmt) {
     const tokens = new App.Tokenizer(stmt).tokens;
@@ -952,6 +1119,7 @@ class Interpreter {
       }
       case 'TAB': return ' '.repeat(Math.max(0, Math.floor(args[0])));
       case 'SPC': return ' '.repeat(Math.max(0, Math.floor(args[0])));
+      case 'USR': return 0; // stub - no machine language support
       default: throw new Error('?ILLEGAL QUANTITY ERROR');
     }
   }

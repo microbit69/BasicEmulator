@@ -28,3 +28,19 @@ App.LORES_COLORS = [
   '#44ff99', // 14 Aqua
   '#ffffff', // 15 White
 ];
+
+// Hi-Res graphics
+App.HIRES_WIDTH = 280;
+App.HIRES_HEIGHT = 192;
+
+// Apple II Hi-Res color palette (HCOLOR= 0-7)
+App.HIRES_COLORS = [
+  '#000000', // 0  Black
+  '#11dd00', // 1  Green
+  '#dd22dd', // 2  Violet/Purple
+  '#ffffff', // 3  White
+  '#000000', // 4  Black
+  '#ff6600', // 5  Orange
+  '#2222ff', // 6  Blue
+  '#ffffff', // 7  White
+];

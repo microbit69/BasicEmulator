@@ -18,7 +18,7 @@ body {
   border-radius: 24px;
   padding: 32px;
   box-shadow:
-    0 0 60px rgba(0, 255, 0, 0.05),
+    0 0 60px rgba(255, 176, 0, 0.05),
     inset 0 0 80px rgba(0, 0, 0, 0.8),
     0 4px 20px rgba(0, 0, 0, 0.6);
   position: relative;
@@ -35,7 +35,7 @@ body {
 
 /* ===== SCREEN ===== */
 #screen-container {
-  background: #000800;
+  background: #080400;
   border-radius: 12px;
   padding: 16px;
   position: relative;
@@ -84,10 +84,10 @@ body {
   font-family: 'Courier New', 'Lucida Console', monospace;
   font-size: 20px;
   line-height: 1.25;
-  color: #33ff33;
+  color: #ffb000;
   white-space: pre;
   letter-spacing: 1px;
-  text-shadow: 0 0 5px rgba(51, 255, 51, 0.5), 0 0 10px rgba(51, 255, 51, 0.2);
+  text-shadow: 0 0 5px rgba(255, 176, 0, 0.5), 0 0 10px rgba(255, 176, 0, 0.2);
   min-height: 600px;
   width: 660px;
   user-select: none;
@@ -98,8 +98,8 @@ body {
 .cursor {
   display: inline;
   animation: blink 1s step-end infinite;
-  background-color: #33ff33;
-  color: #000800;
+  background-color: #ffb000;
+  color: #080400;
   text-shadow: none;
 }
 
@@ -109,8 +109,8 @@ body {
 }
 
 .inverse {
-  background-color: #33ff33;
-  color: #000800;
+  background-color: #ffb000;
+  color: #080400;
   text-shadow: none;
 }
 
@@ -134,16 +134,16 @@ body {
 #power-led {
   width: 8px;
   height: 8px;
-  background: #33ff33;
+  background: #ffb000;
   border-radius: 50%;
-  box-shadow: 0 0 6px #33ff33;
+  box-shadow: 0 0 6px #ffb000;
   margin-top: 12px;
   animation: led-glow 2s ease-in-out infinite alternate;
 }
 
 @keyframes led-glow {
-  0% { box-shadow: 0 0 4px #33ff33; }
-  100% { box-shadow: 0 0 10px #33ff33, 0 0 20px rgba(51, 255, 51, 0.3); }
+  0% { box-shadow: 0 0 4px #ffb000; }
+  100% { box-shadow: 0 0 10px #ffb000, 0 0 20px rgba(255, 176, 0, 0.3); }
 }
 
 /* ===== RESPONSIVE ===== */

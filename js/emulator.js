@@ -165,7 +165,38 @@ class Emulator {
     }
 
     // BASIC commands
-    if (upper === 'RUN') { await this.runProgram(); return; }
+    if (upper === 'RUN' || upper.startsWith('RUN ')) {
+      const arg = upper.substring(3).trim();
+      const startLine = arg ? parseInt(arg) : undefined;
+      await this.runProgram(startLine);
+      return;
+    }
+
+    if (upper === 'CONT') {
+      this.commandMode = false;
+      try {
+        await this.interpreter.cont();
+      } catch (e) {
+        this.display.printLine('\n' + e.message);
+      }
+      this.display.printString('\n');
+      this.showPrompt();
+      return;
+    }
+
+    if (upper === 'TRACE') {
+      this.interpreter.traceMode = true;
+      this.display.printLine('TRACE ON');
+      this.showPrompt();
+      return;
+    }
+
+    if (upper === 'NOTRACE') {
+      this.interpreter.traceMode = false;
+      this.display.printLine('TRACE OFF');
+      this.showPrompt();
+      return;
+    }
 
     if (upper === 'LIST' || upper.startsWith('LIST ') || upper.startsWith('LIST-')) {
       this.listProgram(upper === 'LIST' ? '' : upper.substring(4).trim());
@@ -493,9 +524,12 @@ class Emulator {
   showHelp() {
     this.display.printLine('');
     this.display.printLine('=== BASIC COMMANDS ===');
-    this.display.printLine('RUN        RUN PROGRAM');
+    this.display.printLine('RUN [LINE] RUN PROGRAM');
+    this.display.printLine('CONT       CONTINUE AFTER STOP');
     this.display.printLine('LIST       LIST PROGRAM');
     this.display.printLine('NEW        CLEAR PROGRAM');
+    this.display.printLine('TRACE      ENABLE LINE TRACE');
+    this.display.printLine('NOTRACE    DISABLE LINE TRACE');
     this.display.printLine('RESET      RESET EMULATOR');
     this.display.printLine('CTRL+C     BREAK PROGRAM');
     this.display.printLine('');
