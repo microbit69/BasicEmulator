@@ -1,5 +1,9 @@
 <# : batch portion
-@echo off & powershell -ExecutionPolicy Bypass "iex (gc '%~f0' -Raw)" & pause & exit /b
+@echo off
+cd /d "%~dp0"
+powershell -ExecutionPolicy Bypass "iex (gc '%~f0' -Raw)"
+pause
+exit /b
 : end batch / begin PowerShell #>
 
 # ============================================================
@@ -13,7 +17,7 @@ Write-Host "  JavaScript Edition"
 Write-Host "========================================"
 Write-Host ""
 
-$dir = Join-Path $PSScriptRoot "AppleSoftBASIC"
+$dir = Join-Path (Get-Location) "AppleSoftBASIC"
 
 Write-Host "Installing to: $dir"
 Write-Host ""
