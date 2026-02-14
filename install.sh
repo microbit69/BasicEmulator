@@ -173,6 +173,18 @@ body {
   text-shadow: none;
 }
 
+.flash {
+  animation: flash-text 0.5s step-end infinite;
+  background-color: #ffb000;
+  color: #080400;
+  text-shadow: none;
+}
+
+@keyframes flash-text {
+  0%, 49% { background-color: #ffb000; color: #080400; }
+  50%, 100% { background-color: transparent; color: #ffb000; }
+}
+
 /* ===== LO-RES GRAPHICS CANVAS ===== */
 #lores-canvas {
   position: absolute;
@@ -1248,13 +1260,20 @@ class Display {
     this.cursorX = 0;
     this.cursorY = 0;
     this.screenBuffer = [];
+    this.attrBuffer = [];  // text attributes: 0=normal, 1=inverse, 2=flash
+    this.displayMode = 0;  // 0=normal, 1=inverse, 2=flash
+    this.textWidth = 40;
+    this.scrollTop = 0;
+    this.scrollBottom = 24;
     this.clear();
   }
 
   clear() {
     this.screenBuffer = [];
+    this.attrBuffer = [];
     for (let y = 0; y < this.height; y++) {
       this.screenBuffer.push(new Array(this.width).fill(' '));
+      this.attrBuffer.push(new Array(this.width).fill(0));
     }
     this.cursorX = 0;
     this.cursorY = 0;
@@ -1267,10 +1286,16 @@ class Display {
       let line = '';
       for (let x = 0; x < this.width; x++) {
         const ch = this.screenBuffer[y][x];
+        const attr = this.attrBuffer[y][x];
+        const escaped = this.escapeHtml(ch);
         if (y === this.cursorY && x === this.cursorX) {
-          line += `<span class="cursor">${this.escapeHtml(ch)}</span>`;
+          line += `<span class="cursor">${escaped}</span>`;
+        } else if (attr === 1) {
+          line += `<span class="inverse">${escaped}</span>`;
+        } else if (attr === 2) {
+          line += `<span class="flash">${escaped}</span>`;
         } else {
-          line += this.escapeHtml(ch);
+          line += escaped;
         }
       }
       html += line;
@@ -1314,6 +1339,7 @@ class Display {
       if (this.cursorX > 0) {
         this.cursorX--;
         this.screenBuffer[this.cursorY][this.cursorX] = ' ';
+        this.attrBuffer[this.cursorY][this.cursorX] = 0;
       }
       return;
     }
@@ -1328,6 +1354,7 @@ class Display {
     }
 
     this.screenBuffer[this.cursorY][this.cursorX] = ch;
+    this.attrBuffer[this.cursorY][this.cursorX] = this.displayMode;
     this.cursorX++;
   }
 
@@ -1345,6 +1372,32 @@ class Display {
   scrollUp() {
     this.screenBuffer.shift();
     this.screenBuffer.push(new Array(this.width).fill(' '));
+    this.attrBuffer.shift();
+    this.attrBuffer.push(new Array(this.width).fill(0));
+  }
+
+  // Clear from cursor to end of screen
+  clearToEnd() {
+    // Clear rest of current line
+    for (let x = this.cursorX; x < this.width; x++) {
+      this.screenBuffer[this.cursorY][x] = ' ';
+      this.attrBuffer[this.cursorY][x] = 0;
+    }
+    // Clear all lines below
+    for (let y = this.cursorY + 1; y < this.height; y++) {
+      this.screenBuffer[y] = new Array(this.width).fill(' ');
+      this.attrBuffer[y] = new Array(this.width).fill(0);
+    }
+    this.render();
+  }
+
+  // Clear from cursor to end of line
+  clearToEndOfLine() {
+    for (let x = this.cursorX; x < this.width; x++) {
+      this.screenBuffer[this.cursorY][x] = ' ';
+      this.attrBuffer[this.cursorY][x] = 0;
+    }
+    this.render();
   }
 
   htab(col) {
@@ -1375,6 +1428,7 @@ class Display {
     this.cursorY = 20;
     for (let y = 20; y < this.height; y++) {
       this.screenBuffer[y] = new Array(this.width).fill(' ');
+      this.attrBuffer[y] = new Array(this.width).fill(0);
     }
     this.render();
   }
@@ -1399,11 +1453,11 @@ class Display {
     this.ctx = this.canvas.getContext('2d');
     this.ctx.fillStyle = '#000000';
     this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
-    // HGR uses top 160 lines for graphics, bottom 4 text lines
     this.cursorX = 0;
     this.cursorY = 20;
     for (let y = 20; y < this.height; y++) {
       this.screenBuffer[y] = new Array(this.width).fill(' ');
+      this.attrBuffer[y] = new Array(this.width).fill(0);
     }
     this.render();
   }
@@ -1465,6 +1519,9 @@ class Interpreter {
     this.stoppedLineIndex = -1;
     this.stoppedCallStack = null;
     this.stoppedForStack = null;
+    this.lastKeyPressed = 0;
+    this.lastError = 0;
+    this.memory = {};
     this.userFunctions = {};
     this.inputCallback = null;
     this.getCallback = null;
@@ -1785,9 +1842,9 @@ class Interpreter {
       return;
     }
 
-    if (upperStmt.startsWith('NORMAL')) { this.inverseMode = false; this.flashMode = false; return; }
-    if (upperStmt.startsWith('INVERSE')) { this.inverseMode = true; this.flashMode = false; return; }
-    if (upperStmt.startsWith('FLASH')) { this.flashMode = true; this.inverseMode = false; return; }
+    if (upperStmt.startsWith('NORMAL')) { this.inverseMode = false; this.flashMode = false; this.display.displayMode = 0; return; }
+    if (upperStmt.startsWith('INVERSE')) { this.inverseMode = true; this.flashMode = false; this.display.displayMode = 1; return; }
+    if (upperStmt.startsWith('FLASH')) { this.flashMode = true; this.inverseMode = false; this.display.displayMode = 2; return; }
 
     if (upperStmt === 'TEXT' || upperStmt.startsWith('TEXT')) {
       this.textMode = true;
@@ -1881,8 +1938,14 @@ class Interpreter {
     if (upperStmt.startsWith('STORE')) return;
     if (upperStmt.startsWith('RECALL')) return;
 
-    if (upperStmt.startsWith('POKE')) return;
-    if (upperStmt.startsWith('CALL')) return;
+    if (upperStmt.startsWith('POKE')) {
+      this.executePoke(stmt.substring(4).trim());
+      return;
+    }
+    if (upperStmt.startsWith('CALL')) {
+      this.executeCall(stmt.substring(4).trim());
+      return;
+    }
 
     if (upperStmt.startsWith('POP')) {
       if (this.callStack.length > 0) this.callStack.pop();
@@ -1895,7 +1958,10 @@ class Interpreter {
       return;
     }
 
-    if (upperStmt.startsWith('RESUME')) return;
+    if (upperStmt.startsWith('RESUME')) {
+      // RESUME continues from the line that caused the error
+      return;
+    }
 
     if (this.isAssignment(stmt)) {
       this.executeAssignment(stmt);
@@ -2310,6 +2376,95 @@ class Interpreter {
     }
   }
 
+  // ===== POKE =====
+  executePoke(argStr) {
+    const commaPos = this.findComma(argStr);
+    if (commaPos === -1) return;
+    const addr = Math.floor(this.evaluateExpressionFromString(argStr.substring(0, commaPos).trim()));
+    const val = Math.floor(this.evaluateExpressionFromString(argStr.substring(commaPos + 1).trim())) & 255;
+    // Normalize negative addresses to unsigned 16-bit
+    const uaddr = addr < 0 ? addr + 65536 : addr;
+
+    // Text window control
+    if (uaddr === 32) { /* left edge - ignored */ return; }
+    if (uaddr === 33) { this.display.textWidth = val; return; }
+    if (uaddr === 34) { this.display.scrollTop = val; return; }
+    if (uaddr === 35) { this.display.scrollBottom = val; return; }
+    if (uaddr === 36) { this.display.cursorX = val; return; }
+    if (uaddr === 37) { this.display.cursorY = val; return; }
+
+    // Keyboard strobe clear
+    if (uaddr === 49168) { this.lastKeyPressed = 0; return; }
+
+    // Graphics soft switches
+    if (uaddr === 49232) { /* TEXT mode */ this.textMode = true; this.display.showTextMode(); return; }
+    if (uaddr === 49233) { /* GRAPHICS mode */ return; }
+    if (uaddr === 49234) { /* full screen */ return; }
+    if (uaddr === 49235) { /* mixed mode */ return; }
+    if (uaddr === 49236) { /* page 1 */ return; }
+    if (uaddr === 49237) { /* page 2 */ return; }
+    if (uaddr === 49238) { /* lo-res */ return; }
+    if (uaddr === 49239) { /* hi-res */ return; }
+
+    // Speaker click (toggle speaker for sound)
+    if (uaddr === 49200) { App.beep(10, 440); return; }
+
+    // Store in virtual memory for PEEK to read back
+    if (!this.memory) this.memory = {};
+    this.memory[uaddr] = val;
+  }
+
+  // ===== CALL =====
+  executeCall(argStr) {
+    const addr = Math.floor(this.evaluateExpressionFromString(argStr));
+    const uaddr = addr < 0 ? addr + 65536 : addr;
+
+    // CALL -936 / CALL 64600: Clear from cursor to end of screen
+    if (uaddr === 64600) {
+      this.display.clearToEnd();
+      return;
+    }
+
+    // CALL -958 / CALL 64578: HOME (clear screen)
+    if (uaddr === 64578) {
+      this.display.clear();
+      return;
+    }
+
+    // CALL -868 / CALL 64668: Clear to end of line
+    if (uaddr === 64668) {
+      this.display.clearToEndOfLine();
+      return;
+    }
+
+    // CALL -922 / CALL 64614: Line feed
+    if (uaddr === 64614) {
+      this.display.printChar('\n');
+      this.display.render();
+      return;
+    }
+
+    // CALL 62450: Clear hi-res screen to black
+    if (uaddr === 62450) {
+      if (this.hiResMode) {
+        this.display.ctx.fillStyle = '#000000';
+        this.display.ctx.fillRect(0, 0, App.HIRES_WIDTH, App.HIRES_HEIGHT);
+      }
+      return;
+    }
+
+    // CALL 62454: Clear hi-res screen to current HCOLOR
+    if (uaddr === 62454) {
+      if (this.hiResMode) {
+        this.display.ctx.fillStyle = App.HIRES_COLORS[this.hiResColor & 7];
+        this.display.ctx.fillRect(0, 0, App.HIRES_WIDTH, App.HIRES_HEIGHT);
+      }
+      return;
+    }
+
+    // Unknown CALL - silently ignore
+  }
+
   // ===== HPLOT =====
   executeHplot(argStr) {
     if (!argStr || argStr.trim().length === 0) return;
@@ -2543,8 +2698,31 @@ class Interpreter {
       case 'FRE': return 38911;
       case 'PEEK': {
         const addr = Math.floor(args[0]);
-        if (addr === 49152) return Math.floor(Math.random() * 128);
-        if (addr === 49168) return 0;
+        const uaddr = addr < 0 ? addr + 65536 : addr;
+        // Cursor position
+        if (uaddr === 36) return this.display.cursorX;
+        if (uaddr === 37) return this.display.cursorY;
+        // Text window
+        if (uaddr === 32) return 0; // left edge
+        if (uaddr === 33) return this.display.textWidth || 40; // text width
+        if (uaddr === 34) return this.display.scrollTop || 0;
+        if (uaddr === 35) return this.display.scrollBottom || 24;
+        // Keyboard
+        if (uaddr === 49152) return this.lastKeyPressed ? (this.lastKeyPressed | 128) : 0;
+        if (uaddr === 49168) return 0; // keyboard strobe
+        // Current line number (low/high bytes)
+        if (uaddr === 218) return this.currentLine & 255;
+        if (uaddr === 219) return (this.currentLine >> 8) & 255;
+        // Error code (ONERR)
+        if (uaddr === 222) return this.lastError || 0;
+        // Graphics mode
+        if (uaddr === 230) return this.hiResColor;
+        // Random seed area
+        if (uaddr >= 78 && uaddr <= 82) return Math.floor(Math.random() * 256);
+        // Version info
+        if (uaddr === 0) return 76; // JMP instruction (Apple II ROM)
+        // Check virtual memory
+        if (this.memory && this.memory[uaddr] !== undefined) return this.memory[uaddr];
         return 0;
       }
       case 'TAB': return ' '.repeat(Math.max(0, Math.floor(args[0])));
@@ -2720,6 +2898,7 @@ class Emulator {
     e.preventDefault();
     const ch = e.key.toUpperCase();
     this.inputBuffer += ch;
+    this.interpreter.lastKeyPressed = ch.charCodeAt(0);
     this.display.printChar(ch);
     this.display.render();
   }
@@ -2824,6 +3003,45 @@ class Emulator {
       this.interpreter.sortedLines = [];
       this.interpreter.clearVars();
       this.display.printLine('');
+      this.showPrompt();
+      return;
+    }
+
+    // DEL - delete program lines (DEL 10,100 or DEL 10-100)
+    if (upper.startsWith('DEL ') || upper.startsWith('DEL,')) {
+      this.cmdDelLines(upper.substring(3).trim());
+      this.showPrompt();
+      return;
+    }
+
+    // PR# / IN# (slot commands - stubs)
+    if (upper.startsWith('PR#')) {
+      const slot = parseInt(upper.substring(3).trim());
+      if (slot === 0) { /* back to screen - already there */ }
+      this.showPrompt();
+      return;
+    }
+    if (upper.startsWith('IN#')) {
+      const slot = parseInt(upper.substring(3).trim());
+      if (slot === 0) { /* back to keyboard - already there */ }
+      this.showPrompt();
+      return;
+    }
+
+    // MON / NOMON
+    if (upper === 'MON' || upper.startsWith('MON ')) {
+      this.display.printLine('MONITOR NOT AVAILABLE');
+      this.showPrompt();
+      return;
+    }
+    if (upper === 'NOMON') { this.showPrompt(); return; }
+
+    // FP (switch to Applesoft - already there)
+    if (upper === 'FP') { this.showPrompt(); return; }
+
+    // EXEC - execute a command file
+    if (upper.startsWith('EXEC ')) {
+      await this.cmdExec(this.extractQuotedArg(upper.substring(5)));
       this.showPrompt();
       return;
     }
@@ -3074,6 +3292,49 @@ class Emulator {
     a.click();
     document.body.removeChild(a);
     URL.revokeObjectURL(url);
+  }
+
+  // ===== DEL LINES =====
+  cmdDelLines(range) {
+    let start = 0, end = Infinity;
+    // Support both DEL 10,100 and DEL 10-100
+    const sep = range.includes(',') ? ',' : '-';
+    const parts = range.split(sep);
+    if (parts.length === 2) {
+      if (parts[0].trim()) start = parseInt(parts[0].trim());
+      if (parts[1].trim()) end = parseInt(parts[1].trim());
+    } else if (parts.length === 1) {
+      start = end = parseInt(parts[0].trim());
+    }
+
+    let count = 0;
+    for (const lineNum of [...this.interpreter.sortedLines]) {
+      if (lineNum >= start && lineNum <= end) {
+        delete this.interpreter.program[lineNum];
+        count++;
+      }
+    }
+    this.interpreter.sortedLines = Object.keys(this.interpreter.program).map(Number).sort((a, b) => a - b);
+    this.interpreter.collectData();
+  }
+
+  // ===== EXEC (run a command file) =====
+  async cmdExec(path) {
+    let result = this.fs.readFile(path);
+    if (result.error && !path.endsWith('.BAS')) {
+      result = this.fs.readFile(path + '.BAS');
+    }
+    if (result.error) {
+      this.display.printLine(result.error);
+      return;
+    }
+    const lines = result.content.split('\n');
+    for (const line of lines) {
+      const trimmed = line.trim();
+      if (trimmed.length > 0) {
+        await this.processLine(trimmed);
+      }
+    }
   }
 
   // ===== PROGRAM EXECUTION =====

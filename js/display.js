@@ -10,13 +10,20 @@ class Display {
     this.cursorX = 0;
     this.cursorY = 0;
     this.screenBuffer = [];
+    this.attrBuffer = [];  // text attributes: 0=normal, 1=inverse, 2=flash
+    this.displayMode = 0;  // 0=normal, 1=inverse, 2=flash
+    this.textWidth = 40;
+    this.scrollTop = 0;
+    this.scrollBottom = 24;
     this.clear();
   }
 
   clear() {
     this.screenBuffer = [];
+    this.attrBuffer = [];
     for (let y = 0; y < this.height; y++) {
       this.screenBuffer.push(new Array(this.width).fill(' '));
+      this.attrBuffer.push(new Array(this.width).fill(0));
     }
     this.cursorX = 0;
     this.cursorY = 0;
@@ -29,10 +36,16 @@ class Display {
       let line = '';
       for (let x = 0; x < this.width; x++) {
         const ch = this.screenBuffer[y][x];
+        const attr = this.attrBuffer[y][x];
+        const escaped = this.escapeHtml(ch);
         if (y === this.cursorY && x === this.cursorX) {
-          line += `<span class="cursor">${this.escapeHtml(ch)}</span>`;
+          line += `<span class="cursor">${escaped}</span>`;
+        } else if (attr === 1) {
+          line += `<span class="inverse">${escaped}</span>`;
+        } else if (attr === 2) {
+          line += `<span class="flash">${escaped}</span>`;
         } else {
-          line += this.escapeHtml(ch);
+          line += escaped;
         }
       }
       html += line;
@@ -76,6 +89,7 @@ class Display {
       if (this.cursorX > 0) {
         this.cursorX--;
         this.screenBuffer[this.cursorY][this.cursorX] = ' ';
+        this.attrBuffer[this.cursorY][this.cursorX] = 0;
       }
       return;
     }
@@ -90,6 +104,7 @@ class Display {
     }
 
     this.screenBuffer[this.cursorY][this.cursorX] = ch;
+    this.attrBuffer[this.cursorY][this.cursorX] = this.displayMode;
     this.cursorX++;
   }
 
@@ -107,6 +122,32 @@ class Display {
   scrollUp() {
     this.screenBuffer.shift();
     this.screenBuffer.push(new Array(this.width).fill(' '));
+    this.attrBuffer.shift();
+    this.attrBuffer.push(new Array(this.width).fill(0));
+  }
+
+  // Clear from cursor to end of screen
+  clearToEnd() {
+    // Clear rest of current line
+    for (let x = this.cursorX; x < this.width; x++) {
+      this.screenBuffer[this.cursorY][x] = ' ';
+      this.attrBuffer[this.cursorY][x] = 0;
+    }
+    // Clear all lines below
+    for (let y = this.cursorY + 1; y < this.height; y++) {
+      this.screenBuffer[y] = new Array(this.width).fill(' ');
+      this.attrBuffer[y] = new Array(this.width).fill(0);
+    }
+    this.render();
+  }
+
+  // Clear from cursor to end of line
+  clearToEndOfLine() {
+    for (let x = this.cursorX; x < this.width; x++) {
+      this.screenBuffer[this.cursorY][x] = ' ';
+      this.attrBuffer[this.cursorY][x] = 0;
+    }
+    this.render();
   }
 
   htab(col) {
@@ -137,6 +178,7 @@ class Display {
     this.cursorY = 20;
     for (let y = 20; y < this.height; y++) {
       this.screenBuffer[y] = new Array(this.width).fill(' ');
+      this.attrBuffer[y] = new Array(this.width).fill(0);
     }
     this.render();
   }
@@ -161,11 +203,11 @@ class Display {
     this.ctx = this.canvas.getContext('2d');
     this.ctx.fillStyle = '#000000';
     this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
-    // HGR uses top 160 lines for graphics, bottom 4 text lines
     this.cursorX = 0;
     this.cursorY = 20;
     for (let y = 20; y < this.height; y++) {
       this.screenBuffer[y] = new Array(this.width).fill(' ');
+      this.attrBuffer[y] = new Array(this.width).fill(0);
     }
     this.render();
   }

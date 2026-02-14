@@ -105,6 +105,7 @@ class Emulator {
     e.preventDefault();
     const ch = e.key.toUpperCase();
     this.inputBuffer += ch;
+    this.interpreter.lastKeyPressed = ch.charCodeAt(0);
     this.display.printChar(ch);
     this.display.render();
   }
@@ -209,6 +210,45 @@ class Emulator {
       this.interpreter.sortedLines = [];
       this.interpreter.clearVars();
       this.display.printLine('');
+      this.showPrompt();
+      return;
+    }
+
+    // DEL - delete program lines (DEL 10,100 or DEL 10-100)
+    if (upper.startsWith('DEL ') || upper.startsWith('DEL,')) {
+      this.cmdDelLines(upper.substring(3).trim());
+      this.showPrompt();
+      return;
+    }
+
+    // PR# / IN# (slot commands - stubs)
+    if (upper.startsWith('PR#')) {
+      const slot = parseInt(upper.substring(3).trim());
+      if (slot === 0) { /* back to screen - already there */ }
+      this.showPrompt();
+      return;
+    }
+    if (upper.startsWith('IN#')) {
+      const slot = parseInt(upper.substring(3).trim());
+      if (slot === 0) { /* back to keyboard - already there */ }
+      this.showPrompt();
+      return;
+    }
+
+    // MON / NOMON
+    if (upper === 'MON' || upper.startsWith('MON ')) {
+      this.display.printLine('MONITOR NOT AVAILABLE');
+      this.showPrompt();
+      return;
+    }
+    if (upper === 'NOMON') { this.showPrompt(); return; }
+
+    // FP (switch to Applesoft - already there)
+    if (upper === 'FP') { this.showPrompt(); return; }
+
+    // EXEC - execute a command file
+    if (upper.startsWith('EXEC ')) {
+      await this.cmdExec(this.extractQuotedArg(upper.substring(5)));
       this.showPrompt();
       return;
     }
@@ -459,6 +499,49 @@ class Emulator {
     a.click();
     document.body.removeChild(a);
     URL.revokeObjectURL(url);
+  }
+
+  // ===== DEL LINES =====
+  cmdDelLines(range) {
+    let start = 0, end = Infinity;
+    // Support both DEL 10,100 and DEL 10-100
+    const sep = range.includes(',') ? ',' : '-';
+    const parts = range.split(sep);
+    if (parts.length === 2) {
+      if (parts[0].trim()) start = parseInt(parts[0].trim());
+      if (parts[1].trim()) end = parseInt(parts[1].trim());
+    } else if (parts.length === 1) {
+      start = end = parseInt(parts[0].trim());
+    }
+
+    let count = 0;
+    for (const lineNum of [...this.interpreter.sortedLines]) {
+      if (lineNum >= start && lineNum <= end) {
+        delete this.interpreter.program[lineNum];
+        count++;
+      }
+    }
+    this.interpreter.sortedLines = Object.keys(this.interpreter.program).map(Number).sort((a, b) => a - b);
+    this.interpreter.collectData();
+  }
+
+  // ===== EXEC (run a command file) =====
+  async cmdExec(path) {
+    let result = this.fs.readFile(path);
+    if (result.error && !path.endsWith('.BAS')) {
+      result = this.fs.readFile(path + '.BAS');
+    }
+    if (result.error) {
+      this.display.printLine(result.error);
+      return;
+    }
+    const lines = result.content.split('\n');
+    for (const line of lines) {
+      const trimmed = line.trim();
+      if (trimmed.length > 0) {
+        await this.processLine(trimmed);
+      }
+    }
   }
 
   // ===== PROGRAM EXECUTION =====
