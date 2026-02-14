@@ -50,7 +50,18 @@ $content = @'
 
 <input type="file" id="file-upload" accept=".bas,.txt,.BAS,.TXT" multiple>
 
-<script type="module" src="js/main.js"></script>
+<!-- Scripts loaded in dependency order (no ES modules for file:// compatibility) -->
+<script src="js/constants.js"></script>
+<script src="js/audio.js"></script>
+<script src="js/tokenizer.js"></script>
+<script src="js/parser.js"></script>
+<script src="js/filesystem.js"></script>
+<script src="js/samples.js"></script>
+<script src="js/tutorial.js"></script>
+<script src="js/display.js"></script>
+<script src="js/interpreter.js"></script>
+<script src="js/emulator.js"></script>
+<script src="js/main.js"></script>
 
 </body>
 </html>
@@ -218,34 +229,21 @@ body {
 Set-Content -Path "$dir\css\style.css" -Value $content -Encoding UTF8
 
 # --- File 3 of 13 ---
-Write-Host "Writing js/main.js (3/13)..."
+Write-Host "Writing js/constants.js (3/13)..."
 $content = @'
-import { Emulator } from './emulator.js';
+window.App = window.App || {};
 
-let emulator;
-
-window.addEventListener('DOMContentLoaded', () => {
-  emulator = new Emulator();
-  // Expose for console debugging
-  window.emulator = emulator;
-});
-'@
-Set-Content -Path "$dir\js\main.js" -Value $content -Encoding UTF8
-
-# --- File 4 of 13 ---
-Write-Host "Writing js/constants.js (4/13)..."
-$content = @'
 // Screen dimensions
-export const SCREEN_WIDTH = 40;
-export const SCREEN_HEIGHT = 24;
+App.SCREEN_WIDTH = 40;
+App.SCREEN_HEIGHT = 24;
 
 // Lo-Res graphics
-export const LORES_WIDTH = 40;
-export const LORES_HEIGHT = 48;
-export const LORES_GRAPHICS_ROWS = 40;
+App.LORES_WIDTH = 40;
+App.LORES_HEIGHT = 48;
+App.LORES_GRAPHICS_ROWS = 40;
 
 // Apple II Lo-Res color palette
-export const LORES_COLORS = [
+App.LORES_COLORS = [
   '#000000', // 0  Black
   '#dd0033', // 1  Magenta/Red
   '#000099', // 2  Dark Blue
@@ -266,9 +264,11 @@ export const LORES_COLORS = [
 '@
 Set-Content -Path "$dir\js\constants.js" -Value $content -Encoding UTF8
 
-# --- File 5 of 13 ---
-Write-Host "Writing js/audio.js (5/13)..."
+# --- File 4 of 13 ---
+Write-Host "Writing js/audio.js (4/13)..."
 $content = @'
+window.App = window.App || {};
+
 let audioCtx = null;
 
 function getAudioContext() {
@@ -278,7 +278,9 @@ function getAudioContext() {
   return audioCtx;
 }
 
-export function beep(duration = 200, frequency = 800) {
+App.beep = function(duration, frequency) {
+  if (duration === undefined) duration = 200;
+  if (frequency === undefined) frequency = 800;
   try {
     const ctx = getAudioContext();
     const oscillator = ctx.createOscillator();
@@ -291,13 +293,15 @@ export function beep(duration = 200, frequency = 800) {
     oscillator.start();
     oscillator.stop(ctx.currentTime + duration / 1000);
   } catch (e) { /* Audio not available */ }
-}
+};
 '@
 Set-Content -Path "$dir\js\audio.js" -Value $content -Encoding UTF8
 
-# --- File 6 of 13 ---
-Write-Host "Writing js/tokenizer.js (6/13)..."
+# --- File 5 of 13 ---
+Write-Host "Writing js/tokenizer.js (5/13)..."
 $content = @'
+window.App = window.App || {};
+
 const KEYWORDS = [
   'PRINT','GOTO','GOSUB','RETURN','IF','THEN','ELSE','FOR','TO','STEP',
   'NEXT','LET','INPUT','DIM','READ','DATA','RESTORE','DEF','FN',
@@ -308,7 +312,7 @@ const KEYWORDS = [
   'POP','ONERR','RESUME','GET','AT'
 ];
 
-export class Tokenizer {
+class Tokenizer {
   constructor(line) {
     this.line = line;
     this.pos = 0;
@@ -436,13 +440,17 @@ export class Tokenizer {
     this.tokens.push({ type: 'OPERATOR', value: op });
   }
 }
+
+App.Tokenizer = Tokenizer;
 '@
 Set-Content -Path "$dir\js\tokenizer.js" -Value $content -Encoding UTF8
 
-# --- File 7 of 13 ---
-Write-Host "Writing js/parser.js (7/13)..."
+# --- File 6 of 13 ---
+Write-Host "Writing js/parser.js (6/13)..."
 $content = @'
-export class Parser {
+window.App = window.App || {};
+
+class Parser {
   constructor(tokens) {
     this.tokens = tokens;
     this.pos = 0;
@@ -643,22 +651,603 @@ export class Parser {
     throw new Error('?SYNTAX ERROR');
   }
 }
+
+App.Parser = Parser;
 '@
 Set-Content -Path "$dir\js\parser.js" -Value $content -Encoding UTF8
 
-# --- File 8 of 13 ---
-Write-Host "Writing js/display.js (8/13)..."
+# --- File 7 of 13 ---
+Write-Host "Writing js/filesystem.js (7/13)..."
 $content = @'
-import { SCREEN_WIDTH, SCREEN_HEIGHT, LORES_WIDTH, LORES_GRAPHICS_ROWS, LORES_COLORS } from './constants.js';
-import { beep } from './audio.js';
+window.App = window.App || {};
 
-export class Display {
+class VirtualFileSystem {
+  constructor() {
+    this.root = { type: 'dir', name: '/', children: {} };
+    this.cwd = '/';
+  }
+
+  resolve(path) {
+    let p = path.replace(/\\/g, '/');
+    if (!p.startsWith('/')) {
+      p = this.cwd + (this.cwd.endsWith('/') ? '' : '/') + p;
+    }
+    const parts = p.split('/').filter(s => s.length > 0);
+    const normalized = [];
+    for (const part of parts) {
+      if (part === '..') { normalized.pop(); }
+      else if (part !== '.') { normalized.push(part.toUpperCase()); }
+    }
+    return '/' + normalized.join('/');
+  }
+
+  getNode(path) {
+    const abs = this.resolve(path);
+    if (abs === '/') return this.root;
+    const parts = abs.split('/').filter(s => s.length > 0);
+    let node = this.root;
+    for (const part of parts) {
+      if (!node.children || !node.children[part]) return null;
+      node = node.children[part];
+    }
+    return node;
+  }
+
+  getParentAndName(path) {
+    const abs = this.resolve(path);
+    const parts = abs.split('/').filter(s => s.length > 0);
+    const name = parts.pop();
+    const parentPath = '/' + parts.join('/');
+    const parent = this.getNode(parentPath || '/');
+    return { parent, name };
+  }
+
+  mkdir(path) {
+    const { parent, name } = this.getParentAndName(path);
+    if (!parent || parent.type !== 'dir') return '?PATH NOT FOUND';
+    if (!name) return '?SYNTAX ERROR';
+    if (parent.children[name]) return '?FILE EXISTS';
+    parent.children[name] = { type: 'dir', name, children: {} };
+    return null;
+  }
+
+  rmdir(path) {
+    const { parent, name } = this.getParentAndName(path);
+    if (!parent || !name) return '?PATH NOT FOUND';
+    const node = parent.children[name];
+    if (!node) return '?FILE NOT FOUND';
+    if (node.type !== 'dir') return '?NOT A DIRECTORY';
+    if (Object.keys(node.children).length > 0) return '?DIRECTORY NOT EMPTY';
+    delete parent.children[name];
+    return null;
+  }
+
+  writeFile(path, content) {
+    const { parent, name } = this.getParentAndName(path);
+    if (!parent || parent.type !== 'dir') return '?PATH NOT FOUND';
+    if (!name) return '?SYNTAX ERROR';
+    if (parent.children[name] && parent.children[name].type === 'dir') return '?IS A DIRECTORY';
+    parent.children[name] = { type: 'file', name, content };
+    return null;
+  }
+
+  readFile(path) {
+    const node = this.getNode(path);
+    if (!node) return { error: '?FILE NOT FOUND' };
+    if (node.type !== 'file') return { error: '?NOT A FILE' };
+    return { content: node.content };
+  }
+
+  deleteFile(path) {
+    const { parent, name } = this.getParentAndName(path);
+    if (!parent || !name) return '?PATH NOT FOUND';
+    if (!parent.children[name]) return '?FILE NOT FOUND';
+    if (parent.children[name].type === 'dir') return '?IS A DIRECTORY';
+    delete parent.children[name];
+    return null;
+  }
+
+  rename(oldPath, newPath) {
+    const { parent: op, name: on } = this.getParentAndName(oldPath);
+    const { parent: np, name: nn } = this.getParentAndName(newPath);
+    if (!op || !op.children[on]) return '?FILE NOT FOUND';
+    if (!np || np.type !== 'dir') return '?PATH NOT FOUND';
+    np.children[nn] = op.children[on];
+    np.children[nn].name = nn;
+    if (op !== np || on !== nn) delete op.children[on];
+    return null;
+  }
+
+  listDir(path) {
+    const node = this.getNode(path || this.cwd);
+    if (!node) return { error: '?PATH NOT FOUND' };
+    if (node.type !== 'dir') return { error: '?NOT A DIRECTORY' };
+    return { entries: Object.values(node.children) };
+  }
+
+  cd(path) {
+    const abs = this.resolve(path);
+    const node = this.getNode(abs);
+    if (!node) return '?PATH NOT FOUND';
+    if (node.type !== 'dir') return '?NOT A DIRECTORY';
+    this.cwd = abs || '/';
+    return null;
+  }
+
+  // Serialize program to text for saving
+  static programToText(program) {
+    const lines = Object.keys(program).map(Number).sort((a, b) => a - b);
+    return lines.map(n => `${n} ${program[n]}`).join('\n');
+  }
+
+  // Parse text back into program lines
+  static textToProgram(text) {
+    const program = {};
+    const lines = text.split('\n');
+    for (const line of lines) {
+      const match = line.trim().match(/^(\d+)\s+(.*)/);
+      if (match) {
+        program[parseInt(match[1])] = match[2];
+      }
+    }
+    return program;
+  }
+}
+
+App.VirtualFileSystem = VirtualFileSystem;
+'@
+Set-Content -Path "$dir\js\filesystem.js" -Value $content -Encoding UTF8
+
+# --- File 8 of 13 ---
+Write-Host "Writing js/samples.js (8/13)..."
+$content = @'
+window.App = window.App || {};
+
+App.getSamples = function() {
+  return {
+    hello: `
+10 REM HELLO WORLD
+20 HOME
+30 PRINT "HELLO, WORLD!"
+40 PRINT
+50 PRINT "WELCOME TO APPLESOFT BASIC"
+60 PRINT "ON THE APPLE ]["
+70 PRINT
+80 FOR I = 1 TO 5
+90 PRINT "* ";
+100 NEXT I
+110 PRINT
+120 END`,
+
+    fibonacci: `
+10 REM FIBONACCI SEQUENCE
+20 HOME
+30 PRINT "FIBONACCI SEQUENCE"
+40 PRINT "=================="
+50 PRINT
+60 A = 0
+70 B = 1
+80 FOR I = 1 TO 20
+90 PRINT A,
+100 C = A + B
+110 A = B
+120 B = C
+130 NEXT I
+140 PRINT
+150 END`,
+
+    guessing: `
+10 REM GUESSING GAME
+20 HOME
+30 PRINT "NUMBER GUESSING GAME"
+40 PRINT "===================="
+50 PRINT
+60 N = INT(RND(1) * 100) + 1
+70 T = 0
+80 PRINT "I'M THINKING OF A NUMBER"
+90 PRINT "BETWEEN 1 AND 100."
+100 PRINT
+110 T = T + 1
+120 INPUT "YOUR GUESS? ";G
+130 IF G < N THEN PRINT "TOO LOW!": GOTO 110
+140 IF G > N THEN PRINT "TOO HIGH!": GOTO 110
+150 PRINT
+160 PRINT "CORRECT! YOU GOT IT IN ";T;" TRIES!"
+170 PRINT
+180 INPUT "PLAY AGAIN (Y/N)? ";A$
+190 IF A$ = "Y" THEN GOTO 20
+200 PRINT "THANKS FOR PLAYING!"
+210 END`,
+
+    sine: `
+10 REM SINE WAVE
+20 HOME
+30 PRINT "SINE WAVE DISPLAY"
+40 PRINT
+50 FOR Y = 0 TO 22
+60 X = INT(SIN(Y / 3.5) * 18 + 20)
+70 FOR I = 1 TO X
+80 PRINT " ";
+90 NEXT I
+100 PRINT "*"
+110 NEXT Y
+120 END`,
+
+    mandelbrot: `
+10 REM MANDELBROT SET
+20 HOME
+30 PRINT "MANDELBROT SET"
+40 PRINT
+50 FOR Y = -12 TO 12
+60 FOR X = -39 TO 19
+70 CA = X * 0.0458
+80 CB = Y * 0.08333
+90 A = CA : B = CB
+100 FOR I = 0 TO 15
+110 T = A * A - B * B + CA
+120 B = 2 * A * B + CB
+130 A = T
+140 IF A * A + B * B > 4 THEN GOTO 170
+150 NEXT I
+160 PRINT "*";: GOTO 180
+170 PRINT " ";
+180 NEXT X
+190 PRINT
+200 NEXT Y
+210 END`,
+
+    lores_demo: `
+10 REM LO-RES GRAPHICS DEMO
+20 GR
+30 REM DRAW COLOR BARS
+40 FOR C = 0 TO 15
+50 COLOR= C
+60 VLIN 0,39 AT C * 2
+70 VLIN 0,39 AT C * 2 + 1
+80 NEXT C
+90 REM DRAW A BOX
+100 COLOR= 15
+110 HLIN 5,34 AT 5
+120 HLIN 5,34 AT 34
+130 VLIN 5,34 AT 5
+140 VLIN 5,34 AT 34
+150 REM DIAGONAL
+160 FOR I = 0 TO 29
+170 COLOR= INT(RND(1) * 16)
+180 PLOT I + 6,I + 6
+190 NEXT I
+200 VTAB 22
+210 PRINT "LO-RES GRAPHICS DEMO"
+220 PRINT "PRESS ANY KEY..."
+230 GET A$
+240 TEXT
+250 END`,
+
+    starfield: `
+10 REM STARFIELD ANIMATION
+20 HOME
+30 DIM X(50),Y(50),S(50)
+40 FOR I = 1 TO 50
+50 X(I) = INT(RND(1) * 40)
+60 Y(I) = INT(RND(1) * 23)
+70 S(I) = INT(RND(1) * 3) + 1
+80 NEXT I
+90 HOME
+100 FOR F = 1 TO 100
+110 FOR I = 1 TO 50
+120 VTAB Y(I) + 1 : HTAB X(I) + 1
+130 PRINT " ";
+140 X(I) = X(I) + S(I)
+150 IF X(I) > 39 THEN X(I) = 0 : Y(I) = INT(RND(1) * 23)
+160 VTAB Y(I) + 1 : HTAB X(I) + 1
+170 IF S(I) = 1 THEN PRINT ".";
+180 IF S(I) = 2 THEN PRINT "+";
+190 IF S(I) = 3 THEN PRINT "*";
+200 NEXT I
+210 NEXT F
+220 HOME
+230 PRINT "STARFIELD COMPLETE"
+240 END`,
+
+    sorting: `
+10 REM BUBBLE SORT DEMO
+20 HOME
+30 PRINT "BUBBLE SORT DEMONSTRATION"
+40 PRINT "========================="
+50 PRINT
+60 N = 15
+70 DIM A(15)
+80 PRINT "UNSORTED ARRAY:"
+90 FOR I = 1 TO N
+100 A(I) = INT(RND(1) * 100)
+110 PRINT A(I);" ";
+120 NEXT I
+130 PRINT : PRINT
+140 REM BUBBLE SORT
+150 FOR I = 1 TO N - 1
+160 FOR J = 1 TO N - I
+170 IF A(J) > A(J + 1) THEN T = A(J) : A(J) = A(J + 1) : A(J + 1) = T
+180 NEXT J
+190 NEXT I
+200 PRINT "SORTED ARRAY:"
+210 FOR I = 1 TO N
+220 PRINT A(I);" ";
+230 NEXT I
+240 PRINT
+250 END`,
+
+    '99bottles': `
+10 REM 99 BOTTLES OF BEER
+20 HOME
+30 FOR I = 99 TO 1 STEP -1
+40 PRINT I;" BOTTLE";
+50 IF I > 1 THEN PRINT "S";
+60 PRINT " OF BEER ON THE WALL,"
+70 PRINT I;" BOTTLE";
+80 IF I > 1 THEN PRINT "S";
+90 PRINT " OF BEER."
+100 PRINT "TAKE ONE DOWN, PASS IT"
+110 PRINT "AROUND,"
+120 IF I - 1 > 0 THEN PRINT I - 1;" BOTTLE"; : IF I - 1 > 1 THEN PRINT "S";
+130 IF I - 1 = 0 THEN PRINT "NO MORE BOTTLE";: PRINT "S";
+140 PRINT " OF BEER ON THE WALL."
+150 PRINT
+160 NEXT I
+170 END`,
+
+    primes: `
+10 REM SIEVE OF ERATOSTHENES
+20 HOME
+30 PRINT "PRIME NUMBER SIEVE"
+40 PRINT "=================="
+50 PRINT
+60 N = 200
+70 DIM P(200)
+80 FOR I = 2 TO N
+90 P(I) = 1
+100 NEXT I
+110 FOR I = 2 TO SQR(N)
+120 IF P(I) = 0 THEN GOTO 160
+130 FOR J = I * I TO N STEP I
+140 P(J) = 0
+150 NEXT J
+160 NEXT I
+170 PRINT "PRIMES UP TO ";N;":"
+180 PRINT
+190 C = 0
+200 FOR I = 2 TO N
+210 IF P(I) = 0 THEN GOTO 250
+220 PRINT I;" ";
+230 C = C + 1
+240 IF C / 10 = INT(C / 10) THEN PRINT
+250 NEXT I
+260 PRINT
+270 PRINT
+280 PRINT C;" PRIMES FOUND."
+290 END`
+  };
+};
+'@
+Set-Content -Path "$dir\js\samples.js" -Value $content -Encoding UTF8
+
+# --- File 9 of 13 ---
+Write-Host "Writing js/tutorial.js (9/13)..."
+$content = @'
+window.App = window.App || {};
+
+App.getTutorialPages = function() {
+  return [
+    // Page 1: Getting Started
+    [
+      '--- GETTING STARTED ---',
+      '',
+      'THIS IS AN APPLESOFT BASIC',
+      'INTERPRETER WITH A BUILT-IN',
+      'VIRTUAL FILE SYSTEM.',
+      '',
+      'JUST TYPE COMMANDS AT THE ]',
+      'PROMPT AND PRESS ENTER.',
+      '',
+      'TRY TYPING:',
+      '  PRINT "HELLO WORLD"',
+      '',
+      'YOU CAN ALSO DO MATH:',
+      '  PRINT 2 + 3 * 4',
+      '',
+      'TYPE HELP FOR ALL COMMANDS.',
+    ],
+    // Page 2: Writing Programs
+    [
+      '--- WRITING PROGRAMS ---',
+      '',
+      'TO WRITE A PROGRAM, TYPE',
+      'EACH LINE WITH A NUMBER:',
+      '',
+      '  10 HOME',
+      '  20 PRINT "HI THERE!"',
+      '  30 PRINT "HOW ARE YOU?"',
+      '  40 END',
+      '',
+      'TYPE RUN TO EXECUTE IT.',
+      'TYPE LIST TO SEE IT.',
+      'TYPE NEW TO CLEAR IT.',
+      '',
+      'LINES RUN IN NUMBER ORDER.',
+      'USE GAPS (10,20,30...) SO',
+      'YOU CAN INSERT LINES LATER.',
+    ],
+    // Page 3: Variables & Input
+    [
+      '--- VARIABLES & INPUT ---',
+      '',
+      'VARIABLES STORE VALUES:',
+      '  10 A = 5',
+      '  20 B$ = "HELLO"',
+      '  30 PRINT A',
+      '  40 PRINT B$',
+      '',
+      'USE $ FOR TEXT VARIABLES.',
+      '',
+      'GET USER INPUT:',
+      '  10 INPUT "NAME? ";N$',
+      '  20 PRINT "HI, ";N$',
+      '',
+      'FOR SINGLE KEY:',
+      '  10 GET A$',
+      '  20 PRINT "YOU TYPED: ";A$',
+    ],
+    // Page 4: Loops & Conditions
+    [
+      '--- LOOPS & CONDITIONS ---',
+      '',
+      'FOR/NEXT LOOP:',
+      '  10 FOR I = 1 TO 10',
+      '  20 PRINT I;" ";',
+      '  30 NEXT I',
+      '',
+      'IF/THEN:',
+      '  10 INPUT "NUMBER? ";N',
+      '  20 IF N > 5 THEN PRINT "BIG"',
+      '  30 IF N <= 5 THEN PRINT "SMALL"',
+      '',
+      'GOTO (JUMP TO LINE):',
+      '  10 PRINT "LOOP!"',
+      '  20 GOTO 10',
+      '',
+      'CTRL+C TO STOP A LOOP!',
+    ],
+    // Page 5: Subroutines
+    [
+      '--- SUBROUTINES ---',
+      '',
+      'GOSUB CALLS A SUBROUTINE,',
+      'RETURN COMES BACK:',
+      '',
+      '  10 PRINT "START"',
+      '  20 GOSUB 100',
+      '  30 PRINT "BACK"',
+      '  40 END',
+      '  100 PRINT "IN SUBROUTINE"',
+      '  110 RETURN',
+      '',
+      'USE ON..GOTO FOR MENUS:',
+      '  10 INPUT "CHOICE(1-3)? ";C',
+      '  20 ON C GOTO 100,200,300',
+    ],
+    // Page 6: String Functions
+    [
+      '--- STRING FUNCTIONS ---',
+      '',
+      'LEN(A$)      STRING LENGTH',
+      'LEFT$(A$,N)  LEFT N CHARS',
+      'RIGHT$(A$,N) RIGHT N CHARS',
+      'MID$(A$,S,N) MIDDLE CHARS',
+      'ASC(A$)      ASCII CODE',
+      'CHR$(N)      CODE TO CHAR',
+      'VAL(A$)      STRING TO NUM',
+      'STR$(N)      NUM TO STRING',
+      '',
+      'EXAMPLE:',
+      '  10 A$ = "HELLO WORLD"',
+      '  20 PRINT LEN(A$)',
+      '  30 PRINT LEFT$(A$,5)',
+      '  40 PRINT MID$(A$,7,5)',
+    ],
+    // Page 7: Math Functions
+    [
+      '--- MATH FUNCTIONS ---',
+      '',
+      'INT(X)  INTEGER PART',
+      'ABS(X)  ABSOLUTE VALUE',
+      'SGN(X)  SIGN (-1,0,1)',
+      'SQR(X)  SQUARE ROOT',
+      'RND(X)  RANDOM (0-1)',
+      'SIN(X)  SINE',
+      'COS(X)  COSINE',
+      'TAN(X)  TANGENT',
+      'ATN(X)  ARCTANGENT',
+      'EXP(X)  E TO THE X',
+      'LOG(X)  NATURAL LOG',
+      '',
+      'RANDOM NUMBER 1-6:',
+      '  PRINT INT(RND(1)*6)+1',
+    ],
+    // Page 8: Graphics
+    [
+      '--- LO-RES GRAPHICS ---',
+      '',
+      'GR          GRAPHICS MODE',
+      'COLOR= N    SET COLOR (0-15)',
+      'PLOT X,Y    DRAW PIXEL',
+      'HLIN X1,X2 AT Y  HORIZ LINE',
+      'VLIN Y1,Y2 AT X  VERT LINE',
+      'TEXT        BACK TO TEXT',
+      '',
+      'EXAMPLE:',
+      '  10 GR',
+      '  20 COLOR= 1',
+      '  30 FOR X = 0 TO 39',
+      '  40 PLOT X,20',
+      '  50 NEXT X',
+      '  60 GET A$ : TEXT',
+    ],
+    // Page 9: File System
+    [
+      '--- FILE SYSTEM ---',
+      '',
+      'YOUR VIRTUAL DISK:',
+      '  CATALOG    LIST FILES',
+      '  CD "DIR"   CHANGE DIR',
+      '  MKDIR "X"  NEW FOLDER',
+      '  RMDIR "X"  DEL FOLDER',
+      '  PWD        CURRENT DIR',
+      '',
+      'FILE COMMANDS:',
+      '  SAVE "X"   SAVE PROGRAM',
+      '  LOAD "X"   LOAD PROGRAM',
+      '  TYPE "X"   VIEW FILE',
+      '  DELETE "X"  DELETE FILE',
+      '  CREATE "X"  NEW FILE',
+      '  RENAME "A","B"  RENAME',
+    ],
+    // Page 10: Upload/Download & Samples
+    [
+      '--- UPLOAD & DOWNLOAD ---',
+      '',
+      'UPLOAD FILES FROM YOUR PC:',
+      '  UPLOAD',
+      '  (OPENS FILE DIALOG)',
+      '',
+      'DOWNLOAD FILES TO YOUR PC:',
+      '  DOWNLOAD       (PROGRAM)',
+      '  DOWNLOAD "X"   (FILE)',
+      '',
+      '--- SAMPLE PROGRAMS ---',
+      '',
+      'SAMPLE PROGRAMS ARE IN THE',
+      '/SAMPLES DIRECTORY:',
+      '  CD "SAMPLES"',
+      '  CATALOG',
+      '  LOAD "HELLO"',
+      '  RUN',
+    ],
+  ];
+};
+'@
+Set-Content -Path "$dir\js\tutorial.js" -Value $content -Encoding UTF8
+
+# --- File 10 of 13 ---
+Write-Host "Writing js/display.js (10/13)..."
+$content = @'
+window.App = window.App || {};
+
+class Display {
   constructor(element, canvasElement) {
     this.element = element;
     this.canvas = canvasElement;
     this.ctx = canvasElement.getContext('2d');
-    this.width = SCREEN_WIDTH;
-    this.height = SCREEN_HEIGHT;
+    this.width = App.SCREEN_WIDTH;
+    this.height = App.SCREEN_HEIGHT;
     this.cursorX = 0;
     this.cursorY = 0;
     this.screenBuffer = [];
@@ -720,7 +1309,7 @@ export class Display {
     }
 
     if (ch === '\x07') {
-      beep();
+      App.beep();
       return;
     }
 
@@ -780,8 +1369,8 @@ export class Display {
   // Lo-Res graphics
   initLoRes() {
     this.canvas.style.display = 'block';
-    this.canvas.width = LORES_WIDTH * 7;
-    this.canvas.height = LORES_GRAPHICS_ROWS * 4;
+    this.canvas.width = App.LORES_WIDTH * 7;
+    this.canvas.height = App.LORES_GRAPHICS_ROWS * 4;
     this.ctx = this.canvas.getContext('2d');
     this.ctx.fillStyle = '#000000';
     this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
@@ -796,7 +1385,7 @@ export class Display {
   drawLoResPixel(x, y, color) {
     const pixW = 7;
     const pixH = 4;
-    this.ctx.fillStyle = LORES_COLORS[color & 15];
+    this.ctx.fillStyle = App.LORES_COLORS[color & 15];
     this.ctx.fillRect(x * pixW, y * pixH, pixW, pixH);
   }
 
@@ -805,17 +1394,17 @@ export class Display {
     this.clear();
   }
 }
+
+App.Display = Display;
 '@
 Set-Content -Path "$dir\js\display.js" -Value $content -Encoding UTF8
 
-# --- File 9 of 13 ---
-Write-Host "Writing js/interpreter.js (9/13)..."
+# --- File 11 of 13 ---
+Write-Host "Writing js/interpreter.js (11/13)..."
 $content = @'
-import { LORES_WIDTH, LORES_HEIGHT, LORES_GRAPHICS_ROWS } from './constants.js';
-import { Tokenizer } from './tokenizer.js';
-import { Parser } from './parser.js';
+window.App = window.App || {};
 
-export class Interpreter {
+class Interpreter {
   constructor(display) {
     this.display = display;
     this.reset();
@@ -1142,7 +1731,7 @@ export class Interpreter {
 
     if (upperStmt === 'GR' || upperStmt.startsWith('GR')) {
       this.textMode = false;
-      this.loResScreen = new Array(LORES_HEIGHT).fill(null).map(() => new Array(LORES_WIDTH).fill(0));
+      this.loResScreen = new Array(App.LORES_HEIGHT).fill(null).map(() => new Array(App.LORES_WIDTH).fill(0));
       this.display.initLoRes();
       return;
     }
@@ -1198,8 +1787,8 @@ export class Interpreter {
       return;
     }
 
-    const tokens = new Tokenizer(argStr).tokens;
-    const parser = new Parser(tokens);
+    const tokens = new App.Tokenizer(argStr).tokens;
+    const parser = new App.Parser(tokens);
     let output = '';
     let suppressNewline = false;
 
@@ -1308,8 +1897,8 @@ export class Interpreter {
 
   // ===== FOR/NEXT =====
   executeFor(argStr) {
-    const tokens = new Tokenizer(argStr).tokens;
-    const parser = new Parser(tokens);
+    const tokens = new App.Tokenizer(argStr).tokens;
+    const parser = new App.Parser(tokens);
 
     const varName = parser.expect('IDENTIFIER').value;
     parser.expect('OPERATOR', '=');
@@ -1329,7 +1918,7 @@ export class Interpreter {
   executeNext(argStr) {
     let varName = null;
     if (argStr.trim().length > 0) {
-      const tokens = new Tokenizer(argStr).tokens;
+      const tokens = new App.Tokenizer(argStr).tokens;
       if (tokens.length > 0 && tokens[0].type === 'IDENTIFIER') {
         varName = tokens[0].value;
       }
@@ -1543,7 +2132,7 @@ export class Interpreter {
   // ===== LO-RES GRAPHICS =====
   loResPlot(x, y) {
     if (!this.loResScreen) return;
-    if (x < 0 || x >= LORES_WIDTH || y < 0 || y >= LORES_GRAPHICS_ROWS) return;
+    if (x < 0 || x >= App.LORES_WIDTH || y < 0 || y >= App.LORES_GRAPHICS_ROWS) return;
     this.loResScreen[y][x] = this.loResColor;
     this.display.drawLoResPixel(x, y, this.loResColor);
   }
@@ -1578,7 +2167,7 @@ export class Interpreter {
 
   // ===== ASSIGNMENT =====
   isAssignment(stmt) {
-    const tokens = new Tokenizer(stmt).tokens;
+    const tokens = new App.Tokenizer(stmt).tokens;
     if (tokens.length >= 2 && tokens[0].type === 'IDENTIFIER') {
       for (let i = 1; i < tokens.length; i++) {
         if (tokens[i].type === 'OPERATOR' && tokens[i].value === '=') return true;
@@ -1599,8 +2188,8 @@ export class Interpreter {
   }
 
   executeAssignment(stmt) {
-    const tokens = new Tokenizer(stmt).tokens;
-    const parser = new Parser(tokens);
+    const tokens = new App.Tokenizer(stmt).tokens;
+    const parser = new App.Parser(tokens);
 
     const varToken = parser.expect('IDENTIFIER');
     const varName = varToken.value;
@@ -1624,8 +2213,8 @@ export class Interpreter {
 
   // ===== EXPRESSION EVALUATION =====
   evaluateExpressionFromString(str) {
-    const tokens = new Tokenizer(str).tokens;
-    const parser = new Parser(tokens);
+    const tokens = new App.Tokenizer(str).tokens;
+    const parser = new App.Parser(tokens);
     return this.evalAST(parser.parseExpression());
   }
 
@@ -1752,7 +2341,7 @@ export class Interpreter {
         if (!this.loResScreen) return 0;
         const x = Math.floor(args[0]);
         const y = Math.floor(args[1]);
-        if (x >= 0 && x < LORES_WIDTH && y >= 0 && y < LORES_GRAPHICS_ROWS) {
+        if (x >= 0 && x < App.LORES_WIDTH && y >= 0 && y < App.LORES_GRAPHICS_ROWS) {
           return this.loResScreen[y][x];
         }
         return 0;
@@ -1824,599 +2413,24 @@ export class Interpreter {
     return result;
   }
 }
+
+App.Interpreter = Interpreter;
 '@
 Set-Content -Path "$dir\js\interpreter.js" -Value $content -Encoding UTF8
 
-# --- File 10 of 13 ---
-Write-Host "Writing js/filesystem.js (10/13)..."
-$content = @'
-export class VirtualFileSystem {
-  constructor() {
-    this.root = { type: 'dir', name: '/', children: {} };
-    this.cwd = '/';
-  }
-
-  resolve(path) {
-    let p = path.replace(/\\/g, '/');
-    if (!p.startsWith('/')) {
-      p = this.cwd + (this.cwd.endsWith('/') ? '' : '/') + p;
-    }
-    const parts = p.split('/').filter(s => s.length > 0);
-    const normalized = [];
-    for (const part of parts) {
-      if (part === '..') { normalized.pop(); }
-      else if (part !== '.') { normalized.push(part.toUpperCase()); }
-    }
-    return '/' + normalized.join('/');
-  }
-
-  getNode(path) {
-    const abs = this.resolve(path);
-    if (abs === '/') return this.root;
-    const parts = abs.split('/').filter(s => s.length > 0);
-    let node = this.root;
-    for (const part of parts) {
-      if (!node.children || !node.children[part]) return null;
-      node = node.children[part];
-    }
-    return node;
-  }
-
-  getParentAndName(path) {
-    const abs = this.resolve(path);
-    const parts = abs.split('/').filter(s => s.length > 0);
-    const name = parts.pop();
-    const parentPath = '/' + parts.join('/');
-    const parent = this.getNode(parentPath || '/');
-    return { parent, name };
-  }
-
-  mkdir(path) {
-    const { parent, name } = this.getParentAndName(path);
-    if (!parent || parent.type !== 'dir') return '?PATH NOT FOUND';
-    if (!name) return '?SYNTAX ERROR';
-    if (parent.children[name]) return '?FILE EXISTS';
-    parent.children[name] = { type: 'dir', name, children: {} };
-    return null;
-  }
-
-  rmdir(path) {
-    const { parent, name } = this.getParentAndName(path);
-    if (!parent || !name) return '?PATH NOT FOUND';
-    const node = parent.children[name];
-    if (!node) return '?FILE NOT FOUND';
-    if (node.type !== 'dir') return '?NOT A DIRECTORY';
-    if (Object.keys(node.children).length > 0) return '?DIRECTORY NOT EMPTY';
-    delete parent.children[name];
-    return null;
-  }
-
-  writeFile(path, content) {
-    const { parent, name } = this.getParentAndName(path);
-    if (!parent || parent.type !== 'dir') return '?PATH NOT FOUND';
-    if (!name) return '?SYNTAX ERROR';
-    if (parent.children[name] && parent.children[name].type === 'dir') return '?IS A DIRECTORY';
-    parent.children[name] = { type: 'file', name, content };
-    return null;
-  }
-
-  readFile(path) {
-    const node = this.getNode(path);
-    if (!node) return { error: '?FILE NOT FOUND' };
-    if (node.type !== 'file') return { error: '?NOT A FILE' };
-    return { content: node.content };
-  }
-
-  deleteFile(path) {
-    const { parent, name } = this.getParentAndName(path);
-    if (!parent || !name) return '?PATH NOT FOUND';
-    if (!parent.children[name]) return '?FILE NOT FOUND';
-    if (parent.children[name].type === 'dir') return '?IS A DIRECTORY';
-    delete parent.children[name];
-    return null;
-  }
-
-  rename(oldPath, newPath) {
-    const { parent: op, name: on } = this.getParentAndName(oldPath);
-    const { parent: np, name: nn } = this.getParentAndName(newPath);
-    if (!op || !op.children[on]) return '?FILE NOT FOUND';
-    if (!np || np.type !== 'dir') return '?PATH NOT FOUND';
-    np.children[nn] = op.children[on];
-    np.children[nn].name = nn;
-    if (op !== np || on !== nn) delete op.children[on];
-    return null;
-  }
-
-  listDir(path) {
-    const node = this.getNode(path || this.cwd);
-    if (!node) return { error: '?PATH NOT FOUND' };
-    if (node.type !== 'dir') return { error: '?NOT A DIRECTORY' };
-    return { entries: Object.values(node.children) };
-  }
-
-  cd(path) {
-    const abs = this.resolve(path);
-    const node = this.getNode(abs);
-    if (!node) return '?PATH NOT FOUND';
-    if (node.type !== 'dir') return '?NOT A DIRECTORY';
-    this.cwd = abs || '/';
-    return null;
-  }
-
-  // Serialize program to text for saving
-  static programToText(program) {
-    const lines = Object.keys(program).map(Number).sort((a, b) => a - b);
-    return lines.map(n => `${n} ${program[n]}`).join('\n');
-  }
-
-  // Parse text back into program lines
-  static textToProgram(text) {
-    const program = {};
-    const lines = text.split('\n');
-    for (const line of lines) {
-      const match = line.trim().match(/^(\d+)\s+(.*)/);
-      if (match) {
-        program[parseInt(match[1])] = match[2];
-      }
-    }
-    return program;
-  }
-}
-'@
-Set-Content -Path "$dir\js\filesystem.js" -Value $content -Encoding UTF8
-
-# --- File 11 of 13 ---
-Write-Host "Writing js/samples.js (11/13)..."
-$content = @'
-export function getSamples() {
-  return {
-    hello: `
-10 REM HELLO WORLD
-20 HOME
-30 PRINT "HELLO, WORLD!"
-40 PRINT
-50 PRINT "WELCOME TO APPLESOFT BASIC"
-60 PRINT "ON THE APPLE ]["
-70 PRINT
-80 FOR I = 1 TO 5
-90 PRINT "* ";
-100 NEXT I
-110 PRINT
-120 END`,
-
-    fibonacci: `
-10 REM FIBONACCI SEQUENCE
-20 HOME
-30 PRINT "FIBONACCI SEQUENCE"
-40 PRINT "=================="
-50 PRINT
-60 A = 0
-70 B = 1
-80 FOR I = 1 TO 20
-90 PRINT A,
-100 C = A + B
-110 A = B
-120 B = C
-130 NEXT I
-140 PRINT
-150 END`,
-
-    guessing: `
-10 REM GUESSING GAME
-20 HOME
-30 PRINT "NUMBER GUESSING GAME"
-40 PRINT "===================="
-50 PRINT
-60 N = INT(RND(1) * 100) + 1
-70 T = 0
-80 PRINT "I'M THINKING OF A NUMBER"
-90 PRINT "BETWEEN 1 AND 100."
-100 PRINT
-110 T = T + 1
-120 INPUT "YOUR GUESS? ";G
-130 IF G < N THEN PRINT "TOO LOW!": GOTO 110
-140 IF G > N THEN PRINT "TOO HIGH!": GOTO 110
-150 PRINT
-160 PRINT "CORRECT! YOU GOT IT IN ";T;" TRIES!"
-170 PRINT
-180 INPUT "PLAY AGAIN (Y/N)? ";A$
-190 IF A$ = "Y" THEN GOTO 20
-200 PRINT "THANKS FOR PLAYING!"
-210 END`,
-
-    sine: `
-10 REM SINE WAVE
-20 HOME
-30 PRINT "SINE WAVE DISPLAY"
-40 PRINT
-50 FOR Y = 0 TO 22
-60 X = INT(SIN(Y / 3.5) * 18 + 20)
-70 FOR I = 1 TO X
-80 PRINT " ";
-90 NEXT I
-100 PRINT "*"
-110 NEXT Y
-120 END`,
-
-    mandelbrot: `
-10 REM MANDELBROT SET
-20 HOME
-30 PRINT "MANDELBROT SET"
-40 PRINT
-50 FOR Y = -12 TO 12
-60 FOR X = -39 TO 19
-70 CA = X * 0.0458
-80 CB = Y * 0.08333
-90 A = CA : B = CB
-100 FOR I = 0 TO 15
-110 T = A * A - B * B + CA
-120 B = 2 * A * B + CB
-130 A = T
-140 IF A * A + B * B > 4 THEN GOTO 170
-150 NEXT I
-160 PRINT "*";: GOTO 180
-170 PRINT " ";
-180 NEXT X
-190 PRINT
-200 NEXT Y
-210 END`,
-
-    lores_demo: `
-10 REM LO-RES GRAPHICS DEMO
-20 GR
-30 REM DRAW COLOR BARS
-40 FOR C = 0 TO 15
-50 COLOR= C
-60 VLIN 0,39 AT C * 2
-70 VLIN 0,39 AT C * 2 + 1
-80 NEXT C
-90 REM DRAW A BOX
-100 COLOR= 15
-110 HLIN 5,34 AT 5
-120 HLIN 5,34 AT 34
-130 VLIN 5,34 AT 5
-140 VLIN 5,34 AT 34
-150 REM DIAGONAL
-160 FOR I = 0 TO 29
-170 COLOR= INT(RND(1) * 16)
-180 PLOT I + 6,I + 6
-190 NEXT I
-200 VTAB 22
-210 PRINT "LO-RES GRAPHICS DEMO"
-220 PRINT "PRESS ANY KEY..."
-230 GET A$
-240 TEXT
-250 END`,
-
-    starfield: `
-10 REM STARFIELD ANIMATION
-20 HOME
-30 DIM X(50),Y(50),S(50)
-40 FOR I = 1 TO 50
-50 X(I) = INT(RND(1) * 40)
-60 Y(I) = INT(RND(1) * 23)
-70 S(I) = INT(RND(1) * 3) + 1
-80 NEXT I
-90 HOME
-100 FOR F = 1 TO 100
-110 FOR I = 1 TO 50
-120 VTAB Y(I) + 1 : HTAB X(I) + 1
-130 PRINT " ";
-140 X(I) = X(I) + S(I)
-150 IF X(I) > 39 THEN X(I) = 0 : Y(I) = INT(RND(1) * 23)
-160 VTAB Y(I) + 1 : HTAB X(I) + 1
-170 IF S(I) = 1 THEN PRINT ".";
-180 IF S(I) = 2 THEN PRINT "+";
-190 IF S(I) = 3 THEN PRINT "*";
-200 NEXT I
-210 NEXT F
-220 HOME
-230 PRINT "STARFIELD COMPLETE"
-240 END`,
-
-    sorting: `
-10 REM BUBBLE SORT DEMO
-20 HOME
-30 PRINT "BUBBLE SORT DEMONSTRATION"
-40 PRINT "========================="
-50 PRINT
-60 N = 15
-70 DIM A(15)
-80 PRINT "UNSORTED ARRAY:"
-90 FOR I = 1 TO N
-100 A(I) = INT(RND(1) * 100)
-110 PRINT A(I);" ";
-120 NEXT I
-130 PRINT : PRINT
-140 REM BUBBLE SORT
-150 FOR I = 1 TO N - 1
-160 FOR J = 1 TO N - I
-170 IF A(J) > A(J + 1) THEN T = A(J) : A(J) = A(J + 1) : A(J + 1) = T
-180 NEXT J
-190 NEXT I
-200 PRINT "SORTED ARRAY:"
-210 FOR I = 1 TO N
-220 PRINT A(I);" ";
-230 NEXT I
-240 PRINT
-250 END`,
-
-    '99bottles': `
-10 REM 99 BOTTLES OF BEER
-20 HOME
-30 FOR I = 99 TO 1 STEP -1
-40 PRINT I;" BOTTLE";
-50 IF I > 1 THEN PRINT "S";
-60 PRINT " OF BEER ON THE WALL,"
-70 PRINT I;" BOTTLE";
-80 IF I > 1 THEN PRINT "S";
-90 PRINT " OF BEER."
-100 PRINT "TAKE ONE DOWN, PASS IT"
-110 PRINT "AROUND,"
-120 IF I - 1 > 0 THEN PRINT I - 1;" BOTTLE"; : IF I - 1 > 1 THEN PRINT "S";
-130 IF I - 1 = 0 THEN PRINT "NO MORE BOTTLE";: PRINT "S";
-140 PRINT " OF BEER ON THE WALL."
-150 PRINT
-160 NEXT I
-170 END`,
-
-    primes: `
-10 REM SIEVE OF ERATOSTHENES
-20 HOME
-30 PRINT "PRIME NUMBER SIEVE"
-40 PRINT "=================="
-50 PRINT
-60 N = 200
-70 DIM P(200)
-80 FOR I = 2 TO N
-90 P(I) = 1
-100 NEXT I
-110 FOR I = 2 TO SQR(N)
-120 IF P(I) = 0 THEN GOTO 160
-130 FOR J = I * I TO N STEP I
-140 P(J) = 0
-150 NEXT J
-160 NEXT I
-170 PRINT "PRIMES UP TO ";N;":"
-180 PRINT
-190 C = 0
-200 FOR I = 2 TO N
-210 IF P(I) = 0 THEN GOTO 250
-220 PRINT I;" ";
-230 C = C + 1
-240 IF C / 10 = INT(C / 10) THEN PRINT
-250 NEXT I
-260 PRINT
-270 PRINT
-280 PRINT C;" PRIMES FOUND."
-290 END`
-  };
-}
-'@
-Set-Content -Path "$dir\js\samples.js" -Value $content -Encoding UTF8
-
 # --- File 12 of 13 ---
-Write-Host "Writing js/tutorial.js (12/13)..."
+Write-Host "Writing js/emulator.js (12/13)..."
 $content = @'
-export function getTutorialPages() {
-  return [
-    // Page 1: Getting Started
-    [
-      '--- GETTING STARTED ---',
-      '',
-      'THIS IS AN APPLESOFT BASIC',
-      'INTERPRETER WITH A BUILT-IN',
-      'VIRTUAL FILE SYSTEM.',
-      '',
-      'JUST TYPE COMMANDS AT THE ]',
-      'PROMPT AND PRESS ENTER.',
-      '',
-      'TRY TYPING:',
-      '  PRINT "HELLO WORLD"',
-      '',
-      'YOU CAN ALSO DO MATH:',
-      '  PRINT 2 + 3 * 4',
-      '',
-      'TYPE HELP FOR ALL COMMANDS.',
-    ],
-    // Page 2: Writing Programs
-    [
-      '--- WRITING PROGRAMS ---',
-      '',
-      'TO WRITE A PROGRAM, TYPE',
-      'EACH LINE WITH A NUMBER:',
-      '',
-      '  10 HOME',
-      '  20 PRINT "HI THERE!"',
-      '  30 PRINT "HOW ARE YOU?"',
-      '  40 END',
-      '',
-      'TYPE RUN TO EXECUTE IT.',
-      'TYPE LIST TO SEE IT.',
-      'TYPE NEW TO CLEAR IT.',
-      '',
-      'LINES RUN IN NUMBER ORDER.',
-      'USE GAPS (10,20,30...) SO',
-      'YOU CAN INSERT LINES LATER.',
-    ],
-    // Page 3: Variables & Input
-    [
-      '--- VARIABLES & INPUT ---',
-      '',
-      'VARIABLES STORE VALUES:',
-      '  10 A = 5',
-      '  20 B$ = "HELLO"',
-      '  30 PRINT A',
-      '  40 PRINT B$',
-      '',
-      'USE $ FOR TEXT VARIABLES.',
-      '',
-      'GET USER INPUT:',
-      '  10 INPUT "NAME? ";N$',
-      '  20 PRINT "HI, ";N$',
-      '',
-      'FOR SINGLE KEY:',
-      '  10 GET A$',
-      '  20 PRINT "YOU TYPED: ";A$',
-    ],
-    // Page 4: Loops & Conditions
-    [
-      '--- LOOPS & CONDITIONS ---',
-      '',
-      'FOR/NEXT LOOP:',
-      '  10 FOR I = 1 TO 10',
-      '  20 PRINT I;" ";',
-      '  30 NEXT I',
-      '',
-      'IF/THEN:',
-      '  10 INPUT "NUMBER? ";N',
-      '  20 IF N > 5 THEN PRINT "BIG"',
-      '  30 IF N <= 5 THEN PRINT "SMALL"',
-      '',
-      'GOTO (JUMP TO LINE):',
-      '  10 PRINT "LOOP!"',
-      '  20 GOTO 10',
-      '',
-      'CTRL+C TO STOP A LOOP!',
-    ],
-    // Page 5: Subroutines
-    [
-      '--- SUBROUTINES ---',
-      '',
-      'GOSUB CALLS A SUBROUTINE,',
-      'RETURN COMES BACK:',
-      '',
-      '  10 PRINT "START"',
-      '  20 GOSUB 100',
-      '  30 PRINT "BACK"',
-      '  40 END',
-      '  100 PRINT "IN SUBROUTINE"',
-      '  110 RETURN',
-      '',
-      'USE ON..GOTO FOR MENUS:',
-      '  10 INPUT "CHOICE(1-3)? ";C',
-      '  20 ON C GOTO 100,200,300',
-    ],
-    // Page 6: String Functions
-    [
-      '--- STRING FUNCTIONS ---',
-      '',
-      'LEN(A$)      STRING LENGTH',
-      'LEFT$(A$,N)  LEFT N CHARS',
-      'RIGHT$(A$,N) RIGHT N CHARS',
-      'MID$(A$,S,N) MIDDLE CHARS',
-      'ASC(A$)      ASCII CODE',
-      'CHR$(N)      CODE TO CHAR',
-      'VAL(A$)      STRING TO NUM',
-      'STR$(N)      NUM TO STRING',
-      '',
-      'EXAMPLE:',
-      '  10 A$ = "HELLO WORLD"',
-      '  20 PRINT LEN(A$)',
-      '  30 PRINT LEFT$(A$,5)',
-      '  40 PRINT MID$(A$,7,5)',
-    ],
-    // Page 7: Math Functions
-    [
-      '--- MATH FUNCTIONS ---',
-      '',
-      'INT(X)  INTEGER PART',
-      'ABS(X)  ABSOLUTE VALUE',
-      'SGN(X)  SIGN (-1,0,1)',
-      'SQR(X)  SQUARE ROOT',
-      'RND(X)  RANDOM (0-1)',
-      'SIN(X)  SINE',
-      'COS(X)  COSINE',
-      'TAN(X)  TANGENT',
-      'ATN(X)  ARCTANGENT',
-      'EXP(X)  E TO THE X',
-      'LOG(X)  NATURAL LOG',
-      '',
-      'RANDOM NUMBER 1-6:',
-      '  PRINT INT(RND(1)*6)+1',
-    ],
-    // Page 8: Graphics
-    [
-      '--- LO-RES GRAPHICS ---',
-      '',
-      'GR          GRAPHICS MODE',
-      'COLOR= N    SET COLOR (0-15)',
-      'PLOT X,Y    DRAW PIXEL',
-      'HLIN X1,X2 AT Y  HORIZ LINE',
-      'VLIN Y1,Y2 AT X  VERT LINE',
-      'TEXT        BACK TO TEXT',
-      '',
-      'EXAMPLE:',
-      '  10 GR',
-      '  20 COLOR= 1',
-      '  30 FOR X = 0 TO 39',
-      '  40 PLOT X,20',
-      '  50 NEXT X',
-      '  60 GET A$ : TEXT',
-    ],
-    // Page 9: File System
-    [
-      '--- FILE SYSTEM ---',
-      '',
-      'YOUR VIRTUAL DISK:',
-      '  CATALOG    LIST FILES',
-      '  CD "DIR"   CHANGE DIR',
-      '  MKDIR "X"  NEW FOLDER',
-      '  RMDIR "X"  DEL FOLDER',
-      '  PWD        CURRENT DIR',
-      '',
-      'FILE COMMANDS:',
-      '  SAVE "X"   SAVE PROGRAM',
-      '  LOAD "X"   LOAD PROGRAM',
-      '  TYPE "X"   VIEW FILE',
-      '  DELETE "X"  DELETE FILE',
-      '  CREATE "X"  NEW FILE',
-      '  RENAME "A","B"  RENAME',
-    ],
-    // Page 10: Upload/Download & Samples
-    [
-      '--- UPLOAD & DOWNLOAD ---',
-      '',
-      'UPLOAD FILES FROM YOUR PC:',
-      '  UPLOAD',
-      '  (OPENS FILE DIALOG)',
-      '',
-      'DOWNLOAD FILES TO YOUR PC:',
-      '  DOWNLOAD       (PROGRAM)',
-      '  DOWNLOAD "X"   (FILE)',
-      '',
-      '--- SAMPLE PROGRAMS ---',
-      '',
-      'SAMPLE PROGRAMS ARE IN THE',
-      '/SAMPLES DIRECTORY:',
-      '  CD "SAMPLES"',
-      '  CATALOG',
-      '  LOAD "HELLO"',
-      '  RUN',
-    ],
-  ];
-}
-'@
-Set-Content -Path "$dir\js\tutorial.js" -Value $content -Encoding UTF8
+window.App = window.App || {};
 
-# --- File 13 of 13 ---
-Write-Host "Writing js/emulator.js (13/13)..."
-$content = @'
-import { Display } from './display.js';
-import { Interpreter } from './interpreter.js';
-import { VirtualFileSystem } from './filesystem.js';
-import { getSamples } from './samples.js';
-import { getTutorialPages } from './tutorial.js';
-import { beep } from './audio.js';
-
-export class Emulator {
+class Emulator {
   constructor() {
     this.displayElement = document.getElementById('text-display');
     this.canvasElement = document.getElementById('lores-canvas');
     this.fileUpload = document.getElementById('file-upload');
-    this.display = new Display(this.displayElement, this.canvasElement);
-    this.interpreter = new Interpreter(this.display);
-    this.fs = new VirtualFileSystem();
+    this.display = new App.Display(this.displayElement, this.canvasElement);
+    this.interpreter = new App.Interpreter(this.display);
+    this.fs = new App.VirtualFileSystem();
     this.inputBuffer = '';
     this.commandMode = true;
     this.setupInput();
@@ -2436,7 +2450,7 @@ export class Emulator {
     this.display.printLine('');
     this.display.printLine('READY.');
     this.showPrompt();
-    beep(100, 1000);
+    App.beep(100, 1000);
   }
 
   showPrompt() {
@@ -2549,7 +2563,7 @@ export class Emulator {
 
   installSamples() {
     this.fs.mkdir('/SAMPLES');
-    const samples = getSamples();
+    const samples = App.getSamples();
     for (const [name, code] of Object.entries(samples)) {
       this.fs.writeFile('/SAMPLES/' + name.toUpperCase() + '.BAS', code.trim());
     }
@@ -2718,7 +2732,7 @@ export class Emulator {
       } else {
         const path = this.extractQuotedArg(upper.substring(5));
         const fname = path.endsWith('.BAS') ? path : path + '.BAS';
-        const content = VirtualFileSystem.programToText(this.interpreter.program);
+        const content = App.VirtualFileSystem.programToText(this.interpreter.program);
         const err = this.fs.writeFile(fname, content);
         if (err) this.display.printLine(err);
         else this.display.printLine('SAVED: ' + fname);
@@ -2796,7 +2810,7 @@ export class Emulator {
     this.interpreter.program = {};
     this.interpreter.sortedLines = [];
     this.interpreter.clearVars();
-    const program = VirtualFileSystem.textToProgram(result.content);
+    const program = App.VirtualFileSystem.textToProgram(result.content);
     for (const [num, src] of Object.entries(program)) {
       this.interpreter.storeLine(parseInt(num), src);
     }
@@ -2805,7 +2819,7 @@ export class Emulator {
 
   cmdDownload(path) {
     if (!path) {
-      const content = VirtualFileSystem.programToText(this.interpreter.program);
+      const content = App.VirtualFileSystem.programToText(this.interpreter.program);
       if (!content.trim()) {
         this.display.printLine('?NO PROGRAM IN MEMORY');
         return;
@@ -2931,7 +2945,7 @@ export class Emulator {
   }
 
   showTutorial(page) {
-    const pages = getTutorialPages();
+    const pages = App.getTutorialPages();
     const maxPage = pages.length;
     const p = Math.max(1, Math.min(maxPage, page || 1));
     const content = pages[p - 1];
@@ -2951,8 +2965,22 @@ export class Emulator {
     this.display.printLine('');
   }
 }
+
+App.Emulator = Emulator;
 '@
 Set-Content -Path "$dir\js\emulator.js" -Value $content -Encoding UTF8
+
+# --- File 13 of 13 ---
+Write-Host "Writing js/main.js (13/13)..."
+$content = @'
+window.App = window.App || {};
+
+window.addEventListener('DOMContentLoaded', function() {
+  var emulator = new App.Emulator();
+  window.emulator = emulator;
+});
+'@
+Set-Content -Path "$dir\js\main.js" -Value $content -Encoding UTF8
 
 # ============================================================
 Write-Host ""
