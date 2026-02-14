@@ -1,0 +1,28 @@
+// Screen dimensions
+export const SCREEN_WIDTH = 40;
+export const SCREEN_HEIGHT = 24;
+
+// Lo-Res graphics
+export const LORES_WIDTH = 40;
+export const LORES_HEIGHT = 48;
+export const LORES_GRAPHICS_ROWS = 40;
+
+// Apple II Lo-Res color palette
+export const LORES_COLORS = [
+  '#000000', // 0  Black
+  '#dd0033', // 1  Magenta/Red
+  '#000099', // 2  Dark Blue
+  '#dd22dd', // 3  Purple
+  '#007722', // 4  Dark Green
+  '#555555', // 5  Grey 1
+  '#2222ff', // 6  Medium Blue
+  '#6666ff', // 7  Light Blue
+  '#885500', // 8  Brown
+  '#ff6600', // 9  Orange
+  '#aaaaaa', // 10 Grey 2
+  '#ff9988', // 11 Pink
+  '#11dd00', // 12 Light Green
+  '#ffff00', // 13 Yellow
+  '#44ff99', // 14 Aqua
+  '#ffffff', // 15 White
+];
