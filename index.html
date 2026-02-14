@@ -138,13 +138,7 @@ body {
   image-rendering: crisp-edges;
 }
 
-/* ===== HIDDEN INPUT ===== */
-#hidden-input {
-  position: absolute;
-  left: -9999px;
-  top: -9999px;
-  opacity: 0;
-}
+/* hidden input removed - using document keydown */
 
 /* ===== TOOLBAR ===== */
 #toolbar {
@@ -233,7 +227,7 @@ body {
   </div>
 </div>
 
-<input id="hidden-input" type="text" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false">
+<!-- keyboard input is captured via document-level keydown listener -->
 
 <div id="toolbar">
   <button class="toolbar-btn" onclick="emulator.reset()" title="Reset the emulator">RESET</button>
@@ -2005,7 +1999,6 @@ const AppleSoftBasic = (() => {
     constructor() {
       this.displayElement = document.getElementById('text-display');
       this.canvasElement = document.getElementById('lores-canvas');
-      this.hiddenInput = document.getElementById('hidden-input');
       this.display = new Display(this.displayElement, this.canvasElement);
       this.interpreter = new Interpreter(this.display);
       this.inputBuffer = '';
@@ -2032,16 +2025,14 @@ const AppleSoftBasic = (() => {
     }
 
     setupInput() {
-      // Focus hidden input on click
-      document.getElementById('screen-container').addEventListener('click', () => {
-        this.hiddenInput.focus();
+      // Listen for keyboard events on the document directly
+      // This ensures input works regardless of focus state
+      document.addEventListener('keydown', (e) => {
+        // Ignore if user is interacting with toolbar controls
+        const tag = e.target.tagName;
+        if (tag === 'SELECT' || tag === 'BUTTON') return;
+        this.handleKeyDown(e);
       });
-
-      // Focus on load
-      setTimeout(() => this.hiddenInput.focus(), 100);
-
-      // Handle keyboard input
-      this.hiddenInput.addEventListener('keydown', (e) => this.handleKeyDown(e));
     }
 
     handleKeyDown(e) {
@@ -2051,6 +2042,9 @@ const AppleSoftBasic = (() => {
         this.ctrlC();
         return;
       }
+
+      // Ignore other modifier combos (Ctrl+R reload, etc.)
+      if (e.ctrlKey || e.metaKey || e.altKey) return;
 
       // GET mode - single key
       if (this.interpreter.getCallback) {
@@ -2097,14 +2091,24 @@ const AppleSoftBasic = (() => {
         return;
       }
 
-      // Regular character input
-      if (e.key.length === 1) {
+      // Escape
+      if (e.key === 'Escape') {
         e.preventDefault();
-        const ch = e.key.toUpperCase();
-        this.inputBuffer += ch;
-        this.display.printChar(ch);
-        this.display.render();
+        this.inputBuffer = '';
+        this.display.printString('\n');
+        this.showPrompt();
+        return;
       }
+
+      // Arrow keys, function keys - ignore
+      if (e.key.length > 1) return;
+
+      // Regular character input
+      e.preventDefault();
+      const ch = e.key.toUpperCase();
+      this.inputBuffer += ch;
+      this.display.printChar(ch);
+      this.display.render();
     }
 
     async processLine(line) {
