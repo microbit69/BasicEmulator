@@ -1,4 +1,6 @@
-export function getTutorialPages() {
+window.App = window.App || {};
+
+App.getTutorialPages = function() {
   return [
     // Page 1: Getting Started
     [
@@ -195,4 +197,4 @@ export function getTutorialPages() {
       '  RUN',
     ],
   ];
-}
+};

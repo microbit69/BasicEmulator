@@ -1,18 +1,13 @@
-import { Display } from './display.js';
-import { Interpreter } from './interpreter.js';
-import { VirtualFileSystem } from './filesystem.js';
-import { getSamples } from './samples.js';
-import { getTutorialPages } from './tutorial.js';
-import { beep } from './audio.js';
+window.App = window.App || {};
 
-export class Emulator {
+class Emulator {
   constructor() {
     this.displayElement = document.getElementById('text-display');
     this.canvasElement = document.getElementById('lores-canvas');
     this.fileUpload = document.getElementById('file-upload');
-    this.display = new Display(this.displayElement, this.canvasElement);
-    this.interpreter = new Interpreter(this.display);
-    this.fs = new VirtualFileSystem();
+    this.display = new App.Display(this.displayElement, this.canvasElement);
+    this.interpreter = new App.Interpreter(this.display);
+    this.fs = new App.VirtualFileSystem();
     this.inputBuffer = '';
     this.commandMode = true;
     this.setupInput();
@@ -32,7 +27,7 @@ export class Emulator {
     this.display.printLine('');
     this.display.printLine('READY.');
     this.showPrompt();
-    beep(100, 1000);
+    App.beep(100, 1000);
   }
 
   showPrompt() {
@@ -145,7 +140,7 @@ export class Emulator {
 
   installSamples() {
     this.fs.mkdir('/SAMPLES');
-    const samples = getSamples();
+    const samples = App.getSamples();
     for (const [name, code] of Object.entries(samples)) {
       this.fs.writeFile('/SAMPLES/' + name.toUpperCase() + '.BAS', code.trim());
     }
@@ -314,7 +309,7 @@ export class Emulator {
       } else {
         const path = this.extractQuotedArg(upper.substring(5));
         const fname = path.endsWith('.BAS') ? path : path + '.BAS';
-        const content = VirtualFileSystem.programToText(this.interpreter.program);
+        const content = App.VirtualFileSystem.programToText(this.interpreter.program);
         const err = this.fs.writeFile(fname, content);
         if (err) this.display.printLine(err);
         else this.display.printLine('SAVED: ' + fname);
@@ -392,7 +387,7 @@ export class Emulator {
     this.interpreter.program = {};
     this.interpreter.sortedLines = [];
     this.interpreter.clearVars();
-    const program = VirtualFileSystem.textToProgram(result.content);
+    const program = App.VirtualFileSystem.textToProgram(result.content);
     for (const [num, src] of Object.entries(program)) {
       this.interpreter.storeLine(parseInt(num), src);
     }
@@ -401,7 +396,7 @@ export class Emulator {
 
   cmdDownload(path) {
     if (!path) {
-      const content = VirtualFileSystem.programToText(this.interpreter.program);
+      const content = App.VirtualFileSystem.programToText(this.interpreter.program);
       if (!content.trim()) {
         this.display.printLine('?NO PROGRAM IN MEMORY');
         return;
@@ -527,7 +522,7 @@ export class Emulator {
   }
 
   showTutorial(page) {
-    const pages = getTutorialPages();
+    const pages = App.getTutorialPages();
     const maxPage = pages.length;
     const p = Math.max(1, Math.min(maxPage, page || 1));
     const content = pages[p - 1];
@@ -547,3 +542,5 @@ export class Emulator {
     this.display.printLine('');
   }
 }
+
+App.Emulator = Emulator;

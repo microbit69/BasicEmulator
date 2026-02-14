@@ -1,8 +1,6 @@
-import { LORES_WIDTH, LORES_HEIGHT, LORES_GRAPHICS_ROWS } from './constants.js';
-import { Tokenizer } from './tokenizer.js';
-import { Parser } from './parser.js';
+window.App = window.App || {};
 
-export class Interpreter {
+class Interpreter {
   constructor(display) {
     this.display = display;
     this.reset();
@@ -329,7 +327,7 @@ export class Interpreter {
 
     if (upperStmt === 'GR' || upperStmt.startsWith('GR')) {
       this.textMode = false;
-      this.loResScreen = new Array(LORES_HEIGHT).fill(null).map(() => new Array(LORES_WIDTH).fill(0));
+      this.loResScreen = new Array(App.LORES_HEIGHT).fill(null).map(() => new Array(App.LORES_WIDTH).fill(0));
       this.display.initLoRes();
       return;
     }
@@ -385,8 +383,8 @@ export class Interpreter {
       return;
     }
 
-    const tokens = new Tokenizer(argStr).tokens;
-    const parser = new Parser(tokens);
+    const tokens = new App.Tokenizer(argStr).tokens;
+    const parser = new App.Parser(tokens);
     let output = '';
     let suppressNewline = false;
 
@@ -495,8 +493,8 @@ export class Interpreter {
 
   // ===== FOR/NEXT =====
   executeFor(argStr) {
-    const tokens = new Tokenizer(argStr).tokens;
-    const parser = new Parser(tokens);
+    const tokens = new App.Tokenizer(argStr).tokens;
+    const parser = new App.Parser(tokens);
 
     const varName = parser.expect('IDENTIFIER').value;
     parser.expect('OPERATOR', '=');
@@ -516,7 +514,7 @@ export class Interpreter {
   executeNext(argStr) {
     let varName = null;
     if (argStr.trim().length > 0) {
-      const tokens = new Tokenizer(argStr).tokens;
+      const tokens = new App.Tokenizer(argStr).tokens;
       if (tokens.length > 0 && tokens[0].type === 'IDENTIFIER') {
         varName = tokens[0].value;
       }
@@ -730,7 +728,7 @@ export class Interpreter {
   // ===== LO-RES GRAPHICS =====
   loResPlot(x, y) {
     if (!this.loResScreen) return;
-    if (x < 0 || x >= LORES_WIDTH || y < 0 || y >= LORES_GRAPHICS_ROWS) return;
+    if (x < 0 || x >= App.LORES_WIDTH || y < 0 || y >= App.LORES_GRAPHICS_ROWS) return;
     this.loResScreen[y][x] = this.loResColor;
     this.display.drawLoResPixel(x, y, this.loResColor);
   }
@@ -765,7 +763,7 @@ export class Interpreter {
 
   // ===== ASSIGNMENT =====
   isAssignment(stmt) {
-    const tokens = new Tokenizer(stmt).tokens;
+    const tokens = new App.Tokenizer(stmt).tokens;
     if (tokens.length >= 2 && tokens[0].type === 'IDENTIFIER') {
       for (let i = 1; i < tokens.length; i++) {
         if (tokens[i].type === 'OPERATOR' && tokens[i].value === '=') return true;
@@ -786,8 +784,8 @@ export class Interpreter {
   }
 
   executeAssignment(stmt) {
-    const tokens = new Tokenizer(stmt).tokens;
-    const parser = new Parser(tokens);
+    const tokens = new App.Tokenizer(stmt).tokens;
+    const parser = new App.Parser(tokens);
 
     const varToken = parser.expect('IDENTIFIER');
     const varName = varToken.value;
@@ -811,8 +809,8 @@ export class Interpreter {
 
   // ===== EXPRESSION EVALUATION =====
   evaluateExpressionFromString(str) {
-    const tokens = new Tokenizer(str).tokens;
-    const parser = new Parser(tokens);
+    const tokens = new App.Tokenizer(str).tokens;
+    const parser = new App.Parser(tokens);
     return this.evalAST(parser.parseExpression());
   }
 
@@ -939,7 +937,7 @@ export class Interpreter {
         if (!this.loResScreen) return 0;
         const x = Math.floor(args[0]);
         const y = Math.floor(args[1]);
-        if (x >= 0 && x < LORES_WIDTH && y >= 0 && y < LORES_GRAPHICS_ROWS) {
+        if (x >= 0 && x < App.LORES_WIDTH && y >= 0 && y < App.LORES_GRAPHICS_ROWS) {
           return this.loResScreen[y][x];
         }
         return 0;
@@ -1011,3 +1009,5 @@ export class Interpreter {
     return result;
   }
 }
+
+App.Interpreter = Interpreter;

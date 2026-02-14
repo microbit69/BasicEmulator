@@ -1,4 +1,6 @@
-export function getSamples() {
+window.App = window.App || {};
+
+App.getSamples = function() {
   return {
     hello: `
 10 REM HELLO WORLD
@@ -221,4 +223,4 @@ export function getSamples() {
 280 PRINT C;" PRIMES FOUND."
 290 END`
   };
-}
+};

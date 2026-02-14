@@ -1,13 +1,12 @@
-import { SCREEN_WIDTH, SCREEN_HEIGHT, LORES_WIDTH, LORES_GRAPHICS_ROWS, LORES_COLORS } from './constants.js';
-import { beep } from './audio.js';
+window.App = window.App || {};
 
-export class Display {
+class Display {
   constructor(element, canvasElement) {
     this.element = element;
     this.canvas = canvasElement;
     this.ctx = canvasElement.getContext('2d');
-    this.width = SCREEN_WIDTH;
-    this.height = SCREEN_HEIGHT;
+    this.width = App.SCREEN_WIDTH;
+    this.height = App.SCREEN_HEIGHT;
     this.cursorX = 0;
     this.cursorY = 0;
     this.screenBuffer = [];
@@ -69,7 +68,7 @@ export class Display {
     }
 
     if (ch === '\x07') {
-      beep();
+      App.beep();
       return;
     }
 
@@ -129,8 +128,8 @@ export class Display {
   // Lo-Res graphics
   initLoRes() {
     this.canvas.style.display = 'block';
-    this.canvas.width = LORES_WIDTH * 7;
-    this.canvas.height = LORES_GRAPHICS_ROWS * 4;
+    this.canvas.width = App.LORES_WIDTH * 7;
+    this.canvas.height = App.LORES_GRAPHICS_ROWS * 4;
     this.ctx = this.canvas.getContext('2d');
     this.ctx.fillStyle = '#000000';
     this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
@@ -145,7 +144,7 @@ export class Display {
   drawLoResPixel(x, y, color) {
     const pixW = 7;
     const pixH = 4;
-    this.ctx.fillStyle = LORES_COLORS[color & 15];
+    this.ctx.fillStyle = App.LORES_COLORS[color & 15];
     this.ctx.fillRect(x * pixW, y * pixH, pixW, pixH);
   }
 
@@ -154,3 +153,5 @@ export class Display {
     this.clear();
   }
 }
+
+App.Display = Display;

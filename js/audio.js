@@ -1,3 +1,5 @@
+window.App = window.App || {};
+
 let audioCtx = null;
 
 function getAudioContext() {
@@ -7,7 +9,9 @@ function getAudioContext() {
   return audioCtx;
 }
 
-export function beep(duration = 200, frequency = 800) {
+App.beep = function(duration, frequency) {
+  if (duration === undefined) duration = 200;
+  if (frequency === undefined) frequency = 800;
   try {
     const ctx = getAudioContext();
     const oscillator = ctx.createOscillator();
@@ -20,4 +24,4 @@ export function beep(duration = 200, frequency = 800) {
     oscillator.start();
     oscillator.stop(ctx.currentTime + duration / 1000);
   } catch (e) { /* Audio not available */ }
-}
+};

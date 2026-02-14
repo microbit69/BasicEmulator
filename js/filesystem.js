@@ -1,4 +1,6 @@
-export class VirtualFileSystem {
+window.App = window.App || {};
+
+class VirtualFileSystem {
   constructor() {
     this.root = { type: 'dir', name: '/', children: {} };
     this.cwd = '/';
@@ -130,3 +132,5 @@ export class VirtualFileSystem {
     return program;
   }
 }
+
+App.VirtualFileSystem = VirtualFileSystem;

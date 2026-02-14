@@ -1,4 +1,6 @@
-export class Parser {
+window.App = window.App || {};
+
+class Parser {
   constructor(tokens) {
     this.tokens = tokens;
     this.pos = 0;
@@ -199,3 +201,5 @@ export class Parser {
     throw new Error('?SYNTAX ERROR');
   }
 }
+
+App.Parser = Parser;

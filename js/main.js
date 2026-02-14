@@ -1,9 +1,6 @@
-import { Emulator } from './emulator.js';
+window.App = window.App || {};
 
-let emulator;
-
-window.addEventListener('DOMContentLoaded', () => {
-  emulator = new Emulator();
-  // Expose for console debugging
+window.addEventListener('DOMContentLoaded', function() {
+  var emulator = new App.Emulator();
   window.emulator = emulator;
 });

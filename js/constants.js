@@ -1,14 +1,16 @@
+window.App = window.App || {};
+
 // Screen dimensions
-export const SCREEN_WIDTH = 40;
-export const SCREEN_HEIGHT = 24;
+App.SCREEN_WIDTH = 40;
+App.SCREEN_HEIGHT = 24;
 
 // Lo-Res graphics
-export const LORES_WIDTH = 40;
-export const LORES_HEIGHT = 48;
-export const LORES_GRAPHICS_ROWS = 40;
+App.LORES_WIDTH = 40;
+App.LORES_HEIGHT = 48;
+App.LORES_GRAPHICS_ROWS = 40;
 
 // Apple II Lo-Res color palette
-export const LORES_COLORS = [
+App.LORES_COLORS = [
   '#000000', // 0  Black
   '#dd0033', // 1  Magenta/Red
   '#000099', // 2  Dark Blue

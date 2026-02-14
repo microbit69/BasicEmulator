@@ -1,3 +1,5 @@
+window.App = window.App || {};
+
 const KEYWORDS = [
   'PRINT','GOTO','GOSUB','RETURN','IF','THEN','ELSE','FOR','TO','STEP',
   'NEXT','LET','INPUT','DIM','READ','DATA','RESTORE','DEF','FN',
@@ -8,7 +10,7 @@ const KEYWORDS = [
   'POP','ONERR','RESUME','GET','AT'
 ];
 
-export class Tokenizer {
+class Tokenizer {
   constructor(line) {
     this.line = line;
     this.pos = 0;
@@ -136,3 +138,5 @@ export class Tokenizer {
     this.tokens.push({ type: 'OPERATOR', value: op });
   }
 }
+
+App.Tokenizer = Tokenizer;

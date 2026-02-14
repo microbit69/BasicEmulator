@@ -23,7 +23,18 @@
 
 <input type="file" id="file-upload" accept=".bas,.txt,.BAS,.TXT" multiple>
 
-<script type="module" src="js/main.js"></script>
+<!-- Scripts loaded in dependency order (no ES modules for file:// compatibility) -->
+<script src="js/constants.js"></script>
+<script src="js/audio.js"></script>
+<script src="js/tokenizer.js"></script>
+<script src="js/parser.js"></script>
+<script src="js/filesystem.js"></script>
+<script src="js/samples.js"></script>
+<script src="js/tutorial.js"></script>
+<script src="js/display.js"></script>
+<script src="js/interpreter.js"></script>
+<script src="js/emulator.js"></script>
+<script src="js/main.js"></script>
 
 </body>
 </html>
