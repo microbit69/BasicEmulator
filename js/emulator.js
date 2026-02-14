@@ -22,8 +22,9 @@ class Emulator {
     this.display.printLine('APPLESOFT BASIC INTERPRETER');
     this.display.printLine('(C) 2026 - JAVASCRIPT EDITION');
     this.display.printLine('');
+    this.display.printLine('DISK VOLUME ' + this.fs.volumeNumber);
     this.display.printLine('TYPE "HELP" FOR COMMANDS');
-    this.display.printLine('TYPE "TUTORIAL" FOR TUTORIAL');
+    this.display.printLine('TYPE "CATALOG" FOR DISK CONTENTS');
     this.display.printLine('');
     this.display.printLine('READY.');
     this.showPrompt();
@@ -165,7 +166,7 @@ class Emulator {
       return;
     }
 
-    // BASIC commands
+    // === BASIC Program Commands ===
     if (upper === 'RUN' || upper.startsWith('RUN ')) {
       const arg = upper.substring(3).trim();
       const startLine = arg ? parseInt(arg) : undefined;
@@ -221,38 +222,13 @@ class Emulator {
       return;
     }
 
-    // PR# / IN# (slot commands - stubs)
-    if (upper.startsWith('PR#')) {
-      const slot = parseInt(upper.substring(3).trim());
-      if (slot === 0) { /* back to screen - already there */ }
-      this.showPrompt();
-      return;
-    }
-    if (upper.startsWith('IN#')) {
-      const slot = parseInt(upper.substring(3).trim());
-      if (slot === 0) { /* back to keyboard - already there */ }
-      this.showPrompt();
-      return;
-    }
-
-    // MON / NOMON
-    if (upper === 'MON' || upper.startsWith('MON ')) {
-      this.display.printLine('MONITOR NOT AVAILABLE');
-      this.showPrompt();
-      return;
-    }
-    if (upper === 'NOMON') { this.showPrompt(); return; }
-
     // FP (switch to Applesoft - already there)
     if (upper === 'FP') { this.showPrompt(); return; }
 
-    // EXEC - execute a command file
-    if (upper.startsWith('EXEC ')) {
-      await this.cmdExec(this.extractQuotedArg(upper.substring(5)));
-      this.showPrompt();
-      return;
-    }
+    // === DOS 3.3 Disk Commands ===
+    if (this.handleDosCommand(upper)) return;
 
+    // === System Commands ===
     if (upper === 'RESET') { this.reset(); return; }
     if (upper === 'HELP') { this.showHelp(); this.showPrompt(); return; }
 
@@ -262,9 +238,6 @@ class Emulator {
       this.showPrompt();
       return;
     }
-
-    // Filesystem commands
-    if (this.handleFilesystemCommand(upper)) return;
 
     // Try as immediate BASIC statement
     try {
@@ -280,95 +253,16 @@ class Emulator {
     this.showPrompt();
   }
 
-  handleFilesystemCommand(upper) {
-    // CATALOG / CAT / DIR
-    if (upper === 'CATALOG' || upper === 'CAT' || upper === 'DIR' ||
-        upper.startsWith('CATALOG ') || upper.startsWith('CAT ') || upper.startsWith('DIR ')) {
-      const arg = upper.replace(/^(CATALOG|CAT|DIR)\s*/, '').trim();
+  // ===== DOS 3.3 COMMAND HANDLER =====
+
+  handleDosCommand(upper) {
+
+    // CATALOG / CAT
+    if (upper === 'CATALOG' || upper === 'CAT' ||
+        upper.startsWith('CATALOG ') || upper.startsWith('CAT ')) {
+      const arg = upper.replace(/^(CATALOG|CAT)\s*/, '').trim();
       const path = arg ? this.extractQuotedArg(arg) : '';
       this.cmdCatalog(path);
-      this.showPrompt();
-      return true;
-    }
-
-    // PWD
-    if (upper === 'PWD') {
-      this.display.printLine(this.fs.cwd);
-      this.showPrompt();
-      return true;
-    }
-
-    // CD
-    if (upper === 'CD' || upper.startsWith('CD ')) {
-      const arg = upper.substring(2).trim();
-      if (!arg) { this.display.printLine(this.fs.cwd); }
-      else {
-        const err = this.fs.cd(this.extractQuotedArg(arg));
-        if (err) this.display.printLine(err);
-      }
-      this.showPrompt();
-      return true;
-    }
-
-    // MKDIR
-    if (upper.startsWith('MKDIR ')) {
-      const err = this.fs.mkdir(this.extractQuotedArg(upper.substring(6)));
-      if (err) this.display.printLine(err);
-      this.showPrompt();
-      return true;
-    }
-
-    // RMDIR
-    if (upper.startsWith('RMDIR ')) {
-      const err = this.fs.rmdir(this.extractQuotedArg(upper.substring(6)));
-      if (err) this.display.printLine(err);
-      this.showPrompt();
-      return true;
-    }
-
-    // CREATE
-    if (upper.startsWith('CREATE ')) {
-      const path = this.extractQuotedArg(upper.substring(7));
-      const err = this.fs.writeFile(path, '');
-      if (err) this.display.printLine(err);
-      else this.display.printLine('CREATED: ' + path);
-      this.showPrompt();
-      return true;
-    }
-
-    // DELETE / DEL
-    if (upper.startsWith('DELETE ') || upper.startsWith('DEL ')) {
-      const cmd = upper.startsWith('DELETE') ? 'DELETE' : 'DEL';
-      const path = this.extractQuotedArg(upper.substring(cmd.length + 1));
-      const err = this.fs.deleteFile(path);
-      if (err) this.display.printLine(err);
-      else this.display.printLine('DELETED: ' + path);
-      this.showPrompt();
-      return true;
-    }
-
-    // RENAME
-    if (upper.startsWith('RENAME ')) {
-      const parts = upper.substring(7).split(',');
-      if (parts.length !== 2) {
-        this.display.printLine('?SYNTAX: RENAME "OLD","NEW"');
-      } else {
-        const err = this.fs.rename(this.extractQuotedArg(parts[0]), this.extractQuotedArg(parts[1]));
-        if (err) this.display.printLine(err);
-        else this.display.printLine('RENAMED');
-      }
-      this.showPrompt();
-      return true;
-    }
-
-    // TYPE
-    if (upper.startsWith('TYPE ')) {
-      const result = this.fs.readFile(this.extractQuotedArg(upper.substring(5)));
-      if (result.error) { this.display.printLine(result.error); }
-      else {
-        this.display.printLine('');
-        for (const l of result.content.split('\n')) this.display.printLine(l);
-      }
       this.showPrompt();
       return true;
     }
@@ -376,14 +270,13 @@ class Emulator {
     // SAVE
     if (upper === 'SAVE' || upper.startsWith('SAVE ')) {
       if (upper === 'SAVE') {
-        this.display.printLine('?SYNTAX: SAVE "FILENAME"');
+        this.display.printLine('?SYNTAX ERROR');
       } else {
         const path = this.extractQuotedArg(upper.substring(5));
         const fname = path.endsWith('.BAS') ? path : path + '.BAS';
         const content = App.VirtualFileSystem.programToText(this.interpreter.program);
-        const err = this.fs.writeFile(fname, content);
-        if (err) this.display.printLine(err);
-        else this.display.printLine('SAVED: ' + fname);
+        const err = this.fs.writeFile(fname, content, 'A');
+        if (err) this.display.printLine('?' + err);
       }
       this.showPrompt();
       return true;
@@ -392,7 +285,7 @@ class Emulator {
     // LOAD
     if (upper === 'LOAD' || upper.startsWith('LOAD ')) {
       if (upper === 'LOAD') {
-        this.display.printLine('?SYNTAX: LOAD "FILENAME"');
+        this.display.printLine('?SYNTAX ERROR');
       } else {
         this.cmdLoad(this.extractQuotedArg(upper.substring(5)));
       }
@@ -400,59 +293,349 @@ class Emulator {
       return true;
     }
 
-    // UPLOAD
+    // DELETE
+    if (upper.startsWith('DELETE ')) {
+      const path = this.extractQuotedArg(upper.substring(7));
+      const fpath = this.resolveWithExt(path);
+      const err = this.fs.deleteFile(fpath);
+      if (err) this.display.printLine('?' + err);
+      this.showPrompt();
+      return true;
+    }
+
+    // LOCK
+    if (upper.startsWith('LOCK ')) {
+      const path = this.extractQuotedArg(upper.substring(5));
+      const fpath = this.resolveWithExt(path);
+      const err = this.fs.lockFile(fpath);
+      if (err) this.display.printLine('?' + err);
+      this.showPrompt();
+      return true;
+    }
+
+    // UNLOCK
+    if (upper.startsWith('UNLOCK ')) {
+      const path = this.extractQuotedArg(upper.substring(7));
+      const fpath = this.resolveWithExt(path);
+      const err = this.fs.unlockFile(fpath);
+      if (err) this.display.printLine('?' + err);
+      this.showPrompt();
+      return true;
+    }
+
+    // RENAME
+    if (upper.startsWith('RENAME ')) {
+      const parts = upper.substring(7).split(',');
+      if (parts.length !== 2) {
+        this.display.printLine('?SYNTAX ERROR');
+      } else {
+        const oldName = this.resolveWithExt(this.extractQuotedArg(parts[0]));
+        const newName = this.extractQuotedArg(parts[1]);
+        const err = this.fs.rename(oldName, newName);
+        if (err) this.display.printLine('?' + err);
+      }
+      this.showPrompt();
+      return true;
+    }
+
+    // VERIFY
+    if (upper.startsWith('VERIFY ')) {
+      const path = this.extractQuotedArg(upper.substring(7));
+      const fpath = this.resolveWithExt(path);
+      const err = this.fs.verifyFile(fpath);
+      if (err) this.display.printLine('?' + err);
+      this.showPrompt();
+      return true;
+    }
+
+    // INIT - format disk (with confirmation)
+    if (upper === 'INIT' || upper.startsWith('INIT ')) {
+      this.fs.initDisk();
+      this.installSamples();
+      this.display.printLine('DISK INITIALIZED');
+      this.showPrompt();
+      return true;
+    }
+
+    // MAXFILES
+    if (upper.startsWith('MAXFILES ') || upper.startsWith('MAXFILES=')) {
+      const val = parseInt(upper.replace(/^MAXFILES\s*=?\s*/, ''));
+      if (val >= 1 && val <= 16) {
+        this.fs.maxFiles = val;
+      } else {
+        this.display.printLine('?ILLEGAL QUANTITY ERROR');
+      }
+      this.showPrompt();
+      return true;
+    }
+
+    // PR# / IN# (slot select)
+    if (upper.startsWith('PR#')) {
+      const slot = parseInt(upper.substring(3).trim());
+      if (isNaN(slot) || slot < 0 || slot > 7) {
+        this.display.printLine('?ILLEGAL QUANTITY ERROR');
+      }
+      // PR#0 = screen (default), others = no device
+      this.showPrompt();
+      return true;
+    }
+    if (upper.startsWith('IN#')) {
+      const slot = parseInt(upper.substring(3).trim());
+      if (isNaN(slot) || slot < 0 || slot > 7) {
+        this.display.printLine('?ILLEGAL QUANTITY ERROR');
+      }
+      // IN#0 = keyboard (default), others = no device
+      this.showPrompt();
+      return true;
+    }
+
+    // MON / NOMON
+    if (upper === 'MON' || upper.startsWith('MON ') || upper.startsWith('MON,')) {
+      this.display.printLine('I/O MONITOR NOT AVAILABLE');
+      this.showPrompt();
+      return true;
+    }
+    if (upper === 'NOMON' || upper.startsWith('NOMON ') || upper.startsWith('NOMON,')) {
+      this.showPrompt();
+      return true;
+    }
+
+    // EXEC - execute command file
+    if (upper.startsWith('EXEC ')) {
+      this.cmdExec(this.extractQuotedArg(upper.substring(5)));
+      return true;
+    }
+
+    // BSAVE (binary save stub)
+    if (upper.startsWith('BSAVE ')) {
+      this.cmdBsave(upper.substring(6).trim());
+      this.showPrompt();
+      return true;
+    }
+
+    // BLOAD (binary load stub)
+    if (upper.startsWith('BLOAD ')) {
+      this.cmdBload(upper.substring(6).trim());
+      this.showPrompt();
+      return true;
+    }
+
+    // BRUN (binary run stub)
+    if (upper.startsWith('BRUN ')) {
+      this.display.printLine('?BINARY NOT SUPPORTED');
+      this.showPrompt();
+      return true;
+    }
+
+    // OPEN - open sequential file
+    if (upper.startsWith('OPEN ')) {
+      const path = this.extractQuotedArg(upper.substring(5));
+      const fpath = this.resolveWithExt(path);
+      const err = this.fs.openFile(fpath, 'READ');
+      if (err) this.display.printLine('?' + err);
+      this.showPrompt();
+      return true;
+    }
+
+    // CLOSE - close file(s)
+    if (upper === 'CLOSE' || upper.startsWith('CLOSE ')) {
+      const arg = upper.substring(5).trim();
+      if (!arg) {
+        this.fs.closeFile(null);
+      } else {
+        const path = this.extractQuotedArg(arg);
+        this.fs.closeFile(this.resolveWithExt(path));
+      }
+      this.showPrompt();
+      return true;
+    }
+
+    // WRITE - open for writing
+    if (upper.startsWith('WRITE ')) {
+      const path = this.extractQuotedArg(upper.substring(6));
+      const fpath = this.resolveWithExt(path);
+      const err = this.fs.openFile(fpath, 'WRITE');
+      if (err) this.display.printLine('?' + err);
+      this.showPrompt();
+      return true;
+    }
+
+    // APPEND - open for appending
+    if (upper.startsWith('APPEND ')) {
+      const path = this.extractQuotedArg(upper.substring(7));
+      const fpath = this.resolveWithExt(path);
+      const err = this.fs.openFile(fpath, 'APPEND');
+      if (err) this.display.printLine('?' + err);
+      this.showPrompt();
+      return true;
+    }
+
+    // READ - open for reading (alias for OPEN in file context)
+    // Note: READ as a BASIC statement is handled by the interpreter
+    // This is only matched when it looks like a DOS command: READ "filename"
+    if (upper.match(/^READ\s*"/)) {
+      const path = this.extractQuotedArg(upper.substring(4));
+      const fpath = this.resolveWithExt(path);
+      const err = this.fs.openFile(fpath, 'READ');
+      if (err) this.display.printLine('?' + err);
+      this.showPrompt();
+      return true;
+    }
+
+    // POSITION - set file position
+    if (upper.startsWith('POSITION ')) {
+      const parts = upper.substring(9).split(',');
+      if (parts.length !== 2) {
+        this.display.printLine('?SYNTAX ERROR');
+      } else {
+        const path = this.extractQuotedArg(parts[0]);
+        const record = parseInt(parts[1].trim());
+        const err = this.fs.positionFile(this.resolveWithExt(path), record);
+        if (err) this.display.printLine('?' + err);
+      }
+      this.showPrompt();
+      return true;
+    }
+
+    // PREFIX (ProDOS: like CD)
+    if (upper === 'PREFIX' || upper.startsWith('PREFIX ')) {
+      const arg = upper.substring(6).trim();
+      if (!arg) {
+        this.display.printLine(this.fs.cwd);
+      } else {
+        const err = this.fs.cd(this.extractQuotedArg(arg));
+        if (err) this.display.printLine('?' + err);
+      }
+      this.showPrompt();
+      return true;
+    }
+
+    // CD (alias for PREFIX)
+    if (upper === 'CD' || upper.startsWith('CD ')) {
+      const arg = upper.substring(2).trim();
+      if (!arg) { this.display.printLine(this.fs.cwd); }
+      else {
+        const err = this.fs.cd(this.extractQuotedArg(arg));
+        if (err) this.display.printLine('?' + err);
+      }
+      this.showPrompt();
+      return true;
+    }
+
+    // PWD (alias for PREFIX without args)
+    if (upper === 'PWD') {
+      this.display.printLine(this.fs.cwd);
+      this.showPrompt();
+      return true;
+    }
+
+    // CREATE (ProDOS: create subdirectory)
+    if (upper.startsWith('CREATE ')) {
+      const path = this.extractQuotedArg(upper.substring(7));
+      const err = this.fs.mkdir(path);
+      if (err) this.display.printLine('?' + err);
+      this.showPrompt();
+      return true;
+    }
+
+    // MKDIR (alias for CREATE)
+    if (upper.startsWith('MKDIR ')) {
+      const err = this.fs.mkdir(this.extractQuotedArg(upper.substring(6)));
+      if (err) this.display.printLine('?' + err);
+      this.showPrompt();
+      return true;
+    }
+
+    // RMDIR
+    if (upper.startsWith('RMDIR ')) {
+      const err = this.fs.rmdir(this.extractQuotedArg(upper.substring(6)));
+      if (err) this.display.printLine('?' + err);
+      this.showPrompt();
+      return true;
+    }
+
+    // TYPE (show file content - not Apple-original but useful)
+    if (upper.startsWith('TYPE ')) {
+      const path = this.extractQuotedArg(upper.substring(5));
+      const fpath = this.resolveWithExt(path);
+      const result = this.fs.readFile(fpath);
+      if (result.error) { this.display.printLine('?' + result.error); }
+      else {
+        this.display.printLine('');
+        for (const l of result.content.split('\n')) this.display.printLine(l);
+      }
+      this.showPrompt();
+      return true;
+    }
+
+    // UPLOAD (browser: upload file from PC)
     if (upper === 'UPLOAD') {
       this.display.printLine('SELECT FILE(S) TO UPLOAD...');
       this.fileUpload.click();
       return true;
     }
 
-    // DOWNLOAD
+    // DOWNLOAD (browser: download file to PC)
     if (upper === 'DOWNLOAD' || upper.startsWith('DOWNLOAD ')) {
       this.cmdDownload(upper === 'DOWNLOAD' ? null : this.extractQuotedArg(upper.substring(9)));
       this.showPrompt();
       return true;
     }
 
-    return false; // not a filesystem command
+    return false; // not a DOS command
   }
 
-  // ===== FILESYSTEM COMMAND IMPLEMENTATIONS =====
+  // Try to resolve a filename, adding .BAS if not found
+  resolveWithExt(path) {
+    const node = this.fs.getNode(path);
+    if (node) return path;
+    if (!path.includes('.')) {
+      const withBas = this.fs.getNode(path + '.BAS');
+      if (withBas) return path + '.BAS';
+    }
+    return path;
+  }
+
+  // ===== DOS 3.3 CATALOG =====
 
   cmdCatalog(path) {
-    const result = this.fs.listDir(path || this.fs.cwd);
+    const dirPath = path || this.fs.cwd;
+    const result = this.fs.listDir(dirPath);
     if (result.error) {
-      this.display.printLine(result.error);
+      this.display.printLine('?' + result.error);
       return;
     }
     this.display.printLine('');
-    this.display.printLine('DIRECTORY: ' + this.fs.resolve(path || this.fs.cwd));
+    this.display.printLine('DISK VOLUME ' + this.fs.volumeNumber);
     this.display.printLine('');
-    if (result.entries.length === 0) {
-      this.display.printLine('  (EMPTY)');
-    } else {
-      for (const entry of result.entries) {
-        if (entry.type === 'dir') {
-          this.display.printLine('  [DIR]  ' + entry.name);
-        } else {
-          const size = entry.content ? entry.content.length : 0;
-          this.display.printLine('  [FILE] ' + entry.name + '  (' + size + ' BYTES)');
-        }
+
+    let totalSectors = 0;
+    for (const entry of result.entries) {
+      if (entry.type === 'dir') {
+        this.display.printLine(' D 002 ' + entry.name);
+        totalSectors += 2;
+      } else {
+        const locked = entry.locked ? '*' : ' ';
+        const ftype = entry.fileType || 'T';
+        const sectors = entry.sectors || 1;
+        totalSectors += sectors;
+        const secStr = String(sectors).padStart(3, '0');
+        this.display.printLine(locked + ftype + ' ' + secStr + ' ' + entry.name);
       }
     }
+
     this.display.printLine('');
-    this.display.printLine(result.entries.length + ' ENTRIES');
+    const freeSectors = 560 - totalSectors; // DOS 3.3: 560 sectors total
+    this.display.printLine('FREE SECTORS: ' + Math.max(0, freeSectors));
   }
 
+  // ===== LOAD =====
+
   cmdLoad(path) {
-    let result = this.fs.readFile(path);
-    let fname = path;
-    if (result.error && !path.endsWith('.BAS')) {
-      result = this.fs.readFile(path + '.BAS');
-      if (!result.error) fname = path + '.BAS';
-    }
+    let fpath = this.resolveWithExt(path);
+    let result = this.fs.readFile(fpath);
     if (result.error) {
-      this.display.printLine(result.error);
+      this.display.printLine('?' + result.error);
       return;
     }
     this.interpreter.program = {};
@@ -462,8 +645,9 @@ class Emulator {
     for (const [num, src] of Object.entries(program)) {
       this.interpreter.storeLine(parseInt(num), src);
     }
-    this.display.printLine('LOADED: ' + fname);
   }
+
+  // ===== DOWNLOAD =====
 
   cmdDownload(path) {
     if (!path) {
@@ -475,12 +659,10 @@ class Emulator {
       this.triggerDownload('PROGRAM.BAS', content);
       this.display.printLine('DOWNLOADING: PROGRAM.BAS');
     } else {
-      let result = this.fs.readFile(path);
-      if (result.error && !path.endsWith('.BAS')) {
-        result = this.fs.readFile(path + '.BAS');
-      }
+      const fpath = this.resolveWithExt(path);
+      const result = this.fs.readFile(fpath);
       if (result.error) {
-        this.display.printLine(result.error);
+        this.display.printLine('?' + result.error);
         return;
       }
       const fname = path.includes('.') ? path : path + '.BAS';
@@ -501,10 +683,44 @@ class Emulator {
     URL.revokeObjectURL(url);
   }
 
+  // ===== BSAVE / BLOAD =====
+
+  cmdBsave(argStr) {
+    // Parse: BSAVE "name",A$addr,L$len
+    const nameMatch = argStr.match(/^"?([^",]+)"?\s*,?\s*A\$?([0-9A-F]+)\s*,?\s*L\$?([0-9A-F]+)/i);
+    if (!nameMatch) {
+      this.display.printLine('?SYNTAX ERROR');
+      return;
+    }
+    const name = nameMatch[1].toUpperCase();
+    const fname = name.endsWith('.BIN') ? name : name + '.BIN';
+    // Create a placeholder binary file
+    const addr = parseInt(nameMatch[2], 16);
+    const len = parseInt(nameMatch[3], 16);
+    const content = `; BINARY FILE\n; ADDRESS: $${addr.toString(16).toUpperCase()}\n; LENGTH: $${len.toString(16).toUpperCase()}\n`;
+    const err = this.fs.writeFile(fname, content, 'B');
+    if (err) this.display.printLine('?' + err);
+  }
+
+  cmdBload(argStr) {
+    const nameMatch = argStr.match(/^"?([^",]+)"?/i);
+    if (!nameMatch) {
+      this.display.printLine('?SYNTAX ERROR');
+      return;
+    }
+    const name = nameMatch[1].toUpperCase();
+    const fpath = this.resolveWithExt(name);
+    const result = this.fs.readFile(fpath);
+    if (result.error) {
+      this.display.printLine('?' + result.error);
+      return;
+    }
+    // Binary loading is simulated - file content is acknowledged
+  }
+
   // ===== DEL LINES =====
   cmdDelLines(range) {
     let start = 0, end = Infinity;
-    // Support both DEL 10,100 and DEL 10-100
     const sep = range.includes(',') ? ',' : '-';
     const parts = range.split(sep);
     if (parts.length === 2) {
@@ -514,11 +730,9 @@ class Emulator {
       start = end = parseInt(parts[0].trim());
     }
 
-    let count = 0;
     for (const lineNum of [...this.interpreter.sortedLines]) {
       if (lineNum >= start && lineNum <= end) {
         delete this.interpreter.program[lineNum];
-        count++;
       }
     }
     this.interpreter.sortedLines = Object.keys(this.interpreter.program).map(Number).sort((a, b) => a - b);
@@ -527,12 +741,11 @@ class Emulator {
 
   // ===== EXEC (run a command file) =====
   async cmdExec(path) {
-    let result = this.fs.readFile(path);
-    if (result.error && !path.endsWith('.BAS')) {
-      result = this.fs.readFile(path + '.BAS');
-    }
+    const fpath = this.resolveWithExt(path);
+    const result = this.fs.readFile(fpath);
     if (result.error) {
-      this.display.printLine(result.error);
+      this.display.printLine('?' + result.error);
+      this.showPrompt();
       return;
     }
     const lines = result.content.split('\n');
@@ -542,6 +755,7 @@ class Emulator {
         await this.processLine(trimmed);
       }
     }
+    this.showPrompt();
   }
 
   // ===== PROGRAM EXECUTION =====
@@ -602,37 +816,69 @@ class Emulator {
     this.boot();
   }
 
-  // ===== HELP & TUTORIAL =====
+  // ===== HELP =====
 
   showHelp() {
     this.display.printLine('');
     this.display.printLine('=== BASIC COMMANDS ===');
-    this.display.printLine('RUN [LINE] RUN PROGRAM');
-    this.display.printLine('CONT       CONTINUE AFTER STOP');
-    this.display.printLine('LIST       LIST PROGRAM');
-    this.display.printLine('NEW        CLEAR PROGRAM');
-    this.display.printLine('TRACE      ENABLE LINE TRACE');
-    this.display.printLine('NOTRACE    DISABLE LINE TRACE');
-    this.display.printLine('RESET      RESET EMULATOR');
-    this.display.printLine('CTRL+C     BREAK PROGRAM');
+    this.display.printLine('RUN [LINE]   RUN PROGRAM');
+    this.display.printLine('CONT         CONTINUE AFTER STOP');
+    this.display.printLine('LIST [M-N]   LIST PROGRAM');
+    this.display.printLine('DEL M,N      DELETE LINES M-N');
+    this.display.printLine('NEW          CLEAR PROGRAM');
+    this.display.printLine('TRACE        ENABLE LINE TRACE');
+    this.display.printLine('NOTRACE      DISABLE LINE TRACE');
+    this.display.printLine('FP           APPLESOFT MODE');
+    this.display.printLine('RESET        RESET EMULATOR');
+    this.display.printLine('CTRL+C       BREAK PROGRAM');
     this.display.printLine('');
-    this.display.printLine('=== FILE SYSTEM ===');
-    this.display.printLine('CATALOG    LIST DIRECTORY');
-    this.display.printLine('CD "DIR"   CHANGE DIRECTORY');
-    this.display.printLine('PWD        SHOW CURRENT DIR');
-    this.display.printLine('MKDIR "X"  CREATE DIRECTORY');
-    this.display.printLine('RMDIR "X"  REMOVE DIRECTORY');
-    this.display.printLine('CREATE "X" CREATE EMPTY FILE');
-    this.display.printLine('DELETE "X" DELETE FILE');
-    this.display.printLine('RENAME "A","B"  RENAME');
-    this.display.printLine('TYPE "X"   SHOW FILE CONTENT');
+    this.display.printLine('=== DOS 3.3 DISK COMMANDS ===');
+    this.display.printLine('CATALOG      LIST DISK CONTENTS');
+    this.display.printLine('SAVE "X"     SAVE PROGRAM TO DISK');
+    this.display.printLine('LOAD "X"     LOAD PROGRAM FROM DISK');
+    this.display.printLine('DELETE "X"   DELETE FILE');
+    this.display.printLine('LOCK "X"     LOCK FILE');
+    this.display.printLine('UNLOCK "X"   UNLOCK FILE');
+    this.display.printLine('RENAME "A","B"  RENAME FILE');
+    this.display.printLine('VERIFY "X"   VERIFY FILE');
+    this.display.printLine('INIT         FORMAT DISK');
+    this.display.printLine('MAXFILES N   SET MAX OPEN FILES');
     this.display.printLine('');
-    this.display.printLine('=== SAVE / LOAD ===');
-    this.display.printLine('SAVE "X"   SAVE PROGRAM');
-    this.display.printLine('LOAD "X"   LOAD PROGRAM');
-    this.display.printLine('UPLOAD     UPLOAD FROM PC');
-    this.display.printLine('DOWNLOAD   DOWNLOAD PROGRAM');
+    this.display.printLine('=== FILE I/O ===');
+    this.display.printLine('OPEN "X"     OPEN FILE FOR INPUT');
+    this.display.printLine('WRITE "X"    OPEN FILE FOR OUTPUT');
+    this.display.printLine('APPEND "X"   OPEN FOR APPEND');
+    this.display.printLine('CLOSE        CLOSE ALL FILES');
+    this.display.printLine('CLOSE "X"    CLOSE SPECIFIC FILE');
+    this.display.printLine('EXEC "X"     EXECUTE COMMAND FILE');
+    this.display.printLine('POSITION "X",N  SET FILE POSITION');
+    this.display.printLine('');
+    this.display.printLine('=== BINARY (SIMULATED) ===');
+    this.display.printLine('BSAVE "X",A$ADDR,L$LEN');
+    this.display.printLine('BLOAD "X"    LOAD BINARY');
+    this.display.printLine('BRUN "X"     RUN BINARY');
+    this.display.printLine('');
+    this.display.printLine('=== DEVICE CONTROL ===');
+    this.display.printLine('PR#N         OUTPUT TO SLOT N');
+    this.display.printLine('IN#N         INPUT FROM SLOT N');
+    this.display.printLine('MON          ENABLE I/O MONITOR');
+    this.display.printLine('NOMON        DISABLE I/O MONITOR');
+    this.display.printLine('');
+    this.display.printLine('=== NAVIGATION (PRODOS) ===');
+    this.display.printLine('PREFIX "X"   SET DIRECTORY');
+    this.display.printLine('CD "X"       CHANGE DIRECTORY');
+    this.display.printLine('CREATE "X"   CREATE SUBDIRECTORY');
+    this.display.printLine('');
+    this.display.printLine('=== BROWSER BRIDGE ===');
+    this.display.printLine('UPLOAD       UPLOAD FROM PC');
+    this.display.printLine('DOWNLOAD     DOWNLOAD PROGRAM');
     this.display.printLine('DOWNLOAD "X" DOWNLOAD FILE');
+    this.display.printLine('TYPE "X"     SHOW FILE CONTENTS');
+    this.display.printLine('');
+    this.display.printLine('FILE TYPES: A=APPLESOFT B=BINARY');
+    this.display.printLine('            T=TEXT     I=INTEGER');
+    this.display.printLine('');
+    this.display.printLine('CATALOG SHOWS: *=LOCKED');
     this.display.printLine('');
     this.display.printLine('TYPE "TUTORIAL" FOR TUTORIAL');
     this.display.printLine('');
