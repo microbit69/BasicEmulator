@@ -94,14 +94,14 @@ body {
 /* ===== TEXT DISPLAY ===== */
 #text-display {
   font-family: 'Courier New', 'Lucida Console', monospace;
-  font-size: 16px;
-  line-height: 1.2;
+  font-size: 20px;
+  line-height: 1.25;
   color: #33ff33;
   white-space: pre;
-  letter-spacing: 0.5px;
+  letter-spacing: 1px;
   text-shadow: 0 0 5px rgba(51, 255, 51, 0.5), 0 0 10px rgba(51, 255, 51, 0.2);
-  min-height: 460px;
-  width: 520px;
+  min-height: 600px;
+  width: 660px;
   user-select: none;
   position: relative;
 }
@@ -138,54 +138,9 @@ body {
   image-rendering: crisp-edges;
 }
 
-/* hidden input removed - using document keydown */
-
-/* ===== TOOLBAR ===== */
-#toolbar {
-  display: flex;
-  gap: 8px;
-  margin-top: 16px;
-  flex-wrap: wrap;
-  justify-content: center;
-  max-width: 580px;
-}
-
-.toolbar-btn {
-  background: #222;
-  color: #33ff33;
-  border: 1px solid #33ff33;
-  padding: 6px 14px;
-  font-family: 'Courier New', monospace;
-  font-size: 12px;
-  cursor: pointer;
-  border-radius: 4px;
-  transition: all 0.2s;
-  text-shadow: 0 0 5px rgba(51, 255, 51, 0.3);
-}
-
-.toolbar-btn:hover {
-  background: #33ff33;
-  color: #000;
-  text-shadow: none;
-  box-shadow: 0 0 10px rgba(51, 255, 51, 0.3);
-}
-
-/* ===== SAMPLE PROGRAMS DROPDOWN ===== */
-#samples-select {
-  background: #222;
-  color: #33ff33;
-  border: 1px solid #33ff33;
-  padding: 6px 10px;
-  font-family: 'Courier New', monospace;
-  font-size: 12px;
-  cursor: pointer;
-  border-radius: 4px;
-  outline: none;
-}
-
-#samples-select option {
-  background: #111;
-  color: #33ff33;
+/* hidden file input for upload */
+#file-upload {
+  display: none;
 }
 
 /* ===== POWER LED ===== */
@@ -205,9 +160,9 @@ body {
 }
 
 /* ===== RESPONSIVE ===== */
-@media (max-width: 640px) {
+@media (max-width: 740px) {
   #monitor { padding: 16px; border-radius: 16px; }
-  #text-display { font-size: 12px; width: 390px; min-height: 345px; }
+  #text-display { font-size: 14px; width: 460px; min-height: 420px; letter-spacing: 0.5px; }
   #screen-container { padding: 10px; }
 }
 </style>
@@ -227,27 +182,8 @@ body {
   </div>
 </div>
 
-<!-- keyboard input is captured via document-level keydown listener -->
-
-<div id="toolbar">
-  <button class="toolbar-btn" onclick="emulator.reset()" title="Reset the emulator">RESET</button>
-  <button class="toolbar-btn" onclick="emulator.ctrlC()" title="Break running program">CTRL+C</button>
-  <button class="toolbar-btn" onclick="emulator.listProgram()" title="List current program">LIST</button>
-  <button class="toolbar-btn" onclick="emulator.runProgram()" title="Run current program">RUN</button>
-  <select id="samples-select" onchange="emulator.loadSample(this.value); this.selectedIndex=0;">
-    <option value="">LOAD SAMPLE...</option>
-    <option value="hello">HELLO WORLD</option>
-    <option value="fibonacci">FIBONACCI</option>
-    <option value="guessing">GUESSING GAME</option>
-    <option value="sine">SINE WAVE</option>
-    <option value="mandelbrot">MANDELBROT</option>
-    <option value="lores_demo">LO-RES DEMO</option>
-    <option value="starfield">STARFIELD</option>
-    <option value="sorting">BUBBLE SORT</option>
-    <option value="99bottles">99 BOTTLES</option>
-    <option value="primes">PRIME SIEVE</option>
-  </select>
-</div>
+<!-- hidden file upload input -->
+<input type="file" id="file-upload" accept=".bas,.txt,.BAS,.TXT" multiple>
 
 <script>
 // =============================================================================
@@ -306,6 +242,140 @@ const AppleSoftBasic = (() => {
       oscillator.start();
       oscillator.stop(ctx.currentTime + duration / 1000);
     } catch (e) { /* Audio not available */ }
+  }
+
+  // ===== VIRTUAL FILE SYSTEM =====
+  class VirtualFileSystem {
+    constructor() {
+      this.root = { type: 'dir', name: '/', children: {} };
+      this.cwd = '/';
+    }
+
+    resolve(path) {
+      let p = path.replace(/\\/g, '/');
+      if (!p.startsWith('/')) {
+        p = this.cwd + (this.cwd.endsWith('/') ? '' : '/') + p;
+      }
+      const parts = p.split('/').filter(s => s.length > 0);
+      const normalized = [];
+      for (const part of parts) {
+        if (part === '..') { normalized.pop(); }
+        else if (part !== '.') { normalized.push(part.toUpperCase()); }
+      }
+      return '/' + normalized.join('/');
+    }
+
+    getNode(path) {
+      const abs = this.resolve(path);
+      if (abs === '/') return this.root;
+      const parts = abs.split('/').filter(s => s.length > 0);
+      let node = this.root;
+      for (const part of parts) {
+        if (!node.children || !node.children[part]) return null;
+        node = node.children[part];
+      }
+      return node;
+    }
+
+    getParentAndName(path) {
+      const abs = this.resolve(path);
+      const parts = abs.split('/').filter(s => s.length > 0);
+      const name = parts.pop();
+      const parentPath = '/' + parts.join('/');
+      const parent = this.getNode(parentPath || '/');
+      return { parent, name };
+    }
+
+    mkdir(path) {
+      const { parent, name } = this.getParentAndName(path);
+      if (!parent || parent.type !== 'dir') return '?PATH NOT FOUND';
+      if (!name) return '?SYNTAX ERROR';
+      if (parent.children[name]) return '?FILE EXISTS';
+      parent.children[name] = { type: 'dir', name, children: {} };
+      return null;
+    }
+
+    rmdir(path) {
+      const { parent, name } = this.getParentAndName(path);
+      if (!parent || !name) return '?PATH NOT FOUND';
+      const node = parent.children[name];
+      if (!node) return '?FILE NOT FOUND';
+      if (node.type !== 'dir') return '?NOT A DIRECTORY';
+      if (Object.keys(node.children).length > 0) return '?DIRECTORY NOT EMPTY';
+      delete parent.children[name];
+      return null;
+    }
+
+    writeFile(path, content) {
+      const { parent, name } = this.getParentAndName(path);
+      if (!parent || parent.type !== 'dir') return '?PATH NOT FOUND';
+      if (!name) return '?SYNTAX ERROR';
+      if (parent.children[name] && parent.children[name].type === 'dir') return '?IS A DIRECTORY';
+      parent.children[name] = { type: 'file', name, content };
+      return null;
+    }
+
+    readFile(path) {
+      const node = this.getNode(path);
+      if (!node) return { error: '?FILE NOT FOUND' };
+      if (node.type !== 'file') return { error: '?NOT A FILE' };
+      return { content: node.content };
+    }
+
+    deleteFile(path) {
+      const { parent, name } = this.getParentAndName(path);
+      if (!parent || !name) return '?PATH NOT FOUND';
+      if (!parent.children[name]) return '?FILE NOT FOUND';
+      if (parent.children[name].type === 'dir') return '?IS A DIRECTORY';
+      delete parent.children[name];
+      return null;
+    }
+
+    rename(oldPath, newPath) {
+      const { parent: op, name: on } = this.getParentAndName(oldPath);
+      const { parent: np, name: nn } = this.getParentAndName(newPath);
+      if (!op || !op.children[on]) return '?FILE NOT FOUND';
+      if (!np || np.type !== 'dir') return '?PATH NOT FOUND';
+      np.children[nn] = op.children[on];
+      np.children[nn].name = nn;
+      if (op !== np || on !== nn) delete op.children[on];
+      return null;
+    }
+
+    listDir(path) {
+      const node = this.getNode(path || this.cwd);
+      if (!node) return { error: '?PATH NOT FOUND' };
+      if (node.type !== 'dir') return { error: '?NOT A DIRECTORY' };
+      return { entries: Object.values(node.children) };
+    }
+
+    cd(path) {
+      const abs = this.resolve(path);
+      const node = this.getNode(abs);
+      if (!node) return '?PATH NOT FOUND';
+      if (node.type !== 'dir') return '?NOT A DIRECTORY';
+      this.cwd = abs || '/';
+      return null;
+    }
+
+    // Serialize program to text for saving
+    static programToText(program) {
+      const lines = Object.keys(program).map(Number).sort((a, b) => a - b);
+      return lines.map(n => `${n} ${program[n]}`).join('\n');
+    }
+
+    // Parse text back into program lines
+    static textToProgram(text) {
+      const program = {};
+      const lines = text.split('\n');
+      for (const line of lines) {
+        const match = line.trim().match(/^(\d+)\s+(.*)/);
+        if (match) {
+          program[parseInt(match[1])] = match[2];
+        }
+      }
+      return program;
+    }
   }
 
   // ===== TOKENIZER =====
@@ -1999,23 +2069,65 @@ const AppleSoftBasic = (() => {
     constructor() {
       this.displayElement = document.getElementById('text-display');
       this.canvasElement = document.getElementById('lores-canvas');
+      this.fileUpload = document.getElementById('file-upload');
       this.display = new Display(this.displayElement, this.canvasElement);
       this.interpreter = new Interpreter(this.display);
+      this.fs = new VirtualFileSystem();
       this.inputBuffer = '';
       this.commandMode = true;
       this.setupInput();
+      this.setupFileUpload();
+      this.installSamples();
       this.boot();
     }
 
     boot() {
       this.display.clear();
-      this.display.printLine('APPLE ][ BASIC');
+      this.display.printLine('APPLE ][ BASIC OS');
       this.display.printLine('APPLESOFT BASIC INTERPRETER');
       this.display.printLine('(C) 2026 - JAVASCRIPT EDITION');
+      this.display.printLine('');
+      this.display.printLine('TYPE "HELP" FOR COMMANDS');
+      this.display.printLine('TYPE "TUTORIAL" FOR TUTORIAL');
       this.display.printLine('');
       this.display.printLine('READY.');
       this.showPrompt();
       beep(100, 1000);
+    }
+
+    installSamples() {
+      this.fs.mkdir('/SAMPLES');
+      const samples = this.getSamples();
+      for (const [name, code] of Object.entries(samples)) {
+        this.fs.writeFile('/SAMPLES/' + name.toUpperCase() + '.BAS', code.trim());
+      }
+    }
+
+    setupFileUpload() {
+      this.fileUpload.addEventListener('change', (e) => {
+        const files = e.target.files;
+        if (!files || files.length === 0) return;
+        let loaded = 0;
+        for (const file of files) {
+          const reader = new FileReader();
+          reader.onload = (ev) => {
+            const content = ev.target.result;
+            const name = file.name.toUpperCase().replace(/[^A-Z0-9._]/g, '');
+            const err = this.fs.writeFile(name || 'UPLOAD.BAS', content);
+            loaded++;
+            if (err) {
+              this.display.printLine(err);
+            } else {
+              this.display.printLine('UPLOADED: ' + (name || 'UPLOAD.BAS'));
+            }
+            if (loaded === files.length) {
+              this.showPrompt();
+            }
+          };
+          reader.readAsText(file);
+        }
+        e.target.value = '';
+      });
     }
 
     showPrompt() {
@@ -2111,6 +2223,11 @@ const AppleSoftBasic = (() => {
       this.display.render();
     }
 
+    extractQuotedArg(str) {
+      const m = str.match(/"([^"]*)"/);
+      return m ? m[1].toUpperCase() : str.trim().toUpperCase();
+    }
+
     async processLine(line) {
       const upper = line.toUpperCase().trim();
 
@@ -2124,20 +2241,11 @@ const AppleSoftBasic = (() => {
         return;
       }
 
-      // Immediate commands
-      if (upper === 'RUN') {
-        await this.runProgram();
-        return;
-      }
+      // ===== BASIC COMMANDS =====
+      if (upper === 'RUN') { await this.runProgram(); return; }
 
-      if (upper === 'LIST') {
-        this.listProgram();
-        this.showPrompt();
-        return;
-      }
-
-      if (upper.startsWith('LIST')) {
-        this.listProgram(upper.substring(4).trim());
+      if (upper === 'LIST' || upper.startsWith('LIST ') || upper.startsWith('LIST-')) {
+        this.listProgram(upper === 'LIST' ? '' : upper.substring(4).trim());
         this.showPrompt();
         return;
       }
@@ -2146,12 +2254,236 @@ const AppleSoftBasic = (() => {
         this.interpreter.program = {};
         this.interpreter.sortedLines = [];
         this.interpreter.clearVars();
+        this.display.printLine('');
         this.showPrompt();
         return;
       }
 
-      if (upper === 'CATALOG' || upper === 'CAT') {
-        this.display.printLine('NO DISK DRIVE');
+      if (upper === 'RESET') { this.reset(); return; }
+
+      // ===== HELP =====
+      if (upper === 'HELP') {
+        this.showHelp();
+        this.showPrompt();
+        return;
+      }
+
+      // ===== TUTORIAL =====
+      if (upper === 'TUTORIAL' || upper.startsWith('TUTORIAL ')) {
+        const pageArg = upper.substring(8).trim();
+        const page = pageArg ? parseInt(pageArg) : 1;
+        this.showTutorial(page);
+        this.showPrompt();
+        return;
+      }
+
+      // ===== FILESYSTEM COMMANDS =====
+
+      // CATALOG / CAT / DIR - list directory
+      if (upper === 'CATALOG' || upper === 'CAT' || upper === 'DIR' ||
+          upper.startsWith('CATALOG ') || upper.startsWith('CAT ') || upper.startsWith('DIR ')) {
+        const arg = upper.replace(/^(CATALOG|CAT|DIR)\s*/, '').trim();
+        const path = arg ? this.extractQuotedArg(arg) : '';
+        const result = this.fs.listDir(path || this.fs.cwd);
+        if (result.error) {
+          this.display.printLine(result.error);
+        } else {
+          this.display.printLine('');
+          this.display.printLine('DIRECTORY: ' + (this.fs.resolve(path || this.fs.cwd)));
+          this.display.printLine('');
+          if (result.entries.length === 0) {
+            this.display.printLine('  (EMPTY)');
+          } else {
+            for (const entry of result.entries) {
+              if (entry.type === 'dir') {
+                this.display.printLine('  [DIR]  ' + entry.name);
+              } else {
+                const size = entry.content ? entry.content.length : 0;
+                this.display.printLine('  [FILE] ' + entry.name + '  (' + size + ' BYTES)');
+              }
+            }
+          }
+          this.display.printLine('');
+          this.display.printLine(result.entries.length + ' ENTRIES');
+        }
+        this.showPrompt();
+        return;
+      }
+
+      // PWD - print working directory
+      if (upper === 'PWD') {
+        this.display.printLine(this.fs.cwd);
+        this.showPrompt();
+        return;
+      }
+
+      // CD - change directory
+      if (upper === 'CD' || upper.startsWith('CD ')) {
+        const arg = upper.substring(2).trim();
+        if (!arg || arg === '') {
+          this.display.printLine(this.fs.cwd);
+        } else {
+          const path = this.extractQuotedArg(arg);
+          const err = this.fs.cd(path);
+          if (err) this.display.printLine(err);
+        }
+        this.showPrompt();
+        return;
+      }
+
+      // MKDIR - create directory
+      if (upper.startsWith('MKDIR ')) {
+        const path = this.extractQuotedArg(upper.substring(6));
+        const err = this.fs.mkdir(path);
+        if (err) this.display.printLine(err);
+        this.showPrompt();
+        return;
+      }
+
+      // RMDIR - remove directory
+      if (upper.startsWith('RMDIR ')) {
+        const path = this.extractQuotedArg(upper.substring(6));
+        const err = this.fs.rmdir(path);
+        if (err) this.display.printLine(err);
+        this.showPrompt();
+        return;
+      }
+
+      // CREATE - create empty file
+      if (upper.startsWith('CREATE ')) {
+        const path = this.extractQuotedArg(upper.substring(7));
+        const err = this.fs.writeFile(path, '');
+        if (err) this.display.printLine(err);
+        else this.display.printLine('CREATED: ' + path);
+        this.showPrompt();
+        return;
+      }
+
+      // DELETE / DEL - delete file
+      if (upper.startsWith('DELETE ') || upper.startsWith('DEL ')) {
+        const cmd = upper.startsWith('DELETE') ? 'DELETE' : 'DEL';
+        const path = this.extractQuotedArg(upper.substring(cmd.length + 1));
+        const err = this.fs.deleteFile(path);
+        if (err) this.display.printLine(err);
+        else this.display.printLine('DELETED: ' + path);
+        this.showPrompt();
+        return;
+      }
+
+      // RENAME - rename file/dir
+      if (upper.startsWith('RENAME ')) {
+        const args = upper.substring(7);
+        const parts = args.split(',');
+        if (parts.length !== 2) {
+          this.display.printLine('?SYNTAX: RENAME "OLD","NEW"');
+        } else {
+          const oldName = this.extractQuotedArg(parts[0]);
+          const newName = this.extractQuotedArg(parts[1]);
+          const err = this.fs.rename(oldName, newName);
+          if (err) this.display.printLine(err);
+          else this.display.printLine('RENAMED');
+        }
+        this.showPrompt();
+        return;
+      }
+
+      // TYPE - show file contents
+      if (upper.startsWith('TYPE ')) {
+        const path = this.extractQuotedArg(upper.substring(5));
+        const result = this.fs.readFile(path);
+        if (result.error) {
+          this.display.printLine(result.error);
+        } else {
+          this.display.printLine('');
+          const lines = result.content.split('\n');
+          for (const l of lines) {
+            this.display.printLine(l);
+          }
+        }
+        this.showPrompt();
+        return;
+      }
+
+      // SAVE - save program to filesystem
+      if (upper.startsWith('SAVE ') || upper === 'SAVE') {
+        if (upper === 'SAVE') {
+          this.display.printLine('?SYNTAX: SAVE "FILENAME"');
+        } else {
+          const path = this.extractQuotedArg(upper.substring(5));
+          if (!path.endsWith('.BAS')) {
+            // Auto-add .BAS extension
+          }
+          const fname = path.endsWith('.BAS') ? path : path + '.BAS';
+          const content = VirtualFileSystem.programToText(this.interpreter.program);
+          const err = this.fs.writeFile(fname, content);
+          if (err) this.display.printLine(err);
+          else this.display.printLine('SAVED: ' + fname);
+        }
+        this.showPrompt();
+        return;
+      }
+
+      // LOAD - load program from filesystem
+      if (upper.startsWith('LOAD ') || upper === 'LOAD') {
+        if (upper === 'LOAD') {
+          this.display.printLine('?SYNTAX: LOAD "FILENAME"');
+        } else {
+          let path = this.extractQuotedArg(upper.substring(5));
+          // Try exact name first, then with .BAS
+          let result = this.fs.readFile(path);
+          if (result.error && !path.endsWith('.BAS')) {
+            result = this.fs.readFile(path + '.BAS');
+            if (!result.error) path = path + '.BAS';
+          }
+          if (result.error) {
+            this.display.printLine(result.error);
+          } else {
+            this.interpreter.program = {};
+            this.interpreter.sortedLines = [];
+            this.interpreter.clearVars();
+            const program = VirtualFileSystem.textToProgram(result.content);
+            for (const [num, src] of Object.entries(program)) {
+              this.interpreter.storeLine(parseInt(num), src);
+            }
+            this.display.printLine('LOADED: ' + path);
+          }
+        }
+        this.showPrompt();
+        return;
+      }
+
+      // UPLOAD - trigger browser file upload dialog
+      if (upper === 'UPLOAD') {
+        this.display.printLine('SELECT FILE(S) TO UPLOAD...');
+        this.fileUpload.click();
+        return;
+      }
+
+      // DOWNLOAD - download file from virtual filesystem
+      if (upper.startsWith('DOWNLOAD ') || upper === 'DOWNLOAD') {
+        if (upper === 'DOWNLOAD') {
+          // Download current program
+          const content = VirtualFileSystem.programToText(this.interpreter.program);
+          if (!content.trim()) {
+            this.display.printLine('?NO PROGRAM IN MEMORY');
+          } else {
+            this.triggerDownload('PROGRAM.BAS', content);
+            this.display.printLine('DOWNLOADING: PROGRAM.BAS');
+          }
+        } else {
+          const path = this.extractQuotedArg(upper.substring(9));
+          let result = this.fs.readFile(path);
+          if (result.error && !path.endsWith('.BAS')) {
+            result = this.fs.readFile(path + '.BAS');
+          }
+          if (result.error) {
+            this.display.printLine(result.error);
+          } else {
+            const fname = path.includes('.') ? path : path + '.BAS';
+            this.triggerDownload(fname, result.content);
+            this.display.printLine('DOWNLOADING: ' + fname);
+          }
+        }
         this.showPrompt();
         return;
       }
@@ -2168,6 +2500,269 @@ const AppleSoftBasic = (() => {
         this.display.printLine(e.message);
       }
       this.showPrompt();
+    }
+
+    triggerDownload(filename, content) {
+      const blob = new Blob([content], { type: 'text/plain' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = filename;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    }
+
+    showHelp() {
+      this.display.printLine('');
+      this.display.printLine('=== BASIC COMMANDS ===');
+      this.display.printLine('RUN        RUN PROGRAM');
+      this.display.printLine('LIST       LIST PROGRAM');
+      this.display.printLine('NEW        CLEAR PROGRAM');
+      this.display.printLine('RESET      RESET EMULATOR');
+      this.display.printLine('CTRL+C     BREAK PROGRAM');
+      this.display.printLine('');
+      this.display.printLine('=== FILE SYSTEM ===');
+      this.display.printLine('CATALOG    LIST DIRECTORY');
+      this.display.printLine('CD "DIR"   CHANGE DIRECTORY');
+      this.display.printLine('PWD        SHOW CURRENT DIR');
+      this.display.printLine('MKDIR "X"  CREATE DIRECTORY');
+      this.display.printLine('RMDIR "X"  REMOVE DIRECTORY');
+      this.display.printLine('CREATE "X" CREATE EMPTY FILE');
+      this.display.printLine('DELETE "X" DELETE FILE');
+      this.display.printLine('RENAME "A","B"  RENAME');
+      this.display.printLine('TYPE "X"   SHOW FILE CONTENT');
+      this.display.printLine('');
+      this.display.printLine('=== SAVE / LOAD ===');
+      this.display.printLine('SAVE "X"   SAVE PROGRAM');
+      this.display.printLine('LOAD "X"   LOAD PROGRAM');
+      this.display.printLine('UPLOAD     UPLOAD FROM PC');
+      this.display.printLine('DOWNLOAD   DOWNLOAD PROGRAM');
+      this.display.printLine('DOWNLOAD "X" DOWNLOAD FILE');
+      this.display.printLine('');
+      this.display.printLine('TYPE "TUTORIAL" FOR TUTORIAL');
+      this.display.printLine('');
+    }
+
+    showTutorial(page) {
+      const pages = this.getTutorialPages();
+      const maxPage = pages.length;
+      const p = Math.max(1, Math.min(maxPage, page || 1));
+      const content = pages[p - 1];
+
+      this.display.printLine('');
+      this.display.printLine('=== TUTORIAL PAGE ' + p + '/' + maxPage + ' ===');
+      this.display.printLine('');
+      for (const line of content) {
+        this.display.printLine(line);
+      }
+      this.display.printLine('');
+      if (p < maxPage) {
+        this.display.printLine('TYPE "TUTORIAL ' + (p + 1) + '" FOR NEXT');
+      } else {
+        this.display.printLine('END OF TUTORIAL');
+      }
+      this.display.printLine('');
+    }
+
+    getTutorialPages() {
+      return [
+        // Page 1: Getting Started
+        [
+          '--- GETTING STARTED ---',
+          '',
+          'THIS IS AN APPLESOFT BASIC',
+          'INTERPRETER WITH A BUILT-IN',
+          'VIRTUAL FILE SYSTEM.',
+          '',
+          'JUST TYPE COMMANDS AT THE ]',
+          'PROMPT AND PRESS ENTER.',
+          '',
+          'TRY TYPING:',
+          '  PRINT "HELLO WORLD"',
+          '',
+          'YOU CAN ALSO DO MATH:',
+          '  PRINT 2 + 3 * 4',
+          '',
+          'TYPE HELP FOR ALL COMMANDS.',
+        ],
+        // Page 2: Writing Programs
+        [
+          '--- WRITING PROGRAMS ---',
+          '',
+          'TO WRITE A PROGRAM, TYPE',
+          'EACH LINE WITH A NUMBER:',
+          '',
+          '  10 HOME',
+          '  20 PRINT "HI THERE!"',
+          '  30 PRINT "HOW ARE YOU?"',
+          '  40 END',
+          '',
+          'TYPE RUN TO EXECUTE IT.',
+          'TYPE LIST TO SEE IT.',
+          'TYPE NEW TO CLEAR IT.',
+          '',
+          'LINES RUN IN NUMBER ORDER.',
+          'USE GAPS (10,20,30...) SO',
+          'YOU CAN INSERT LINES LATER.',
+        ],
+        // Page 3: Variables & Input
+        [
+          '--- VARIABLES & INPUT ---',
+          '',
+          'VARIABLES STORE VALUES:',
+          '  10 A = 5',
+          '  20 B$ = "HELLO"',
+          '  30 PRINT A',
+          '  40 PRINT B$',
+          '',
+          'USE $ FOR TEXT VARIABLES.',
+          '',
+          'GET USER INPUT:',
+          '  10 INPUT "NAME? ";N$',
+          '  20 PRINT "HI, ";N$',
+          '',
+          'FOR SINGLE KEY:',
+          '  10 GET A$',
+          '  20 PRINT "YOU TYPED: ";A$',
+        ],
+        // Page 4: Loops & Conditions
+        [
+          '--- LOOPS & CONDITIONS ---',
+          '',
+          'FOR/NEXT LOOP:',
+          '  10 FOR I = 1 TO 10',
+          '  20 PRINT I;" ";',
+          '  30 NEXT I',
+          '',
+          'IF/THEN:',
+          '  10 INPUT "NUMBER? ";N',
+          '  20 IF N > 5 THEN PRINT "BIG"',
+          '  30 IF N <= 5 THEN PRINT "SMALL"',
+          '',
+          'GOTO (JUMP TO LINE):',
+          '  10 PRINT "LOOP!"',
+          '  20 GOTO 10',
+          '',
+          'CTRL+C TO STOP A LOOP!',
+        ],
+        // Page 5: Subroutines
+        [
+          '--- SUBROUTINES ---',
+          '',
+          'GOSUB CALLS A SUBROUTINE,',
+          'RETURN COMES BACK:',
+          '',
+          '  10 PRINT "START"',
+          '  20 GOSUB 100',
+          '  30 PRINT "BACK"',
+          '  40 END',
+          '  100 PRINT "IN SUBROUTINE"',
+          '  110 RETURN',
+          '',
+          'USE ON..GOTO FOR MENUS:',
+          '  10 INPUT "CHOICE(1-3)? ";C',
+          '  20 ON C GOTO 100,200,300',
+        ],
+        // Page 6: String Functions
+        [
+          '--- STRING FUNCTIONS ---',
+          '',
+          'LEN(A$)      STRING LENGTH',
+          'LEFT$(A$,N)  LEFT N CHARS',
+          'RIGHT$(A$,N) RIGHT N CHARS',
+          'MID$(A$,S,N) MIDDLE CHARS',
+          'ASC(A$)      ASCII CODE',
+          'CHR$(N)      CODE TO CHAR',
+          'VAL(A$)      STRING TO NUM',
+          'STR$(N)      NUM TO STRING',
+          '',
+          'EXAMPLE:',
+          '  10 A$ = "HELLO WORLD"',
+          '  20 PRINT LEN(A$)',
+          '  30 PRINT LEFT$(A$,5)',
+          '  40 PRINT MID$(A$,7,5)',
+        ],
+        // Page 7: Math Functions
+        [
+          '--- MATH FUNCTIONS ---',
+          '',
+          'INT(X)  INTEGER PART',
+          'ABS(X)  ABSOLUTE VALUE',
+          'SGN(X)  SIGN (-1,0,1)',
+          'SQR(X)  SQUARE ROOT',
+          'RND(X)  RANDOM (0-1)',
+          'SIN(X)  SINE',
+          'COS(X)  COSINE',
+          'TAN(X)  TANGENT',
+          'ATN(X)  ARCTANGENT',
+          'EXP(X)  E TO THE X',
+          'LOG(X)  NATURAL LOG',
+          '',
+          'RANDOM NUMBER 1-6:',
+          '  PRINT INT(RND(1)*6)+1',
+        ],
+        // Page 8: Graphics
+        [
+          '--- LO-RES GRAPHICS ---',
+          '',
+          'GR          GRAPHICS MODE',
+          'COLOR= N    SET COLOR (0-15)',
+          'PLOT X,Y    DRAW PIXEL',
+          'HLIN X1,X2 AT Y  HORIZ LINE',
+          'VLIN Y1,Y2 AT X  VERT LINE',
+          'TEXT        BACK TO TEXT',
+          '',
+          'EXAMPLE:',
+          '  10 GR',
+          '  20 COLOR= 1',
+          '  30 FOR X = 0 TO 39',
+          '  40 PLOT X,20',
+          '  50 NEXT X',
+          '  60 GET A$ : TEXT',
+        ],
+        // Page 9: File System
+        [
+          '--- FILE SYSTEM ---',
+          '',
+          'YOUR VIRTUAL DISK:',
+          '  CATALOG    LIST FILES',
+          '  CD "DIR"   CHANGE DIR',
+          '  MKDIR "X"  NEW FOLDER',
+          '  RMDIR "X"  DEL FOLDER',
+          '  PWD        CURRENT DIR',
+          '',
+          'FILE COMMANDS:',
+          '  SAVE "X"   SAVE PROGRAM',
+          '  LOAD "X"   LOAD PROGRAM',
+          '  TYPE "X"   VIEW FILE',
+          '  DELETE "X"  DELETE FILE',
+          '  CREATE "X"  NEW FILE',
+          '  RENAME "A","B"  RENAME',
+        ],
+        // Page 10: Upload/Download & Samples
+        [
+          '--- UPLOAD & DOWNLOAD ---',
+          '',
+          'UPLOAD FILES FROM YOUR PC:',
+          '  UPLOAD',
+          '  (OPENS FILE DIALOG)',
+          '',
+          'DOWNLOAD FILES TO YOUR PC:',
+          '  DOWNLOAD       (PROGRAM)',
+          '  DOWNLOAD "X"   (FILE)',
+          '',
+          '--- SAMPLE PROGRAMS ---',
+          '',
+          'SAMPLE PROGRAMS ARE IN THE',
+          '/SAMPLES DIRECTORY:',
+          '  CD "SAMPLES"',
+          '  CATALOG',
+          '  LOAD "HELLO"',
+          '  RUN',
+        ],
+      ];
     }
 
     async runProgram(startLine) {
@@ -2224,31 +2819,6 @@ const AppleSoftBasic = (() => {
       this.display.showTextMode();
       this.interpreter.reset();
       this.boot();
-    }
-
-    loadSample(name) {
-      if (!name) return;
-      const samples = this.getSamples();
-      if (samples[name]) {
-        // Clear current program
-        this.interpreter.program = {};
-        this.interpreter.sortedLines = [];
-        this.interpreter.clearVars();
-
-        // Load the sample
-        const lines = samples[name].trim().split('\n');
-        for (const line of lines) {
-          const match = line.trim().match(/^(\d+)\s+(.*)/);
-          if (match) {
-            this.interpreter.storeLine(parseInt(match[1]), match[2]);
-          }
-        }
-
-        this.display.printString('\n');
-        this.display.printLine(`LOADED: ${name.toUpperCase()}`);
-        this.display.printLine('TYPE RUN TO EXECUTE');
-        this.showPrompt();
-      }
     }
 
     getSamples() {
