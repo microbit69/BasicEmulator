@@ -17,7 +17,7 @@ cat > "$DIR/index.html" << 'EOF_INDEX_HTML'
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Applesoft BASIC Interpreter</title>
-<link rel="stylesheet" href="css/style.css">
+<link rel="stylesheet" href="css/style.css?v=2">
 </head>
 <body>
 
@@ -37,18 +37,18 @@ cat > "$DIR/index.html" << 'EOF_INDEX_HTML'
 <input type="file" id="file-upload" accept=".bas,.txt,.BAS,.TXT" multiple>
 
 <!-- Scripts loaded in dependency order (no ES modules for file:// compatibility) -->
-<script src="js/constants.js"></script>
-<script src="js/audio.js"></script>
-<script src="js/tokenizer.js"></script>
-<script src="js/parser.js"></script>
-<script src="js/filesystem.js"></script>
-<script src="js/samples.js"></script>
-<script src="js/tutorial.js"></script>
-<script src="js/display.js"></script>
-<script src="js/claude.js"></script>
-<script src="js/interpreter.js"></script>
-<script src="js/emulator.js"></script>
-<script src="js/main.js"></script>
+<script src="js/constants.js?v=2"></script>
+<script src="js/audio.js?v=2"></script>
+<script src="js/tokenizer.js?v=2"></script>
+<script src="js/parser.js?v=2"></script>
+<script src="js/filesystem.js?v=2"></script>
+<script src="js/samples.js?v=2"></script>
+<script src="js/tutorial.js?v=2"></script>
+<script src="js/display.js?v=2"></script>
+<script src="js/claude.js?v=2"></script>
+<script src="js/interpreter.js?v=2"></script>
+<script src="js/emulator.js?v=2"></script>
+<script src="js/main.js?v=2"></script>
 
 </body>
 </html>
