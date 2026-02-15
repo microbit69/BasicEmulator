@@ -125,6 +125,12 @@ CRITICAL: Output ONLY numbered Applesoft BASIC program lines.
 
     if (!response.ok) {
       let errMsg = 'API ERROR ' + response.status;
+      try {
+        const errBody = await response.json();
+        if (errBody.error?.message) {
+          errMsg = errBody.error.message.substring(0, 120).toUpperCase();
+        }
+      } catch (e) { /* ignore parse errors */ }
       if (response.status === 401) errMsg = 'INVALID API KEY';
       if (response.status === 429) errMsg = 'RATE LIMITED - WAIT';
       if (response.status === 529) errMsg = 'API OVERLOADED - WAIT';
