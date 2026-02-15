@@ -3213,12 +3213,13 @@ class Emulator {
   }
 
   handlePaste(text) {
-    // Clean: keep printable ASCII, convert to uppercase
-    const clean = text.replace(/[\r\n]/g, '').toUpperCase();
+    // Keep original case in buffer (needed for API keys etc.)
+    // Display uppercase on screen (Apple II style)
+    const clean = text.replace(/[\r\n]/g, '');
     for (const ch of clean) {
       if (ch.charCodeAt(0) >= 32 && ch.charCodeAt(0) < 127) {
         this.inputBuffer += ch;
-        this.display.printChar(ch);
+        this.display.printChar(ch.toUpperCase());
       }
     }
     this.display.render();
@@ -3419,9 +3420,9 @@ class Emulator {
       return;
     }
 
-    // === Claude AI Commands ===
+    // === Claude AI Commands (preserve original case for API key) ===
     if (upper === 'AI' || upper.startsWith('AI ')) {
-      await this.handleAiCommand(upper);
+      await this.handleAiCommand(line.trim());
       return;
     }
 
@@ -4070,11 +4071,12 @@ class Emulator {
 
   // ===== CLAUDE AI =====
 
-  async handleAiCommand(upper) {
-    const arg = upper.substring(2).trim();
+  async handleAiCommand(originalLine) {
+    const arg = originalLine.substring(2).trim();
+    const argUpper = arg.toUpperCase();
 
-    // AI KEY - set API key
-    if (arg.startsWith('KEY ')) {
+    // AI KEY - set API key (preserve original case!)
+    if (argUpper.startsWith('KEY ')) {
       const key = arg.substring(4).trim();
       if (!key) {
         this.display.printLine('?SYNTAX ERROR');
@@ -4083,14 +4085,14 @@ class Emulator {
         this.display.printLine('');
         this.display.printLine('API KEY SAVED.');
         const masked = key.substring(0, 7) + '...' + key.slice(-4);
-        this.display.printLine('KEY: ' + masked);
+        this.display.printLine('KEY: ' + masked.toUpperCase());
       }
       this.showPrompt();
       return;
     }
 
     // AI KEY (show current)
-    if (arg === 'KEY') {
+    if (argUpper === 'KEY') {
       const key = this.ai.getApiKey();
       if (key) {
         const masked = key.substring(0, 7) + '...' + key.slice(-4);
@@ -4104,12 +4106,12 @@ class Emulator {
     }
 
     // AI MODEL - set/show model
-    if (arg === 'MODEL') {
+    if (argUpper === 'MODEL') {
       this.display.printLine('MODEL: ' + this.ai.getModel());
       this.showPrompt();
       return;
     }
-    if (arg.startsWith('MODEL ')) {
+    if (argUpper.startsWith('MODEL ')) {
       const model = arg.substring(6).trim().toLowerCase();
       this.ai.setModel(model);
       this.display.printLine('MODEL SET: ' + model);
@@ -4118,7 +4120,7 @@ class Emulator {
     }
 
     // AI NEW - clear conversation history
-    if (arg === 'NEW') {
+    if (argUpper === 'NEW') {
       this.ai.clearHistory();
       this.display.printLine('AI CONVERSATION CLEARED.');
       this.showPrompt();
@@ -4126,14 +4128,14 @@ class Emulator {
     }
 
     // AI HELP
-    if (arg === 'HELP' || arg === '') {
+    if (argUpper === 'HELP' || argUpper === '') {
       await this.showAiHelp();
       this.showPrompt();
       return;
     }
 
     // AI WRITE filename description
-    if (arg.startsWith('WRITE ')) {
+    if (argUpper.startsWith('WRITE ')) {
       await this.aiWriteProgram(arg.substring(6).trim());
       this.showPrompt();
       return;
