@@ -66,41 +66,41 @@ $content = @'
 
 body {
   background: #0a0a0a;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  min-height: 100vh;
-  font-family: monospace;
   overflow: hidden;
+  font-family: monospace;
 }
 
-/* ===== APPLE II FRAME (Background Image Container) ===== */
-/* Screen position as CSS custom properties for easy tuning.
-   These define where the CRT glass area is within the background image.
-   Change these to match different background images. */
+/* ===== APPLE II FRAME =====
+   Image anchored at top-left, height fills viewport.
+   All overlays use % relative to this frame = image pixel coords.
+   Image is 1536x1024, so displayed width = 100vh * 1.5              */
+
+/* CRT glass position within the 1536x1024 image (pixel measurements):
+   left:   240px / 1536 = 15.6%
+   top:    100px / 1024 =  9.8%
+   width:  535px / 1536 = 34.8%
+   height: 420px / 1024 = 41.0%                                      */
 :root {
-  --screen-left: 17.8%;
-  --screen-top: 13.2%;
-  --screen-width: 30%;
-  --screen-height: 34.5%;
+  --screen-left: 15.6%;
+  --screen-top: 9.8%;
+  --screen-width: 34.8%;
+  --screen-height: 41.0%;
 }
 
 #apple2-frame {
   position: relative;
-  width: 95vw;
-  max-width: 1400px;
-  /* Aspect ratio maintained by the <img> inside */
+  display: inline-block;  /* shrink-wrap to image */
 }
 
 #bg-image {
   display: block;
-  width: 100%;
-  height: auto;
+  height: 100vh;
+  width: auto;
   pointer-events: none;
   user-select: none;
 }
 
-/* ===== SCREEN OVERLAY (positioned over the CRT glass) ===== */
+/* ===== SCREEN OVERLAY (over the CRT glass) ===== */
 #screen-container {
   position: absolute;
   left: var(--screen-left);
@@ -108,7 +108,7 @@ body {
   width: var(--screen-width);
   height: var(--screen-height);
   background: #080400;
-  border-radius: 1.2%;
+  border-radius: 0.8%;
   overflow: hidden;
   z-index: 2;
 }
@@ -145,22 +145,26 @@ body {
 
 #screen {
   position: absolute;
-  top: 5%;
-  left: 4%;
-  right: 4%;
-  bottom: 5%;
+  top: 4%;
+  left: 3%;
+  right: 3%;
+  bottom: 4%;
   z-index: 1;
 }
 
 /* ===== TEXT DISPLAY ===== */
+/* Font sizing based on viewport height (image height = 100vh):
+   Screen height = 41vh, text area ~37vh (after padding)
+   24 lines at line-height 1.2: font-size = 37 / (24*1.2) ≈ 1.28vh
+   Screen width = 34.8% * 150vh ≈ 52vh, text area ~49vh
+   40 chars at 1.28vh * 0.6 = 30.7vh → letter-spacing fills rest    */
 #text-display {
   font-family: 'Courier New', 'Lucida Console', monospace;
-  /* Font size scales with frame width: 40 chars must fit screen */
-  font-size: clamp(7px, 0.85vw, 14px);
+  font-size: clamp(8px, 1.28vh, 16px);
   line-height: 1.2;
   color: #ffb000;
   white-space: pre;
-  letter-spacing: clamp(0px, 0.15vw, 2.5px);
+  letter-spacing: clamp(1px, 0.43vh, 5px);
   text-shadow: 0 0 5px rgba(255, 176, 0, 0.5), 0 0 10px rgba(255, 176, 0, 0.2);
   width: 100%;
   height: 100%;
@@ -207,7 +211,7 @@ body {
   top: 0;
   left: 0;
   width: 100%;
-  height: 83.3%;  /* 20/24 rows for graphics */
+  height: 83.3%;  /* 20/24 rows for mixed mode */
   z-index: 2;
   display: none;
   image-rendering: pixelated;
@@ -219,16 +223,17 @@ body {
   display: none;
 }
 
-/* ===== POWER BUTTON ===== */
-/* Visible toggle on the bottom-left of the Apple II case */
+/* ===== POWER BUTTON =====
+   Positioned on the Apple II case, left side above keyboard.
+   Image coords: ~170px left, ~595px top → 11.1%, 58.1%             */
 #power-btn {
   position: absolute;
-  left: 5.5%;
-  top: 77%;
-  width: 32px;
-  height: 32px;
-  background: #2a2a2a;
-  border: 2px solid #555;
+  left: 11%;
+  top: 58%;
+  width: 28px;
+  height: 28px;
+  background: rgba(40, 40, 35, 0.8);
+  border: 2px solid #666;
   border-radius: 50%;
   cursor: pointer;
   z-index: 20;
@@ -237,17 +242,17 @@ body {
   justify-content: center;
   transition: border-color 0.2s, background 0.2s, box-shadow 0.2s;
   user-select: none;
-  box-shadow: 0 2px 6px rgba(0,0,0,0.5);
+  box-shadow: 0 1px 4px rgba(0,0,0,0.5);
 }
 
 #power-btn:hover {
-  border-color: #888;
-  background: #333;
-  box-shadow: 0 2px 10px rgba(0,0,0,0.6);
+  border-color: #999;
+  background: rgba(60, 60, 55, 0.9);
+  box-shadow: 0 1px 8px rgba(0,0,0,0.7);
 }
 
 #power-btn:active {
-  background: #1a1a1a;
+  background: rgba(25, 25, 22, 0.9);
   transform: scale(0.93);
 }
 
@@ -332,19 +337,6 @@ body {
   100% {
     filter: brightness(0);
     transform: scale(0, 0);
-  }
-}
-
-/* ===== RESPONSIVE ===== */
-@media (max-height: 700px) {
-  #apple2-frame {
-    width: min(95vw, 140vh);
-  }
-}
-
-@media (max-width: 600px) {
-  #apple2-frame {
-    width: 100vw;
   }
 }
 '@
