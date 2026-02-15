@@ -17,7 +17,7 @@ body {
    area is much smaller and more inset than the outer monitor frame. */
 :root {
   --screen-left: 25%;
-  --screen-top: 13%;
+  --screen-top: 11%;
   --screen-width: 30%;
   --screen-height: 35%;
 }
@@ -42,7 +42,7 @@ body {
   top: var(--screen-top);
   width: var(--screen-width);
   height: var(--screen-height);
-  background: rgba(8, 4, 0, 0.4);
+  background: transparent;
   border-radius: 0.8%;
   overflow: hidden;
   z-index: 2;
@@ -221,7 +221,7 @@ body {
 }
 
 #screen-container.off {
-  background: rgba(26, 26, 24, 0.4);
+  background: transparent;
 }
 
 #screen-container:not(.off) {
