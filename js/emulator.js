@@ -1160,6 +1160,7 @@ class Emulator {
       'CLAUDE AI:',
       ' AI HELP  AI KEY  AI MODEL',
       ' AI question  AI WRITE name,desc',
+      ' AI AGENT instruction',
       '',
       'CATALOG: *=LOCKED  A=APPLESOFT',
       ' B=BINARY T=TEXT I=INTEGER',
@@ -1233,6 +1234,13 @@ class Emulator {
       return;
     }
 
+    // AI AGENT - autonomous agent mode
+    if (argUpper.startsWith('AGENT ')) {
+      await this.aiAgent(arg.substring(6).trim());
+      this.showPrompt();
+      return;
+    }
+
     // AI WRITE filename description
     if (argUpper.startsWith('WRITE ')) {
       await this.aiWriteProgram(arg.substring(6).trim());
@@ -1269,11 +1277,18 @@ class Emulator {
       '  Claude writes a BASIC program',
       '  and saves it to disk',
       '',
+      'AI AGENT instruction',
+      '  Claude controls the emulator',
+      '  like a user - types commands,',
+      '  writes programs, saves files',
+      '',
       'EXAMPLES:',
       ' AI WHAT IS PEEK AND POKE?',
       ' AI HOW DO I DRAW GRAPHICS?',
       ' AI WRITE GAME, GUESS A NUMBER',
       ' AI WRITE SORT, BUBBLE SORT DEMO',
+      ' AI AGENT WRITE A GAME AND SAVE IT',
+      ' AI AGENT LOAD HELLO AND RUN IT',
       '',
       'NOTE: Requires Anthropic API key.',
       'Get one at console.anthropic.com',
@@ -1314,7 +1329,6 @@ class Emulator {
 
       // Clear thinking line on first chunk
       let firstChunk = true;
-      let fullResponse = '';
       let lineCount = 0;
       let colCount = 0;
       const pageSize = this.display.height - 2;
@@ -1327,8 +1341,6 @@ class Emulator {
           this.display.printLine('');
           firstChunk = false;
         }
-
-        fullResponse += chunk;
 
         // Print character by character with word wrapping
         for (const ch of chunk) {
@@ -1365,46 +1377,89 @@ class Emulator {
       }
       this.display.printLine('');
 
-      // Check if the response contains a BASIC program and auto-load/save it
-      const programLines = this.parseBasicProgram(fullResponse);
-      const programKeys = Object.keys(programLines);
-      if (programKeys.length >= 2) {
-        // Load into interpreter memory
-        this.interpreter.program = {};
-        this.interpreter.sortedLines = [];
-        this.interpreter.clearVars();
+    } catch (e) {
+      this.display.printLine('');
+      this.display.printLine('?' + e.message);
+    }
+  }
 
-        for (const [num, src] of Object.entries(programLines)) {
-          this.interpreter.storeLine(parseInt(num), src);
-        }
+  async aiAgent(instruction) {
+    if (!this.ai.getApiKey()) {
+      this.display.printLine('');
+      this.display.printLine('NO API KEY SET.');
+      this.display.printLine('USE: AI KEY YOUR-API-KEY');
+      this.display.printLine('GET KEY: CONSOLE.ANTHROPIC.COM');
+      return;
+    }
 
-        // Auto-generate filename from question
-        let filename = 'AIPROG';
-        const words = question.trim().toUpperCase().split(/\s+/);
-        for (const w of words) {
-          if (w.length >= 3 && !['THE','AND','FOR','HOW','CAN','YOU','WRITE','MAKE','CREATE','BUILD','PROGRAM','THAT','WITH','PLEASE','BASIC'].includes(w)) {
-            filename = w.substring(0, 8);
-            break;
-          }
-        }
-        if (!filename.endsWith('.BAS')) {
-          filename += '.BAS';
-        }
+    if (!instruction) {
+      this.display.printLine('?SYNTAX ERROR');
+      this.display.printLine('USE: AI AGENT instruction');
+      return;
+    }
 
-        // Save to filesystem
-        const content = App.VirtualFileSystem.programToText(this.interpreter.program);
-        const err = this.fs.writeFile(filename, content, 'A');
+    this.display.printLine('');
+    this.display.printString('AGENT WORKING');
+    this.display.render();
 
-        this.display.printLine('');
-        if (err) {
-          this.display.printLine('PROGRAM LOADED (' + programKeys.length + ' LINES)');
-          this.display.printLine('?SAVE ERROR: ' + err);
-        } else {
-          this.display.printLine('PROGRAM SAVED: ' + filename);
-          this.display.printLine(programKeys.length + ' LINES');
+    try {
+      let dotCount = 0;
+      const dotInterval = setInterval(() => {
+        if (dotCount < 20) {
+          this.display.printChar('.');
+          this.display.render();
+          dotCount++;
         }
-        this.display.printLine('TYPE RUN TO EXECUTE');
+      }, 300);
+
+      const stream = this.ai.streamMessage(
+        instruction,
+        this.ai.getAgentSystemPrompt(),
+        false
+      );
+
+      let fullResponse = '';
+      let firstChunk = true;
+
+      for await (const chunk of stream) {
+        if (firstChunk) {
+          clearInterval(dotInterval);
+          this.display.printLine('');
+          firstChunk = false;
+        }
+        fullResponse += chunk;
       }
+
+      if (firstChunk) {
+        clearInterval(dotInterval);
+      }
+
+      // Parse response into individual lines to execute
+      const lines = fullResponse.split('\n')
+        .map(l => l.trim())
+        .filter(l => l.length > 0 && !l.startsWith('```'));
+
+      if (lines.length === 0) {
+        this.display.printLine('');
+        this.display.printLine('?NO COMMANDS GENERATED');
+        return;
+      }
+
+      this.display.printLine('');
+      this.display.printLine('EXECUTING ' + lines.length + ' COMMANDS...');
+      this.display.printLine('');
+
+      // Execute each line as if the user typed it
+      for (const line of lines) {
+        this.display.printLine(']' + line.toUpperCase());
+        this.display.render();
+        await this.processLine(line);
+        // Small delay between commands for visual feedback
+        await new Promise(r => setTimeout(r, 100));
+      }
+
+      this.display.printLine('');
+      this.display.printLine('AGENT DONE. ' + lines.length + ' COMMANDS EXECUTED.');
 
     } catch (e) {
       this.display.printLine('');

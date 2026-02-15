@@ -2122,9 +2122,56 @@ FILE I/O: OPEN, CLOSE, WRITE, APPEND,
 DEVICE: PR#, IN#, MON, NOMON
 PRODOS: PREFIX, CREATE, CD, PWD
 AI: AI KEY, AI MODEL, AI HELP,
-  AI NEW, AI WRITE
+  AI NEW, AI WRITE, AI AGENT
 
 When asked to write BASIC programs, output ONLY valid Applesoft BASIC numbered lines. No explanations before or after the code unless explicitly asked. Use line numbers starting at 10, incrementing by 10.`;
+  }
+
+  getAgentSystemPrompt() {
+    return `You are an AI agent controlling an Apple II+ emulator running Applesoft BASIC with DOS 3.3.
+You receive instructions from the user and must accomplish them by outputting emulator commands - exactly as if you were typing at the keyboard.
+
+OUTPUT FORMAT:
+Return ONLY lines to be typed into the emulator, one per line. No explanations, no comments outside REM statements, no markdown.
+Each line you output will be executed as if the user typed it and pressed ENTER.
+
+AVAILABLE COMMANDS:
+- Numbered lines (e.g. 10 PRINT "HI") are stored as program lines
+- NEW - clear current program
+- RUN - run the program
+- LIST - list the program
+- SAVE filename - save program to disk
+- LOAD filename - load program from disk
+- CATALOG - show disk contents
+- DELETE filename - delete a file
+- HOME - clear screen
+- Any valid Applesoft BASIC immediate command
+- Any DOS 3.3 command
+
+RULES:
+- Output ONLY lines to type, nothing else
+- Each line is executed sequentially
+- To write a program: output NEW, then numbered lines, then SAVE
+- To modify a program: LOAD it, add/change lines, SAVE it
+- To run a program: output RUN
+- Line numbers 0-63999, increment by 10
+- Max line length: 239 characters
+- Use valid Applesoft BASIC syntax
+- You can chain multiple operations (e.g. write program, save, run)
+
+EXAMPLE - if asked "write a hello world program and save it":
+NEW
+10 HOME
+20 PRINT "HELLO WORLD!"
+30 END
+SAVE HELLO
+
+EXAMPLE - if asked "show what files are on disk":
+CATALOG
+
+EXAMPLE - if asked "load the game and run it":
+LOAD GAME
+RUN`;
   }
 
   getWriteSystemPrompt() {
@@ -4706,6 +4753,7 @@ class Emulator {
       'CLAUDE AI:',
       ' AI HELP  AI KEY  AI MODEL',
       ' AI question  AI WRITE name,desc',
+      ' AI AGENT instruction',
       '',
       'CATALOG: *=LOCKED  A=APPLESOFT',
       ' B=BINARY T=TEXT I=INTEGER',
@@ -4779,6 +4827,13 @@ class Emulator {
       return;
     }
 
+    // AI AGENT - autonomous agent mode
+    if (argUpper.startsWith('AGENT ')) {
+      await this.aiAgent(arg.substring(6).trim());
+      this.showPrompt();
+      return;
+    }
+
     // AI WRITE filename description
     if (argUpper.startsWith('WRITE ')) {
       await this.aiWriteProgram(arg.substring(6).trim());
@@ -4815,11 +4870,18 @@ class Emulator {
       '  Claude writes a BASIC program',
       '  and saves it to disk',
       '',
+      'AI AGENT instruction',
+      '  Claude controls the emulator',
+      '  like a user - types commands,',
+      '  writes programs, saves files',
+      '',
       'EXAMPLES:',
       ' AI WHAT IS PEEK AND POKE?',
       ' AI HOW DO I DRAW GRAPHICS?',
       ' AI WRITE GAME, GUESS A NUMBER',
       ' AI WRITE SORT, BUBBLE SORT DEMO',
+      ' AI AGENT WRITE A GAME AND SAVE IT',
+      ' AI AGENT LOAD HELLO AND RUN IT',
       '',
       'NOTE: Requires Anthropic API key.',
       'Get one at console.anthropic.com',
@@ -4860,7 +4922,6 @@ class Emulator {
 
       // Clear thinking line on first chunk
       let firstChunk = true;
-      let fullResponse = '';
       let lineCount = 0;
       let colCount = 0;
       const pageSize = this.display.height - 2;
@@ -4873,8 +4934,6 @@ class Emulator {
           this.display.printLine('');
           firstChunk = false;
         }
-
-        fullResponse += chunk;
 
         // Print character by character with word wrapping
         for (const ch of chunk) {
@@ -4911,46 +4970,89 @@ class Emulator {
       }
       this.display.printLine('');
 
-      // Check if the response contains a BASIC program and auto-load/save it
-      const programLines = this.parseBasicProgram(fullResponse);
-      const programKeys = Object.keys(programLines);
-      if (programKeys.length >= 2) {
-        // Load into interpreter memory
-        this.interpreter.program = {};
-        this.interpreter.sortedLines = [];
-        this.interpreter.clearVars();
+    } catch (e) {
+      this.display.printLine('');
+      this.display.printLine('?' + e.message);
+    }
+  }
 
-        for (const [num, src] of Object.entries(programLines)) {
-          this.interpreter.storeLine(parseInt(num), src);
-        }
+  async aiAgent(instruction) {
+    if (!this.ai.getApiKey()) {
+      this.display.printLine('');
+      this.display.printLine('NO API KEY SET.');
+      this.display.printLine('USE: AI KEY YOUR-API-KEY');
+      this.display.printLine('GET KEY: CONSOLE.ANTHROPIC.COM');
+      return;
+    }
 
-        // Auto-generate filename from question
-        let filename = 'AIPROG';
-        const words = question.trim().toUpperCase().split(/\s+/);
-        for (const w of words) {
-          if (w.length >= 3 && !['THE','AND','FOR','HOW','CAN','YOU','WRITE','MAKE','CREATE','BUILD','PROGRAM','THAT','WITH','PLEASE','BASIC'].includes(w)) {
-            filename = w.substring(0, 8);
-            break;
-          }
-        }
-        if (!filename.endsWith('.BAS')) {
-          filename += '.BAS';
-        }
+    if (!instruction) {
+      this.display.printLine('?SYNTAX ERROR');
+      this.display.printLine('USE: AI AGENT instruction');
+      return;
+    }
 
-        // Save to filesystem
-        const content = App.VirtualFileSystem.programToText(this.interpreter.program);
-        const err = this.fs.writeFile(filename, content, 'A');
+    this.display.printLine('');
+    this.display.printString('AGENT WORKING');
+    this.display.render();
 
-        this.display.printLine('');
-        if (err) {
-          this.display.printLine('PROGRAM LOADED (' + programKeys.length + ' LINES)');
-          this.display.printLine('?SAVE ERROR: ' + err);
-        } else {
-          this.display.printLine('PROGRAM SAVED: ' + filename);
-          this.display.printLine(programKeys.length + ' LINES');
+    try {
+      let dotCount = 0;
+      const dotInterval = setInterval(() => {
+        if (dotCount < 20) {
+          this.display.printChar('.');
+          this.display.render();
+          dotCount++;
         }
-        this.display.printLine('TYPE RUN TO EXECUTE');
+      }, 300);
+
+      const stream = this.ai.streamMessage(
+        instruction,
+        this.ai.getAgentSystemPrompt(),
+        false
+      );
+
+      let fullResponse = '';
+      let firstChunk = true;
+
+      for await (const chunk of stream) {
+        if (firstChunk) {
+          clearInterval(dotInterval);
+          this.display.printLine('');
+          firstChunk = false;
+        }
+        fullResponse += chunk;
       }
+
+      if (firstChunk) {
+        clearInterval(dotInterval);
+      }
+
+      // Parse response into individual lines to execute
+      const lines = fullResponse.split('\n')
+        .map(l => l.trim())
+        .filter(l => l.length > 0 && !l.startsWith('```'));
+
+      if (lines.length === 0) {
+        this.display.printLine('');
+        this.display.printLine('?NO COMMANDS GENERATED');
+        return;
+      }
+
+      this.display.printLine('');
+      this.display.printLine('EXECUTING ' + lines.length + ' COMMANDS...');
+      this.display.printLine('');
+
+      // Execute each line as if the user typed it
+      for (const line of lines) {
+        this.display.printLine(']' + line.toUpperCase());
+        this.display.render();
+        await this.processLine(line);
+        // Small delay between commands for visual feedback
+        await new Promise(r => setTimeout(r, 100));
+      }
+
+      this.display.printLine('');
+      this.display.printLine('AGENT DONE. ' + lines.length + ' COMMANDS EXECUTED.');
 
     } catch (e) {
       this.display.printLine('');
