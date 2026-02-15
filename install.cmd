@@ -43,17 +43,25 @@ $content = @'
 <!-- Inline screen positioning with debug output -->
 <script>
 (function() {
-  // Position screen overlay using % of frame (= % of image)
-  // Adjust these values to align red outline with CRT glass
-  var LEFT = 20.0, TOP = 8.5, WIDTH = 29.0, HEIGHT = 35.0;
+  // CRT glass coordinates in source image (1536x1024)
+  // Measured from AppleIIBG01.png glass boundaries
+  var GL = 307, GT = 92, GW = 430, GH = 350, IW = 1536, IH = 1024;
   function pos() {
+    var img = document.getElementById('bg-image');
+    var fr  = document.getElementById('apple2-frame');
     var sc  = document.getElementById('screen-container');
-    if (!sc) return;
-    sc.style.left   = LEFT + '%';
-    sc.style.top    = TOP + '%';
-    sc.style.width  = WIDTH + '%';
-    sc.style.height = HEIGHT + '%';
-    document.title = 'L=' + LEFT + '% T=' + TOP + '% W=' + WIDTH + '% H=' + HEIGHT + '%';
+    if (!img || !fr || !sc) return;
+    var ir = img.getBoundingClientRect();
+    var ff = fr.getBoundingClientRect();
+    var ox = ir.left - ff.left, oy = ir.top - ff.top;
+    var sx = ir.width / IW, sy = ir.height / IH;
+    var l = ox + GL * sx, t = oy + GT * sy;
+    var w = GW * sx, h = GH * sy;
+    sc.style.left   = l + 'px';
+    sc.style.top    = t + 'px';
+    sc.style.width  = w + 'px';
+    sc.style.height = h + 'px';
+    document.title = 'L=' + Math.round(l) + ' T=' + Math.round(t) + ' W=' + Math.round(w) + ' H=' + Math.round(h);
   }
   window.addEventListener('load', pos);
   window.addEventListener('resize', pos);
