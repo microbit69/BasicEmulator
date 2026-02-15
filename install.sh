@@ -70,20 +70,23 @@ body {
    All overlays use % relative to this frame = image pixel coords.
    Image is 1536x1024, so displayed width = 100vh * 1.5              */
 
-/* CRT glass edges measured from 1536x1024 source image:
-   left:   178px → 11.6%    right:  712px → 46.4%
-   top:     78px →  7.6%    bottom: 460px → 44.9%
-   width:  534px → 34.8%    height: 382px → 37.3%   */
+/* CRT glass edges measured from 1536x1024 source image.
+   Image renders at height=100vh, width=150vh (1.5:1 aspect).
+   Using vh units directly to avoid % containment issues.
+   left:   178/1536 * 150vh = 17.4vh     top:   78/1024 * 100vh =  7.6vh
+   width:  534/1536 * 150vh = 52.1vh     height: 382/1024 * 100vh = 37.3vh */
 :root {
-  --screen-left: 11.6%;
-  --screen-top: 7.6%;
-  --screen-width: 34.8%;
-  --screen-height: 37.3%;
+  --screen-left: 17.4vh;
+  --screen-top: 7.6vh;
+  --screen-width: 52.1vh;
+  --screen-height: 37.3vh;
 }
 
 #apple2-frame {
   position: relative;
-  display: inline-block;  /* shrink-wrap to image */
+  display: inline-block;
+  width: 150vh;   /* explicit: 100vh * 1536/1024 aspect ratio */
+  height: 100vh;
 }
 
 #bg-image {
@@ -105,6 +108,7 @@ body {
   border-radius: 0.8%;
   overflow: hidden;
   z-index: 2;
+  outline: 2px solid red;  /* DEBUG: remove after alignment */
 }
 
 /* CRT scanline effect */
