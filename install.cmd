@@ -79,10 +79,10 @@ body {
    The Zenith monitor has a very thick bezel, so the actual glass
    area is much smaller and more inset than the outer monitor frame. */
 :root {
-  --screen-left: 22%;
-  --screen-top: 12%;
-  --screen-width: 28%;
-  --screen-height: 31%;
+  --screen-left: 25%;
+  --screen-top: 13%;
+  --screen-width: 30%;
+  --screen-height: 35%;
 }
 
 #apple2-frame {
@@ -105,7 +105,7 @@ body {
   top: var(--screen-top);
   width: var(--screen-width);
   height: var(--screen-height);
-  background: #080400;
+  background: rgba(8, 4, 0, 0.4);
   border-radius: 0.8%;
   overflow: hidden;
   z-index: 2;
@@ -152,17 +152,17 @@ body {
 
 /* ===== TEXT DISPLAY ===== */
 /* Font sizing based on viewport height (image height = 100vh):
-   Screen height = 31vh, text area ~28.5vh (after padding)
-   24 lines at line-height 1.2: font-size = 28.5 / (24*1.2) ≈ 0.99vh
-   Screen width = 28% * 150vh = 42vh, text area ~39.5vh
+   Screen height = 35vh, text area ~32vh (after padding)
+   24 lines at line-height 1.2: font-size = 32 / (24*1.2) ≈ 1.11vh
+   Screen width = 30% * 150vh = 45vh, text area ~42vh
    40 chars need to fit in text area width                           */
 #text-display {
   font-family: 'Courier New', 'Lucida Console', monospace;
-  font-size: clamp(6px, 0.99vh, 14px);
+  font-size: clamp(6px, 1.11vh, 16px);
   line-height: 1.2;
   color: #ffb000;
   white-space: pre;
-  letter-spacing: clamp(0px, 0.35vh, 4px);
+  letter-spacing: clamp(0px, 0.4vh, 5px);
   text-shadow: 0 0 5px rgba(255, 176, 0, 0.5), 0 0 10px rgba(255, 176, 0, 0.2);
   width: 100%;
   height: 100%;
@@ -284,8 +284,7 @@ body {
 }
 
 #screen-container.off {
-  background: #1a1a18;
-  opacity: 0.85;
+  background: rgba(26, 26, 24, 0.4);
 }
 
 #screen-container:not(.off) {
