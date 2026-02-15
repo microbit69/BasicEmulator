@@ -31,15 +31,14 @@ body {
   user-select: none;
 }
 
-/* ===== SCREEN OVERLAY (over the CRT glass) ===== */
+/* ===== SCREEN OVERLAY (over the CRT glass) =====
+   Position is set by JS (positionScreen in main.js) based on
+   actual rendered image dimensions. CSS values are fallbacks. */
 #screen-container {
   position: absolute;
-  left: 17.4vh;
-  top: 7.6vh;
-  width: 52.1vh;
-  height: 37.3vh;
+  left: 0; top: 0; width: 0; height: 0; /* JS overrides these */
   background: transparent;
-  border-radius: 0.8%;
+  border-radius: 4px;
   overflow: hidden;
   z-index: 2;
   outline: 2px solid red;  /* DEBUG: remove after alignment */
