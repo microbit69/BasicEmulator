@@ -44,37 +44,36 @@ class Emulator {
     this.poweredOn = true;
     this.powerLed.classList.add('on');
 
-    // CRT turn-on effect
+    // CRT turn-on: electromagnetic pop + screen activation
+    App.crtPop();
     this.screenContainer.classList.remove('off', 'crt-off');
     this.screenContainer.classList.add('crt-on');
     this.display.clear();
 
-    // Power-on beep
-    App.beep(50, 1000);
+    await this.sleep(200);
 
-    await this.sleep(100);
+    // Classic Apple II power-on beep (1-bit speaker buzz)
+    App.appleBeep();
+    await this.sleep(250);
 
     // === Phase 1: Memory garbage (random chars flash briefly) ===
     this.fillScreenGarbage();
     this.display.render();
-    await this.sleep(150);
+    await this.sleep(120);
 
     // === Phase 2: Screen clears, Apple II ROM banner ===
     this.display.clear();
     await this.sleep(200);
 
-    // Show the classic Apple II monitor ROM startup
     this.display.printLine('APPLE ][');
     this.display.render();
-    await this.sleep(400);
+    await this.sleep(300);
 
-    // === Phase 3: Memory test ===
-    App.beep(30, 600);
+    // === Phase 3: Memory test with ticking sounds ===
     const memSteps = ['4K', '8K', '16K', '32K', '48K'];
     for (const step of memSteps) {
       this.display.cursorX = 0;
       this.display.cursorY = 2;
-      // Clear the line first
       for (let x = 0; x < this.display.width; x++) {
         this.display.screenBuffer[2][x] = ' ';
       }
@@ -83,6 +82,7 @@ class Emulator {
         this.display.screenBuffer[2][i] = msg[i];
       }
       this.display.render();
+      App.memTick();
       await this.sleep(80);
     }
     // Final memory result
@@ -96,40 +96,41 @@ class Emulator {
       this.display.screenBuffer[2][i] = memOk[i];
     }
     this.display.render();
-    App.beep(30, 800);
-    await this.sleep(300);
+    App.appleBeep();
+    await this.sleep(400);
 
-    // === Phase 4: Disk drive simulation ===
+    // === Phase 4: Disk drive activation ===
     this.display.cursorY = 4;
     this.display.cursorX = 0;
     this.display.printString('DISK II  SLOT 6  DRIVE 1');
     this.display.render();
-    await this.sleep(200);
-
-    // Disk drive clicking sounds
-    for (let i = 0; i < 6; i++) {
-      App.beep(8, 200 + Math.random() * 100);
-      await this.sleep(60 + Math.random() * 40);
-    }
     await this.sleep(150);
 
-    // === Phase 5: DOS loading ===
+    // Start disk motor (continuous whirring)
+    var motor = App.diskMotorStart();
+    await this.sleep(300);
+
+    // Head seek to track 0 (rapid stepper clicks)
+    await App.diskSeek(8, 35);
+    await this.sleep(200);
+
+    // === Phase 5: DOS loading with disk activity ===
     this.display.cursorY = 6;
     this.display.cursorX = 0;
     this.display.printString('LOADING DOS...');
     this.display.render();
 
-    // More disk sounds
-    for (let i = 0; i < 4; i++) {
-      App.beep(6, 180 + Math.random() * 80);
-      await this.sleep(80 + Math.random() * 60);
-    }
-    await this.sleep(300);
+    // More head seeking as DOS loads
+    await App.diskSeek(5, 50);
+    await this.sleep(250);
 
     this.display.cursorY = 7;
     this.display.cursorX = 0;
     this.display.printString('DOS VERSION 3.3  16-SECTOR');
     this.display.render();
+
+    // Final head seeks
+    await App.diskSeek(3, 60);
     await this.sleep(200);
 
     // === Phase 6: BASIC loading ===
@@ -137,8 +138,11 @@ class Emulator {
     this.display.cursorX = 0;
     this.display.printString('APPLESOFT BASIC');
     this.display.render();
-    App.beep(15, 500);
-    await this.sleep(300);
+    await this.sleep(200);
+
+    // Stop disk motor
+    motor.stop(0.4);
+    await this.sleep(500);
 
     // === Phase 7: Final boot screen ===
     this.display.clear();
@@ -159,7 +163,8 @@ class Emulator {
     this.interpreter.inputCallback = null;
     this.interpreter.getCallback = null;
 
-    // CRT turn-off effect
+    // CRT turn-off sound + effect
+    App.crtOff();
     this.screenContainer.classList.remove('crt-on');
     this.screenContainer.classList.add('crt-off');
 
