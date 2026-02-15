@@ -21,7 +21,7 @@ $content = @'
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Applesoft BASIC Interpreter</title>
-<link rel="stylesheet" href="css/style.css?v=2">
+<link rel="stylesheet" href="css/style.css?v=3">
 </head>
 <body>
 
@@ -40,19 +40,43 @@ $content = @'
 
 <input type="file" id="file-upload" accept=".bas,.txt,.BAS,.TXT" multiple>
 
+<!-- Inline screen positioning - cannot be cached separately -->
+<script>
+(function() {
+  var GL = 220, GT = 78, GW = 490, GH = 382, IW = 1536, IH = 1024;
+  function pos() {
+    var img = document.getElementById('bg-image');
+    var fr  = document.getElementById('apple2-frame');
+    var sc  = document.getElementById('screen-container');
+    if (!img || !fr || !sc) return;
+    var ir = img.getBoundingClientRect();
+    var ff = fr.getBoundingClientRect();
+    var ox = ir.left - ff.left, oy = ir.top - ff.top;
+    var sx = ir.width / IW, sy = ir.height / IH;
+    sc.style.left   = (ox + GL * sx) + 'px';
+    sc.style.top    = (oy + GT * sy) + 'px';
+    sc.style.width  = (GW * sx) + 'px';
+    sc.style.height = (GH * sy) + 'px';
+  }
+  window.addEventListener('load', pos);
+  window.addEventListener('resize', pos);
+  window.positionScreen = pos;
+})();
+</script>
+
 <!-- Scripts loaded in dependency order (no ES modules for file:// compatibility) -->
-<script src="js/constants.js?v=2"></script>
-<script src="js/audio.js?v=2"></script>
-<script src="js/tokenizer.js?v=2"></script>
-<script src="js/parser.js?v=2"></script>
-<script src="js/filesystem.js?v=2"></script>
-<script src="js/samples.js?v=2"></script>
-<script src="js/tutorial.js?v=2"></script>
-<script src="js/display.js?v=2"></script>
-<script src="js/claude.js?v=2"></script>
-<script src="js/interpreter.js?v=2"></script>
-<script src="js/emulator.js?v=2"></script>
-<script src="js/main.js?v=2"></script>
+<script src="js/constants.js?v=3"></script>
+<script src="js/audio.js?v=3"></script>
+<script src="js/tokenizer.js?v=3"></script>
+<script src="js/parser.js?v=3"></script>
+<script src="js/filesystem.js?v=3"></script>
+<script src="js/samples.js?v=3"></script>
+<script src="js/tutorial.js?v=3"></script>
+<script src="js/display.js?v=3"></script>
+<script src="js/claude.js?v=3"></script>
+<script src="js/interpreter.js?v=3"></script>
+<script src="js/emulator.js?v=3"></script>
+<script src="js/main.js?v=3"></script>
 
 </body>
 </html>
@@ -4993,45 +5017,6 @@ Set-Content -Path "$dir\js\emulator.js" -Value $content -Encoding UTF8
 Write-Host "Writing js\main.js (14/15)..."
 $content = @'
 window.App = window.App || {};
-
-/* Position the screen overlay to match the CRT glass in the background image.
-   Pixel coordinates measured from the 1536×1024 source PNG. */
-(function() {
-  var GLASS_LEFT   = 220;   // px in source image
-  var GLASS_TOP    =  78;
-  var GLASS_WIDTH  = 490;
-  var GLASS_HEIGHT = 382;
-  var IMG_W        = 1536;
-  var IMG_H        = 1024;
-
-  function positionScreen() {
-    var img   = document.getElementById('bg-image');
-    var frame = document.getElementById('apple2-frame');
-    var sc    = document.getElementById('screen-container');
-    if (!img || !frame || !sc) return;
-
-    var imgRect   = img.getBoundingClientRect();
-    var frameRect = frame.getBoundingClientRect();
-
-    // Offset of image within the frame (should be 0,0 but just in case)
-    var ox = imgRect.left - frameRect.left;
-    var oy = imgRect.top  - frameRect.top;
-
-    // Scale from source pixels to rendered pixels
-    var sx = imgRect.width  / IMG_W;
-    var sy = imgRect.height / IMG_H;
-
-    sc.style.left   = (ox + GLASS_LEFT   * sx) + 'px';
-    sc.style.top    = (oy + GLASS_TOP    * sy) + 'px';
-    sc.style.width  = (GLASS_WIDTH  * sx) + 'px';
-    sc.style.height = (GLASS_HEIGHT * sy) + 'px';
-  }
-
-  window.addEventListener('load', positionScreen);
-  window.addEventListener('resize', positionScreen);
-  // Also expose so emulator can call it if needed
-  window.positionScreen = positionScreen;
-})();
 
 window.addEventListener('DOMContentLoaded', function() {
   var emulator = new App.Emulator();

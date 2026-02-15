@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Applesoft BASIC Interpreter</title>
-<link rel="stylesheet" href="css/style.css?v=2">
+<link rel="stylesheet" href="css/style.css?v=3">
 </head>
 <body>
 
@@ -23,19 +23,43 @@
 
 <input type="file" id="file-upload" accept=".bas,.txt,.BAS,.TXT" multiple>
 
+<!-- Inline screen positioning - cannot be cached separately -->
+<script>
+(function() {
+  var GL = 220, GT = 78, GW = 490, GH = 382, IW = 1536, IH = 1024;
+  function pos() {
+    var img = document.getElementById('bg-image');
+    var fr  = document.getElementById('apple2-frame');
+    var sc  = document.getElementById('screen-container');
+    if (!img || !fr || !sc) return;
+    var ir = img.getBoundingClientRect();
+    var ff = fr.getBoundingClientRect();
+    var ox = ir.left - ff.left, oy = ir.top - ff.top;
+    var sx = ir.width / IW, sy = ir.height / IH;
+    sc.style.left   = (ox + GL * sx) + 'px';
+    sc.style.top    = (oy + GT * sy) + 'px';
+    sc.style.width  = (GW * sx) + 'px';
+    sc.style.height = (GH * sy) + 'px';
+  }
+  window.addEventListener('load', pos);
+  window.addEventListener('resize', pos);
+  window.positionScreen = pos;
+})();
+</script>
+
 <!-- Scripts loaded in dependency order (no ES modules for file:// compatibility) -->
-<script src="js/constants.js?v=2"></script>
-<script src="js/audio.js?v=2"></script>
-<script src="js/tokenizer.js?v=2"></script>
-<script src="js/parser.js?v=2"></script>
-<script src="js/filesystem.js?v=2"></script>
-<script src="js/samples.js?v=2"></script>
-<script src="js/tutorial.js?v=2"></script>
-<script src="js/display.js?v=2"></script>
-<script src="js/claude.js?v=2"></script>
-<script src="js/interpreter.js?v=2"></script>
-<script src="js/emulator.js?v=2"></script>
-<script src="js/main.js?v=2"></script>
+<script src="js/constants.js?v=3"></script>
+<script src="js/audio.js?v=3"></script>
+<script src="js/tokenizer.js?v=3"></script>
+<script src="js/parser.js?v=3"></script>
+<script src="js/filesystem.js?v=3"></script>
+<script src="js/samples.js?v=3"></script>
+<script src="js/tutorial.js?v=3"></script>
+<script src="js/display.js?v=3"></script>
+<script src="js/claude.js?v=3"></script>
+<script src="js/interpreter.js?v=3"></script>
+<script src="js/emulator.js?v=3"></script>
+<script src="js/main.js?v=3"></script>
 
 </body>
 </html>
