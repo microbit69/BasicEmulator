@@ -43,34 +43,16 @@ $content = @'
 <!-- Inline screen positioning with debug output -->
 <script>
 (function() {
-  var GL = 236, GT = 56, GW = 474, GH = 353, IW = 1536, IH = 1024;
+  // TEST: set overlay to FULL IMAGE to verify coordinate system
   function pos() {
-    var img = document.getElementById('bg-image');
     var fr  = document.getElementById('apple2-frame');
     var sc  = document.getElementById('screen-container');
-    if (!img || !fr || !sc) return;
-    var ir = img.getBoundingClientRect();
-    var ff = fr.getBoundingClientRect();
-    var ox = ir.left - ff.left, oy = ir.top - ff.top;
-    var sx = ir.width / IW, sy = ir.height / IH;
-    var l = ox + GL * sx, t = oy + GT * sy;
-    var w = GW * sx, h = GH * sy;
-    sc.style.left   = l + 'px';
-    sc.style.top    = t + 'px';
-    sc.style.width  = w + 'px';
-    sc.style.height = h + 'px';
-    // DEBUG: check scroll position and actual element rect
-    setTimeout(function() {
-      var sr = sc.getBoundingClientRect();
-      var fr2 = fr.getBoundingClientRect();
-      alert(
-        'scrollX=' + window.scrollX + ' scrollY=' + window.scrollY +
-        '\nframe.rect: L=' + Math.round(fr2.left) + ' T=' + Math.round(fr2.top) + ' W=' + Math.round(fr2.width) +
-        '\nsc.rect: L=' + Math.round(sr.left) + ' T=' + Math.round(sr.top) + ' W=' + Math.round(sr.width) +
-        '\nsc.style.left=' + sc.style.left +
-        '\nvp: ' + window.innerWidth + 'x' + window.innerHeight
-      );
-    }, 2000);
+    if (!fr || !sc) return;
+    // Fill entire frame - red outline should match image borders exactly
+    sc.style.left   = '0px';
+    sc.style.top    = '0px';
+    sc.style.width  = '100%';
+    sc.style.height = '100%';
   }
   window.addEventListener('load', pos);
   window.addEventListener('resize', pos);
