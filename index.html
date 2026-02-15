@@ -19,6 +19,8 @@
   <div id="power-btn" title="Power On/Off">
     <div id="power-led"></div>
   </div>
+  <div id="drive1-led" class="drive-led"></div>
+  <div id="drive2-led" class="drive-led"></div>
 </div>
 
 <input type="file" id="file-upload" accept=".bas,.txt,.BAS,.TXT" multiple>
@@ -29,10 +31,14 @@
   // CRT glass coordinates in source image (1536x1024)
   // Measured from AppleIIBG01.png glass boundaries
   var GL = 407, GT = 107, GW = 430, GH = 350, IW = 1536, IH = 1024;
+  // Drive LED positions in source image pixels (1536x1024)
+  var D1X = 1128, D1Y = 347, D2X = 1128, D2Y = 532, DLS = 12;
   function pos() {
     var img = document.getElementById('bg-image');
     var fr  = document.getElementById('apple2-frame');
     var sc  = document.getElementById('screen-container');
+    var d1  = document.getElementById('drive1-led');
+    var d2  = document.getElementById('drive2-led');
     if (!img || !fr || !sc) return;
     var ir = img.getBoundingClientRect();
     var ff = fr.getBoundingClientRect();
@@ -44,6 +50,10 @@
     sc.style.top    = t + 'px';
     sc.style.width  = w + 'px';
     sc.style.height = h + 'px';
+    // Position drive LEDs
+    var ds = DLS * sx;
+    if (d1) { d1.style.left = (ox + D1X * sx) + 'px'; d1.style.top = (oy + D1Y * sy) + 'px'; d1.style.width = ds + 'px'; d1.style.height = ds + 'px'; }
+    if (d2) { d2.style.left = (ox + D2X * sx) + 'px'; d2.style.top = (oy + D2Y * sy) + 'px'; d2.style.width = ds + 'px'; d2.style.height = ds + 'px'; }
     document.title = 'Applesoft BASIC Interpreter';
   }
   window.addEventListener('load', pos);

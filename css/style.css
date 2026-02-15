@@ -179,6 +179,21 @@ body {
   100% { box-shadow: 0 0 12px #4f4, 0 0 24px rgba(68, 255, 68, 0.3); }
 }
 
+/* ===== DISK II DRIVE LEDs ===== */
+.drive-led {
+  position: absolute;
+  border-radius: 50%;
+  background: rgba(60, 40, 10, 0.6);
+  z-index: 20;
+  pointer-events: none;
+  transition: background 0.1s, box-shadow 0.1s;
+}
+
+.drive-led.active {
+  background: #ffb000;
+  box-shadow: 0 0 8px #ffb000, 0 0 18px rgba(255, 176, 0, 0.6), 0 0 30px rgba(255, 140, 0, 0.3);
+}
+
 /* ===== CRT POWER ON/OFF ===== */
 #screen-container.off #text-display {
   visibility: hidden;

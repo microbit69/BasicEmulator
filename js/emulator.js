@@ -12,7 +12,12 @@ class Emulator {
     this.fileUpload = document.getElementById('file-upload');
     this.display = new App.Display(this.displayElement, this.canvasElement);
     this.interpreter = new App.Interpreter(this.display);
-    this.fs = new App.VirtualFileSystem();
+    this.drives = [new App.VirtualFileSystem(), new App.VirtualFileSystem()];
+    this.drives[1].volumeName = 'BACKUP';
+    this.drives[1].volumeNumber = 253;
+    this.currentDrive = 1;
+    this.fs = this.drives[0];
+    this.driveLeds = [document.getElementById('drive1-led'), document.getElementById('drive2-led')];
     this.ai = new App.ClaudeAI();
     this.inputBuffer = '';
     this.commandMode = true;
@@ -113,6 +118,7 @@ class Emulator {
     this.display.cursorX = 0;
     this.display.printString('DISK II  SLOT 6  DRIVE 1');
     this.display.render();
+    this.diskActivity(1, 2500);
     await this.sleep(150);
 
     // Start disk motor (continuous whirring)
@@ -198,12 +204,29 @@ class Emulator {
     return new Promise(resolve => setTimeout(resolve, ms));
   }
 
+  diskActivity(drive, duration) {
+    var d = drive || this.currentDrive;
+    var led = this.driveLeds[d - 1];
+    if (!led) return;
+    led.classList.add('active');
+    clearTimeout(led._timer);
+    led._timer = setTimeout(function() { led.classList.remove('active'); }, duration || 400);
+  }
+
+  selectDrive(num) {
+    if (num === 1 || num === 2) {
+      this.currentDrive = num;
+      this.fs = this.drives[num - 1];
+    }
+  }
+
   boot() {
     this.display.clear();
     this.display.printLine('APPLE ][ BASIC OS');
     this.display.printLine('APPLESOFT BASIC INTERPRETER');
     this.display.printLine('(C) 2026 - JAVASCRIPT EDITION');
     this.display.printLine('');
+    this.display.printLine('SLOT 6: DRIVE 1 & DRIVE 2');
     this.display.printLine('DISK VOLUME ' + this.fs.volumeNumber);
     this.display.printLine('TYPE "HELP" FOR COMMANDS');
     this.display.printLine('TYPE "AI HELP" FOR CLAUDE AI');
@@ -470,14 +493,37 @@ class Emulator {
 
   // ===== DOS 3.3 COMMAND HANDLER =====
 
+  // Parse ,D1 or ,D2 suffix from command; temporarily switch drive
+  parseDriveSuffix(cmd) {
+    var m = cmd.match(/,\s*D([12])\s*$/);
+    if (m) {
+      return { cmd: cmd.replace(/,\s*D[12]\s*$/, '').trim(), drive: parseInt(m[1]) };
+    }
+    return { cmd: cmd, drive: 0 };
+  }
+
+  withDrive(driveNum, fn) {
+    var prev = this.currentDrive;
+    if (driveNum) this.selectDrive(driveNum);
+    this.diskActivity(this.currentDrive);
+    var result = fn();
+    if (driveNum) this.selectDrive(prev);
+    return result;
+  }
+
   async handleDosCommand(upper) {
 
     // CATALOG / CAT
     if (upper === 'CATALOG' || upper === 'CAT' ||
         upper.startsWith('CATALOG ') || upper.startsWith('CAT ')) {
       const arg = upper.replace(/^(CATALOG|CAT)\s*/, '').trim();
-      const path = arg ? this.extractQuotedArg(arg) : '';
+      const ds = this.parseDriveSuffix(arg);
+      const path = ds.cmd ? this.extractQuotedArg(ds.cmd) : '';
+      const prev = this.currentDrive;
+      if (ds.drive) this.selectDrive(ds.drive);
+      this.diskActivity(this.currentDrive, 800);
       await this.cmdCatalog(path);
+      if (ds.drive) this.selectDrive(prev);
       this.showPrompt();
       return true;
     }
@@ -487,11 +533,14 @@ class Emulator {
       if (upper === 'SAVE') {
         this.display.printLine('?SYNTAX ERROR');
       } else {
-        const path = this.extractQuotedArg(upper.substring(5));
-        const fname = path.endsWith('.BAS') ? path : path + '.BAS';
-        const content = App.VirtualFileSystem.programToText(this.interpreter.program);
-        const err = this.fs.writeFile(fname, content, 'A');
-        if (err) this.display.printLine('?' + err);
+        const ds = this.parseDriveSuffix(upper.substring(5));
+        this.withDrive(ds.drive, () => {
+          const path = this.extractQuotedArg(ds.cmd);
+          const fname = path.endsWith('.BAS') ? path : path + '.BAS';
+          const content = App.VirtualFileSystem.programToText(this.interpreter.program);
+          const err = this.fs.writeFile(fname, content, 'A');
+          if (err) this.display.printLine('?' + err);
+        });
       }
       this.showPrompt();
       return true;
@@ -502,7 +551,10 @@ class Emulator {
       if (upper === 'LOAD') {
         this.display.printLine('?SYNTAX ERROR');
       } else {
-        this.cmdLoad(this.extractQuotedArg(upper.substring(5)));
+        const ds = this.parseDriveSuffix(upper.substring(5));
+        this.withDrive(ds.drive, () => {
+          this.cmdLoad(this.extractQuotedArg(ds.cmd));
+        });
       }
       this.showPrompt();
       return true;
@@ -510,6 +562,7 @@ class Emulator {
 
     // DELETE
     if (upper.startsWith('DELETE ')) {
+      this.diskActivity();
       const path = this.extractQuotedArg(upper.substring(7));
       const fpath = this.resolveWithExt(path);
       const err = this.fs.deleteFile(fpath);
@@ -520,6 +573,7 @@ class Emulator {
 
     // LOCK
     if (upper.startsWith('LOCK ')) {
+      this.diskActivity();
       const path = this.extractQuotedArg(upper.substring(5));
       const fpath = this.resolveWithExt(path);
       const err = this.fs.lockFile(fpath);
@@ -530,6 +584,7 @@ class Emulator {
 
     // UNLOCK
     if (upper.startsWith('UNLOCK ')) {
+      this.diskActivity();
       const path = this.extractQuotedArg(upper.substring(7));
       const fpath = this.resolveWithExt(path);
       const err = this.fs.unlockFile(fpath);
@@ -540,6 +595,7 @@ class Emulator {
 
     // RENAME
     if (upper.startsWith('RENAME ')) {
+      this.diskActivity();
       const parts = upper.substring(7).split(',');
       if (parts.length !== 2) {
         this.display.printLine('?SYNTAX ERROR');
@@ -555,6 +611,7 @@ class Emulator {
 
     // VERIFY
     if (upper.startsWith('VERIFY ')) {
+      this.diskActivity();
       const path = this.extractQuotedArg(upper.substring(7));
       const fpath = this.resolveWithExt(path);
       const err = this.fs.verifyFile(fpath);
@@ -565,6 +622,7 @@ class Emulator {
 
     // INIT - format disk (with confirmation)
     if (upper === 'INIT' || upper.startsWith('INIT ')) {
+      this.diskActivity(this.currentDrive, 1000);
       this.fs.initDisk();
       this.installSamples();
       this.display.printLine('DISK INITIALIZED');
@@ -617,12 +675,14 @@ class Emulator {
 
     // EXEC - execute command file
     if (upper.startsWith('EXEC ')) {
+      this.diskActivity(this.currentDrive, 800);
       this.cmdExec(this.extractQuotedArg(upper.substring(5)));
       return true;
     }
 
     // BSAVE (binary save stub)
     if (upper.startsWith('BSAVE ')) {
+      this.diskActivity();
       this.cmdBsave(upper.substring(6).trim());
       this.showPrompt();
       return true;
@@ -630,6 +690,7 @@ class Emulator {
 
     // BLOAD (binary load stub)
     if (upper.startsWith('BLOAD ')) {
+      this.diskActivity();
       this.cmdBload(upper.substring(6).trim());
       this.showPrompt();
       return true;
@@ -644,6 +705,7 @@ class Emulator {
 
     // OPEN - open sequential file
     if (upper.startsWith('OPEN ')) {
+      this.diskActivity();
       const path = this.extractQuotedArg(upper.substring(5));
       const fpath = this.resolveWithExt(path);
       const err = this.fs.openFile(fpath, 'READ');
@@ -667,6 +729,7 @@ class Emulator {
 
     // WRITE - open for writing
     if (upper.startsWith('WRITE ')) {
+      this.diskActivity();
       const path = this.extractQuotedArg(upper.substring(6));
       const fpath = this.resolveWithExt(path);
       const err = this.fs.openFile(fpath, 'WRITE');
@@ -677,6 +740,7 @@ class Emulator {
 
     // APPEND - open for appending
     if (upper.startsWith('APPEND ')) {
+      this.diskActivity();
       const path = this.extractQuotedArg(upper.substring(7));
       const fpath = this.resolveWithExt(path);
       const err = this.fs.openFile(fpath, 'APPEND');
@@ -771,6 +835,7 @@ class Emulator {
 
     // TYPE (show file content - not Apple-original but useful)
     if (upper.startsWith('TYPE ')) {
+      this.diskActivity();
       const path = this.extractQuotedArg(upper.substring(5));
       const fpath = this.resolveWithExt(path);
       const result = this.fs.readFile(fpath);
