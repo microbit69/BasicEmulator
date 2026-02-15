@@ -43,7 +43,7 @@ $content = @'
 <!-- Inline screen positioning with debug output -->
 <script>
 (function() {
-  var GL = 220, GT = 78, GW = 490, GH = 382, IW = 1536, IH = 1024;
+  var GL = 236, GT = 56, GW = 474, GH = 353, IW = 1536, IH = 1024;
   function pos() {
     var img = document.getElementById('bg-image');
     var fr  = document.getElementById('apple2-frame');
@@ -59,13 +59,8 @@ $content = @'
     sc.style.top    = t + 'px';
     sc.style.width  = w + 'px';
     sc.style.height = h + 'px';
-    // DEBUG: show in title bar + alert once
-    var info = 'img:' + Math.round(ir.left) + ',' + Math.round(ir.top) + ' ' + Math.round(ir.width) + 'x' + Math.round(ir.height) +
-      ' | fr:' + Math.round(ff.left) + ',' + Math.round(ff.top) + ' ' + Math.round(ff.width) + 'x' + Math.round(ff.height) +
-      ' | ox=' + Math.round(ox) + ' L=' + Math.round(l) + ' W=' + Math.round(w) +
-      ' | vp:' + window.innerWidth + 'x' + window.innerHeight;
-    document.title = info;
-    if (!window._dbgShown) { window._dbgShown = true; alert(info); }
+    // DEBUG: show values in title bar
+    document.title = 'L=' + Math.round(l) + ' T=' + Math.round(t) + ' W=' + Math.round(w) + ' H=' + Math.round(h);
   }
   window.addEventListener('load', pos);
   window.addEventListener('resize', pos);
