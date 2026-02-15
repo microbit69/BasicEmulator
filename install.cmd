@@ -47,7 +47,7 @@ $content = @'
 (function() {
   // CRT glass coordinates in source image (1536x1024)
   // Measured from AppleIIBG01.png glass boundaries
-  var GL = 407, GT = 107, GW = 430, GH = 350, IW = 1536, IH = 1024;
+  var GL = 407, GT = 90, GW = 430, GH = 390, IW = 1536, IH = 1024;
   // Drive LED positions in source image pixels (1536x1024)
   var D1X = 1128, D1Y = 347, D2X = 1128, D2Y = 532, DLS = 12;
   function pos() {
