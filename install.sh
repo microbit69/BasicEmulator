@@ -55,17 +55,13 @@ cat > "$DIR/index.html" << 'EOF_INDEX_HTML'
     sc.style.top    = t + 'px';
     sc.style.width  = w + 'px';
     sc.style.height = h + 'px';
-    // DEBUG panel
-    var d = document.getElementById('dbg');
-    if (!d) { d = document.createElement('div'); d.id = 'dbg';
-      d.style.cssText = 'position:fixed;bottom:0;left:0;background:yellow;color:black;padding:8px;z-index:9999;font:12px monospace;';
-      document.body.appendChild(d); }
-    d.innerHTML =
-      'img: ' + Math.round(ir.left) + ',' + Math.round(ir.top) + ' ' + Math.round(ir.width) + 'x' + Math.round(ir.height) +
-      '<br>frame: ' + Math.round(ff.left) + ',' + Math.round(ff.top) + ' ' + Math.round(ff.width) + 'x' + Math.round(ff.height) +
-      '<br>ox=' + Math.round(ox) + ' oy=' + Math.round(oy) + ' sx=' + sx.toFixed(3) + ' sy=' + sy.toFixed(3) +
-      '<br>overlay: left=' + Math.round(l) + ' top=' + Math.round(t) + ' w=' + Math.round(w) + ' h=' + Math.round(h) +
-      '<br>viewport: ' + window.innerWidth + 'x' + window.innerHeight;
+    // DEBUG: show in title bar + alert once
+    var info = 'img:' + Math.round(ir.left) + ',' + Math.round(ir.top) + ' ' + Math.round(ir.width) + 'x' + Math.round(ir.height) +
+      ' | fr:' + Math.round(ff.left) + ',' + Math.round(ff.top) + ' ' + Math.round(ff.width) + 'x' + Math.round(ff.height) +
+      ' | ox=' + Math.round(ox) + ' L=' + Math.round(l) + ' W=' + Math.round(w) +
+      ' | vp:' + window.innerWidth + 'x' + window.innerHeight;
+    document.title = info;
+    if (!window._dbgShown) { window._dbgShown = true; alert(info); }
   }
   window.addEventListener('load', pos);
   window.addEventListener('resize', pos);
