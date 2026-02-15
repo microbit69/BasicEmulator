@@ -49,7 +49,7 @@ $content = @'
   // Measured from AppleIIBG01.png glass boundaries
   var GL = 407, GT = 97, GW = 430, GH = 375, IW = 1536, IH = 1024;
   // Drive LED positions in source image pixels (1536x1024)
-  var D1X = 1240, D1Y = 440, D2X = 1240, D2Y = 625, DLS = 10;
+  var D1X = 1340, D1Y = 440, D2X = 1340, D2Y = 625, DLS = 10;
   function pos() {
     var img = document.getElementById('bg-image');
     var fr  = document.getElementById('apple2-frame');
@@ -58,6 +58,7 @@ $content = @'
     var d2  = document.getElementById('drive2-led');
     if (!img || !fr || !sc) return;
     var ir = img.getBoundingClientRect();
+    if (!ir.width || !ir.height) return;  // image not laid out yet
     var ff = fr.getBoundingClientRect();
     var ox = ir.left - ff.left, oy = ir.top - ff.top;
     var sx = ir.width / IW, sy = ir.height / IH;
@@ -73,7 +74,19 @@ $content = @'
     if (d2) { d2.style.left = (ox + D2X * sx) + 'px'; d2.style.top = (oy + D2Y * sy) + 'px'; d2.style.width = ds + 'px'; d2.style.height = ds + 'px'; }
     document.title = 'Applesoft BASIC Interpreter';
   }
-  window.addEventListener('load', pos);
+  // Ensure pos() runs after the background image is fully loaded & rendered
+  function initPos() {
+    var img = document.getElementById('bg-image');
+    if (img && img.complete && img.naturalWidth) { pos(); }
+    else if (img) { img.addEventListener('load', pos); }
+    // Fallback: poll a few times in case load event was missed
+    var tries = 0;
+    var poll = setInterval(function() {
+      pos();
+      if (++tries >= 10) clearInterval(poll);
+    }, 200);
+  }
+  window.addEventListener('load', initPos);
   window.addEventListener('resize', pos);
   window.positionScreen = pos;
 })();
