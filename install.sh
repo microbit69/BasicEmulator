@@ -45,7 +45,7 @@ cat > "$DIR/index.html" << 'EOF_INDEX_HTML'
   // Measured from AppleIIBG01.png glass boundaries
   var GL = 407, GT = 97, GW = 430, GH = 375, IW = 1536, IH = 1024;
   // Drive LED positions as percentage of image (left%, top%)
-  var D1LP = 71.0, D1TP = 45.0, D2LP = 71.0, D2TP = 63.0, DLS = 10;
+  var D1LP = 73.0, D1TP = 61.0, D2LP = 73.0, D2TP = 81.0, DLS = 10;
   function pos() {
     var img = document.getElementById('bg-image');
     var fr  = document.getElementById('apple2-frame');
