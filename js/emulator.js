@@ -201,7 +201,7 @@ class Emulator {
     }
 
     if (upper === 'LIST' || upper.startsWith('LIST ') || upper.startsWith('LIST-')) {
-      this.listProgram(upper === 'LIST' ? '' : upper.substring(4).trim());
+      await this.listProgram(upper === 'LIST' ? '' : upper.substring(4).trim());
       this.showPrompt();
       return;
     }
@@ -226,15 +226,15 @@ class Emulator {
     if (upper === 'FP') { this.showPrompt(); return; }
 
     // === DOS 3.3 Disk Commands ===
-    if (this.handleDosCommand(upper)) return;
+    if (await this.handleDosCommand(upper)) return;
 
     // === System Commands ===
     if (upper === 'RESET') { this.reset(); return; }
-    if (upper === 'HELP') { this.showHelp(); this.showPrompt(); return; }
+    if (upper === 'HELP') { await this.showHelp(); this.showPrompt(); return; }
 
     if (upper === 'TUTORIAL' || upper.startsWith('TUTORIAL ')) {
       const pageArg = upper.substring(8).trim();
-      this.showTutorial(pageArg ? parseInt(pageArg) : 1);
+      await this.showTutorial(pageArg ? parseInt(pageArg) : 1);
       this.showPrompt();
       return;
     }
@@ -255,14 +255,14 @@ class Emulator {
 
   // ===== DOS 3.3 COMMAND HANDLER =====
 
-  handleDosCommand(upper) {
+  async handleDosCommand(upper) {
 
     // CATALOG / CAT
     if (upper === 'CATALOG' || upper === 'CAT' ||
         upper.startsWith('CATALOG ') || upper.startsWith('CAT ')) {
       const arg = upper.replace(/^(CATALOG|CAT)\s*/, '').trim();
       const path = arg ? this.extractQuotedArg(arg) : '';
-      this.cmdCatalog(path);
+      await this.cmdCatalog(path);
       this.showPrompt();
       return true;
     }
@@ -598,21 +598,20 @@ class Emulator {
 
   // ===== DOS 3.3 CATALOG =====
 
-  cmdCatalog(path) {
+  async cmdCatalog(path) {
     const dirPath = path || this.fs.cwd;
     const result = this.fs.listDir(dirPath);
     if (result.error) {
       this.display.printLine('?' + result.error);
       return;
     }
-    this.display.printLine('');
-    this.display.printLine('DISK VOLUME ' + this.fs.volumeNumber);
-    this.display.printLine('');
+
+    const lines = ['', 'DISK VOLUME ' + this.fs.volumeNumber, ''];
 
     let totalSectors = 0;
     for (const entry of result.entries) {
       if (entry.type === 'dir') {
-        this.display.printLine(' D 002 ' + entry.name);
+        lines.push(' D 002 ' + entry.name);
         totalSectors += 2;
       } else {
         const locked = entry.locked ? '*' : ' ';
@@ -620,13 +619,14 @@ class Emulator {
         const sectors = entry.sectors || 1;
         totalSectors += sectors;
         const secStr = String(sectors).padStart(3, '0');
-        this.display.printLine(locked + ftype + ' ' + secStr + ' ' + entry.name);
+        lines.push(locked + ftype + ' ' + secStr + ' ' + entry.name);
       }
     }
 
-    this.display.printLine('');
-    const freeSectors = 560 - totalSectors; // DOS 3.3: 560 sectors total
-    this.display.printLine('FREE SECTORS: ' + Math.max(0, freeSectors));
+    const freeSectors = 560 - totalSectors;
+    lines.push('');
+    lines.push('FREE SECTORS: ' + Math.max(0, freeSectors));
+    await this.printPaged(lines);
   }
 
   // ===== LOAD =====
@@ -771,8 +771,8 @@ class Emulator {
     this.showPrompt();
   }
 
-  listProgram(range) {
-    const lines = this.interpreter.sortedLines;
+  async listProgram(range) {
+    const sortedLines = this.interpreter.sortedLines;
     let start = 0, end = Infinity;
 
     if (range) {
@@ -785,11 +785,13 @@ class Emulator {
       }
     }
 
-    for (const lineNum of lines) {
+    const output = [];
+    for (const lineNum of sortedLines) {
       if (lineNum >= start && lineNum <= end) {
-        this.display.printLine(`${lineNum} ${this.interpreter.program[lineNum]}`);
+        output.push(`${lineNum} ${this.interpreter.program[lineNum]}`);
       }
     }
+    await this.printPaged(output);
   }
 
   ctrlC() {
@@ -816,57 +818,86 @@ class Emulator {
     this.boot();
   }
 
-  // ===== HELP =====
+  // ===== PAGED OUTPUT (press key to continue) =====
 
-  showHelp() {
-    this.display.printLine('');
-    this.display.printLine('APPLESOFT BASIC / DOS 3.3');
-    this.display.printLine('');
-    this.display.printLine('PROGRAM:');
-    this.display.printLine(' RUN [LINE]  LIST [M-N]  NEW');
-    this.display.printLine(' CONT  DEL M,N  TRACE  NOTRACE');
-    this.display.printLine(' FP  CTRL+C=BREAK');
-    this.display.printLine('');
-    this.display.printLine('DISK:');
-    this.display.printLine(' CATALOG  SAVE  LOAD  DELETE');
-    this.display.printLine(' LOCK  UNLOCK  RENAME  VERIFY');
-    this.display.printLine(' INIT  MAXFILES');
-    this.display.printLine('');
-    this.display.printLine('FILE I/O:');
-    this.display.printLine(' OPEN  CLOSE  WRITE  APPEND');
-    this.display.printLine(' EXEC  POSITION');
-    this.display.printLine(' BSAVE  BLOAD  BRUN');
-    this.display.printLine('');
-    this.display.printLine('DEVICE:');
-    this.display.printLine(' PR#  IN#  MON  NOMON');
-    this.display.printLine('');
-    this.display.printLine('PRODOS:');
-    this.display.printLine(' PREFIX  CREATE  CATALOG');
-    this.display.printLine('');
-    this.display.printLine('CATALOG: *=LOCKED  A=APPLESOFT');
-    this.display.printLine(' B=BINARY T=TEXT I=INTEGER');
-    this.display.printLine('');
+  waitForKey() {
+    return new Promise((resolve) => {
+      this.interpreter.getCallback = resolve;
+      this.display.setGetMode(true);
+    });
   }
 
-  showTutorial(page) {
+  async printPaged(lines) {
+    const pageSize = this.display.height - 1; // leave 1 line for prompt
+    let lineCount = 0;
+    for (const line of lines) {
+      this.display.printLine(line);
+      lineCount++;
+      if (lineCount >= pageSize) {
+        this.display.printString('PRESS ANY KEY...');
+        this.display.render();
+        await this.waitForKey();
+        this.display.printLine('');
+        lineCount = 0;
+      }
+    }
+  }
+
+  // ===== HELP =====
+
+  async showHelp() {
+    const lines = [
+      '',
+      'APPLESOFT BASIC / DOS 3.3',
+      '',
+      'PROGRAM:',
+      ' RUN [LINE]  LIST [M-N]  NEW',
+      ' CONT  DEL M,N  TRACE  NOTRACE',
+      ' FP  CTRL+C=BREAK',
+      '',
+      'DISK:',
+      ' CATALOG  SAVE  LOAD  DELETE',
+      ' LOCK  UNLOCK  RENAME  VERIFY',
+      ' INIT  MAXFILES',
+      '',
+      'FILE I/O:',
+      ' OPEN  CLOSE  WRITE  APPEND',
+      ' EXEC  POSITION',
+      ' BSAVE  BLOAD  BRUN',
+      '',
+      'DEVICE:',
+      ' PR#  IN#  MON  NOMON',
+      '',
+      'PRODOS:',
+      ' PREFIX  CREATE  CATALOG',
+      '',
+      'CATALOG: *=LOCKED  A=APPLESOFT',
+      ' B=BINARY T=TEXT I=INTEGER',
+      '',
+    ];
+    await this.printPaged(lines);
+  }
+
+  async showTutorial(page) {
     const pages = App.getTutorialPages();
     const maxPage = pages.length;
     const p = Math.max(1, Math.min(maxPage, page || 1));
     const content = pages[p - 1];
 
-    this.display.printLine('');
-    this.display.printLine('=== TUTORIAL PAGE ' + p + '/' + maxPage + ' ===');
-    this.display.printLine('');
-    for (const line of content) {
-      this.display.printLine(line);
-    }
-    this.display.printLine('');
+    const lines = [
+      '',
+      '=== TUTORIAL PAGE ' + p + '/' + maxPage + ' ===',
+      '',
+      ...content,
+      '',
+    ];
     if (p < maxPage) {
-      this.display.printLine('TYPE "TUTORIAL ' + (p + 1) + '" FOR NEXT');
+      lines.push('TYPE "TUTORIAL ' + (p + 1) + '" FOR NEXT');
     } else {
-      this.display.printLine('END OF TUTORIAL');
+      lines.push('END OF TUTORIAL');
     }
-    this.display.printLine('');
+    lines.push('');
+    await this.printPaged(lines);
   }
 }
 
