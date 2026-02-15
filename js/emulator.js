@@ -5,6 +5,8 @@ class Emulator {
     this.displayElement = document.getElementById('text-display');
     this.canvasElement = document.getElementById('lores-canvas');
     this.screenContainer = document.getElementById('screen-container');
+    this.frame = document.getElementById('apple2-frame');
+    this.bgImage = document.getElementById('bg-image');
     this.powerBtn = document.getElementById('power-btn');
     this.powerLed = document.getElementById('power-led');
     this.fileUpload = document.getElementById('file-upload');
@@ -22,6 +24,13 @@ class Emulator {
     this.installSamples();
     // Start in OFF state
     this.screenContainer.classList.add('off');
+  }
+
+  // ===== BACKGROUND IMAGE =====
+
+  setBackground(imagePath) {
+    this.bgImage.src = imagePath;
+    this.frame.dataset.bg = imagePath;
   }
 
   // ===== POWER BUTTON =====
