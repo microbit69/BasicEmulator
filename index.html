@@ -42,14 +42,18 @@
     sc.style.top    = t + 'px';
     sc.style.width  = w + 'px';
     sc.style.height = h + 'px';
-    // DEBUG: check if computed style matches what we set
+    // DEBUG: check scroll position and actual element rect
     setTimeout(function() {
-      var cs = getComputedStyle(sc);
-      document.title = 'SET:L=' + Math.round(l) + ',W=' + Math.round(w) +
-        ' | GOT:L=' + cs.left + ',W=' + cs.width +
-        ' | cls=' + sc.className +
-        ' | style=' + sc.style.cssText.substring(0, 80);
-    }, 1500);
+      var sr = sc.getBoundingClientRect();
+      var fr2 = fr.getBoundingClientRect();
+      alert(
+        'scrollX=' + window.scrollX + ' scrollY=' + window.scrollY +
+        '\nframe.rect: L=' + Math.round(fr2.left) + ' T=' + Math.round(fr2.top) + ' W=' + Math.round(fr2.width) +
+        '\nsc.rect: L=' + Math.round(sr.left) + ' T=' + Math.round(sr.top) + ' W=' + Math.round(sr.width) +
+        '\nsc.style.left=' + sc.style.left +
+        '\nvp: ' + window.innerWidth + 'x' + window.innerHeight
+      );
+    }, 2000);
   }
   window.addEventListener('load', pos);
   window.addEventListener('resize', pos);
