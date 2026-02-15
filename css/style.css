@@ -41,7 +41,7 @@ body {
   border-radius: 4px;
   overflow: hidden;
   z-index: 2;
-  outline: 2px solid red;  /* DEBUG: remove after alignment */
+  outline: 4px solid blue;  /* DEBUG v9: blue=new version loaded */
 }
 
 /* CRT scanline effect */

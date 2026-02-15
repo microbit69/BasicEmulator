@@ -45,7 +45,7 @@ $content = @'
 (function() {
   // CRT glass coordinates in source image (1536x1024)
   // Measured from AppleIIBG01.png glass boundaries
-  var GL = 327, GT = 92, GW = 430, GH = 350, IW = 1536, IH = 1024;
+  var GL = 407, GT = 92, GW = 430, GH = 350, IW = 1536, IH = 1024;
   function pos() {
     var img = document.getElementById('bg-image');
     var fr  = document.getElementById('apple2-frame');
@@ -61,7 +61,7 @@ $content = @'
     sc.style.top    = t + 'px';
     sc.style.width  = w + 'px';
     sc.style.height = h + 'px';
-    document.title = 'L=' + Math.round(l) + ' T=' + Math.round(t) + ' W=' + Math.round(w) + ' H=' + Math.round(h);
+    document.title = 'v9 GL=407 | L=' + Math.round(l) + ' T=' + Math.round(t) + ' W=' + Math.round(w) + ' H=' + Math.round(h);
   }
   window.addEventListener('load', pos);
   window.addEventListener('resize', pos);
@@ -133,7 +133,7 @@ body {
   border-radius: 4px;
   overflow: hidden;
   z-index: 2;
-  outline: 2px solid red;  /* DEBUG: remove after alignment */
+  outline: 4px solid blue;  /* DEBUG v9: blue=new version loaded */
 }
 
 /* CRT scanline effect */
