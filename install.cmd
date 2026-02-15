@@ -3838,6 +3838,10 @@ class Emulator {
     for (const [num, src] of Object.entries(program)) {
       this.interpreter.storeLine(parseInt(num), src);
     }
+    const count = this.interpreter.sortedLines.length;
+    if (count === 0 && result.content.trim().length > 0) {
+      this.display.printLine('?FILE FORMAT ERROR');
+    }
   }
 
   // ===== DOWNLOAD =====
