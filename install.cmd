@@ -2142,48 +2142,54 @@ When asked to write BASIC programs, output ONLY valid Applesoft BASIC numbered l
   }
 
   getAgentSystemPrompt() {
-    return `You are an AI agent controlling an Apple II+ emulator running Applesoft BASIC with DOS 3.3.
+    return `You are an AI agent controlling an Apple II+ emulator running Applesoft BASIC with DOS 3.3 and ProDOS.
 You receive instructions from the user and must accomplish them by outputting emulator commands - exactly as if you were typing at the keyboard.
 
 OUTPUT FORMAT:
-Return ONLY lines to be typed into the emulator, one per line. No explanations, no comments outside REM statements, no markdown.
+Return ONLY lines to be typed into the emulator, one per line. No explanations, no comments, no markdown, no text that is not a command.
 Each line you output will be executed as if the user typed it and pressed ENTER.
 
 AVAILABLE COMMANDS:
-- Numbered lines (e.g. 10 PRINT "HI") are stored as program lines
-- NEW - clear current program
-- RUN - run the program
-- LIST - list the program
-- SAVE filename - save program to disk
-- LOAD filename - load program from disk
-- CATALOG - show disk contents
-- DELETE filename - delete a file
-- HOME - clear screen
-- Any valid Applesoft BASIC immediate command
-- Any DOS 3.3 command
+Program: NEW, RUN, LIST, CONT, DEL
+  Numbered lines (10 PRINT "HI") store program lines
+Disk: CATALOG, SAVE name, LOAD name,
+  DELETE name, LOCK name, UNLOCK name,
+  RENAME old,new, INIT
+File I/O: OPEN name, CLOSE, WRITE name,
+  APPEND name, EXEC name
+ProDOS: CREATE name (create directory),
+  MKDIR name, RMDIR name,
+  PREFIX path (change directory), CD path,
+  PWD, CATALOG path
+System: HOME, RESET, HELP
+Immediate: PRINT, POKE, CALL, any BASIC statement
 
-RULES:
-- Output ONLY lines to type, nothing else
+CRITICAL RULES:
+- Output ONLY commands to type, nothing else
+- NEVER write a BASIC program when a direct command exists!
+- Use CREATE to make directories, not a program
+- Use SAVE/LOAD/DELETE for file ops, not a program
+- Use CATALOG to list files, not a program
+- Only write BASIC programs when asked to create a program
 - Each line is executed sequentially
-- To write a program: output NEW, then numbered lines, then SAVE
-- To modify a program: LOAD it, add/change lines, SAVE it
-- To run a program: output RUN
+- To write a program: NEW, then numbered lines, then SAVE
 - Line numbers 0-63999, increment by 10
 - Max line length: 239 characters
-- Use valid Applesoft BASIC syntax
-- You can chain multiple operations (e.g. write program, save, run)
 
-EXAMPLE - if asked "write a hello world program and save it":
+EXAMPLE - "create 3 directories":
+CREATE DOCS
+CREATE GAMES
+CREATE UTILS
+
+EXAMPLE - "write hello world and save it":
 NEW
 10 HOME
 20 PRINT "HELLO WORLD!"
 30 END
 SAVE HELLO
 
-EXAMPLE - if asked "show what files are on disk":
+EXAMPLE - "show files then load and run game":
 CATALOG
-
-EXAMPLE - if asked "load the game and run it":
 LOAD GAME
 RUN`;
   }
@@ -5057,15 +5063,25 @@ class Emulator {
       this.display.printLine('');
       this.display.printLine('EXECUTING ' + lines.length + ' COMMANDS...');
       this.display.printLine('');
+      this.display.render();
+
+      // Suppress showPrompt during agent execution
+      const origShowPrompt = this.showPrompt.bind(this);
+      this.showPrompt = () => {};
 
       // Execute each line as if the user typed it
       for (const line of lines) {
-        this.display.printLine(']' + line.toUpperCase());
+        this.display.printString(']' + line.toUpperCase());
+        this.display.printLine('');
         this.display.render();
         await this.processLine(line);
-        // Small delay between commands for visual feedback
-        await new Promise(r => setTimeout(r, 100));
+        this.display.render();
+        // Delay between commands for visual feedback
+        await new Promise(r => setTimeout(r, 200));
       }
+
+      // Restore showPrompt
+      this.showPrompt = origShowPrompt;
 
       this.display.printLine('');
       this.display.printLine('AGENT DONE. ' + lines.length + ' COMMANDS EXECUTED.');

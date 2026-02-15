@@ -1448,15 +1448,25 @@ class Emulator {
       this.display.printLine('');
       this.display.printLine('EXECUTING ' + lines.length + ' COMMANDS...');
       this.display.printLine('');
+      this.display.render();
+
+      // Suppress showPrompt during agent execution
+      const origShowPrompt = this.showPrompt.bind(this);
+      this.showPrompt = () => {};
 
       // Execute each line as if the user typed it
       for (const line of lines) {
-        this.display.printLine(']' + line.toUpperCase());
+        this.display.printString(']' + line.toUpperCase());
+        this.display.printLine('');
         this.display.render();
         await this.processLine(line);
-        // Small delay between commands for visual feedback
-        await new Promise(r => setTimeout(r, 100));
+        this.display.render();
+        // Delay between commands for visual feedback
+        await new Promise(r => setTimeout(r, 200));
       }
+
+      // Restore showPrompt
+      this.showPrompt = origShowPrompt;
 
       this.display.printLine('');
       this.display.printLine('AGENT DONE. ' + lines.length + ' COMMANDS EXECUTED.');
