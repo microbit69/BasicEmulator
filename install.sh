@@ -74,10 +74,10 @@ body {
    These define where the CRT glass area is within the background image.
    Change these to match different background images. */
 :root {
-  --screen-left: 15.2%;
-  --screen-top: 11.5%;
-  --screen-width: 34.5%;
-  --screen-height: 39%;
+  --screen-left: 17.8%;
+  --screen-top: 13.2%;
+  --screen-width: 30%;
+  --screen-height: 34.5%;
 }
 
 #apple2-frame {
@@ -215,37 +215,41 @@ body {
 }
 
 /* ===== POWER BUTTON ===== */
-/* Positioned over the Zenith monitor button area in the photo */
+/* Visible toggle on the bottom-left of the Apple II case */
 #power-btn {
   position: absolute;
-  left: 30.5%;
-  top: 53%;
-  width: 2.5%;
-  height: 2%;
-  background: transparent;
-  border: none;
-  border-radius: 3px;
+  left: 5.5%;
+  top: 77%;
+  width: 32px;
+  height: 32px;
+  background: #2a2a2a;
+  border: 2px solid #555;
+  border-radius: 50%;
   cursor: pointer;
   z-index: 20;
   display: flex;
   align-items: center;
   justify-content: center;
-  transition: background 0.2s;
+  transition: border-color 0.2s, background 0.2s, box-shadow 0.2s;
   user-select: none;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.5);
 }
 
 #power-btn:hover {
-  background: rgba(255, 176, 0, 0.08);
+  border-color: #888;
+  background: #333;
+  box-shadow: 0 2px 10px rgba(0,0,0,0.6);
 }
 
 #power-btn:active {
-  background: rgba(255, 176, 0, 0.15);
+  background: #1a1a1a;
+  transform: scale(0.93);
 }
 
 #power-led {
-  width: 6px;
-  height: 6px;
-  background: #222;
+  width: 10px;
+  height: 10px;
+  background: #333;
   border-radius: 50%;
   box-shadow: none;
   transition: background 0.3s, box-shadow 0.3s;
@@ -253,13 +257,13 @@ body {
 
 #power-led.on {
   background: #4f4;
-  box-shadow: 0 0 6px #4f4;
+  box-shadow: 0 0 8px #4f4, 0 0 16px rgba(68, 255, 68, 0.4);
   animation: led-glow 2s ease-in-out infinite alternate;
 }
 
 @keyframes led-glow {
-  0% { box-shadow: 0 0 4px #4f4; }
-  100% { box-shadow: 0 0 10px #4f4, 0 0 20px rgba(68, 255, 68, 0.3); }
+  0% { box-shadow: 0 0 6px #4f4; }
+  100% { box-shadow: 0 0 12px #4f4, 0 0 24px rgba(68, 255, 68, 0.3); }
 }
 
 /* ===== CRT POWER ON/OFF ===== */
@@ -273,6 +277,11 @@ body {
 
 #screen-container.off {
   background: #1a1a18;
+  opacity: 0.85;
+}
+
+#screen-container:not(.off) {
+  opacity: 1;
 }
 
 #screen-container.crt-on {
