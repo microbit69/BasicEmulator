@@ -122,15 +122,6 @@ class Interpreter {
         continue;
       }
       if (!inQuote && ch === ':') {
-        // In Applesoft BASIC, IF...THEN consumes the rest of the line
-        // (all colons after THEN are part of the IF block)
-        const upperCurrent = current.toUpperCase().trimStart();
-        if (upperCurrent.startsWith('IF') && this.findKeywordInString(upperCurrent, 'THEN') !== -1) {
-          // This is an IF...THEN statement - everything remaining belongs to it
-          current += source.substring(i);
-          i = source.length;
-          continue;
-        }
         parts.push(current);
         current = '';
         i++;
@@ -195,6 +186,7 @@ class Interpreter {
         for (let si = 0; si < statements.length && this.running && !this.stopped; si++) {
           const result = await this.executeStatement(statements[si].trim(), this.currentLine);
           if (result === 'JUMP') { jumped = true; break; }
+          if (result === 'SKIP_LINE') { break; }
           if (result === 'STOP' || result === 'END') {
             this.running = false;
             if (result === 'STOP') {
@@ -612,6 +604,9 @@ class Interpreter {
         const result = await this.executeStatement(s.trim(), lineNum);
         if (result === 'JUMP' || result === 'STOP' || result === 'END') return result;
       }
+    } else {
+      // Condition false, no ELSE: skip rest of line (Applesoft BASIC behavior)
+      return 'SKIP_LINE';
     }
   }
 
