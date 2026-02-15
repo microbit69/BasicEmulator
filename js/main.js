@@ -3,9 +3,9 @@ window.App = window.App || {};
 /* Position the screen overlay to match the CRT glass in the background image.
    Pixel coordinates measured from the 1536×1024 source PNG. */
 (function() {
-  var GLASS_LEFT   = 178;   // px in source image
+  var GLASS_LEFT   = 220;   // px in source image
   var GLASS_TOP    =  78;
-  var GLASS_WIDTH  = 534;
+  var GLASS_WIDTH  = 490;
   var GLASS_HEIGHT = 382;
   var IMG_W        = 1536;
   var IMG_H        = 1024;
