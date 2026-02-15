@@ -8,6 +8,7 @@ class Emulator {
     this.display = new App.Display(this.displayElement, this.canvasElement);
     this.interpreter = new App.Interpreter(this.display);
     this.fs = new App.VirtualFileSystem();
+    this.ai = new App.ClaudeAI();
     this.inputBuffer = '';
     this.commandMode = true;
     this.setupInput();
@@ -24,6 +25,7 @@ class Emulator {
     this.display.printLine('');
     this.display.printLine('DISK VOLUME ' + this.fs.volumeNumber);
     this.display.printLine('TYPE "HELP" FOR COMMANDS');
+    this.display.printLine('TYPE "AI HELP" FOR CLAUDE AI');
     this.display.printLine('TYPE "CATALOG" FOR DISK CONTENTS');
     this.display.printLine('');
     this.display.printLine('READY.');
@@ -236,6 +238,12 @@ class Emulator {
       const pageArg = upper.substring(8).trim();
       await this.showTutorial(pageArg ? parseInt(pageArg) : 1);
       this.showPrompt();
+      return;
+    }
+
+    // === Claude AI Commands ===
+    if (upper === 'AI' || upper.startsWith('AI ')) {
+      await this.handleAiCommand(upper);
       return;
     }
 
@@ -871,11 +879,352 @@ class Emulator {
       'PRODOS:',
       ' PREFIX  CREATE  CATALOG',
       '',
+      'CLAUDE AI:',
+      ' AI HELP  AI KEY  AI MODEL',
+      ' AI question  AI WRITE name,desc',
+      '',
       'CATALOG: *=LOCKED  A=APPLESOFT',
       ' B=BINARY T=TEXT I=INTEGER',
       '',
     ];
     await this.printPaged(lines);
+  }
+
+  // ===== CLAUDE AI =====
+
+  async handleAiCommand(upper) {
+    const arg = upper.substring(2).trim();
+
+    // AI KEY - set API key
+    if (arg.startsWith('KEY ')) {
+      const key = arg.substring(4).trim();
+      if (!key) {
+        this.display.printLine('?SYNTAX ERROR');
+      } else {
+        this.ai.setApiKey(key);
+        this.display.printLine('');
+        this.display.printLine('API KEY SAVED.');
+        const masked = key.substring(0, 7) + '...' + key.slice(-4);
+        this.display.printLine('KEY: ' + masked);
+      }
+      this.showPrompt();
+      return;
+    }
+
+    // AI KEY (show current)
+    if (arg === 'KEY') {
+      const key = this.ai.getApiKey();
+      if (key) {
+        const masked = key.substring(0, 7) + '...' + key.slice(-4);
+        this.display.printLine('KEY: ' + masked);
+      } else {
+        this.display.printLine('NO API KEY SET.');
+        this.display.printLine('USE: AI KEY SK-ANT-...');
+      }
+      this.showPrompt();
+      return;
+    }
+
+    // AI MODEL - set/show model
+    if (arg === 'MODEL') {
+      this.display.printLine('MODEL: ' + this.ai.getModel());
+      this.showPrompt();
+      return;
+    }
+    if (arg.startsWith('MODEL ')) {
+      const model = arg.substring(6).trim().toLowerCase();
+      this.ai.setModel(model);
+      this.display.printLine('MODEL SET: ' + model);
+      this.showPrompt();
+      return;
+    }
+
+    // AI NEW - clear conversation history
+    if (arg === 'NEW') {
+      this.ai.clearHistory();
+      this.display.printLine('AI CONVERSATION CLEARED.');
+      this.showPrompt();
+      return;
+    }
+
+    // AI HELP
+    if (arg === 'HELP' || arg === '') {
+      await this.showAiHelp();
+      this.showPrompt();
+      return;
+    }
+
+    // AI WRITE filename description
+    if (arg.startsWith('WRITE ')) {
+      await this.aiWriteProgram(arg.substring(6).trim());
+      this.showPrompt();
+      return;
+    }
+
+    // AI question - ask Claude
+    await this.aiAsk(arg);
+    this.showPrompt();
+  }
+
+  async showAiHelp() {
+    const lines = [
+      '',
+      '=== CLAUDE AI COMMANDS ===',
+      '',
+      'AI KEY sk-ant-xxxxx',
+      '  Set your Anthropic API key',
+      'AI KEY',
+      '  Show current key',
+      '',
+      'AI MODEL model-name',
+      '  Set model (default: sonnet)',
+      'AI MODEL',
+      '  Show current model',
+      '',
+      'AI your question here',
+      '  Ask Claude anything',
+      'AI NEW',
+      '  Clear conversation history',
+      '',
+      'AI WRITE filename, description',
+      '  Claude writes a BASIC program',
+      '  and saves it to disk',
+      '',
+      'EXAMPLES:',
+      ' AI WHAT IS PEEK AND POKE?',
+      ' AI HOW DO I DRAW GRAPHICS?',
+      ' AI WRITE GAME, GUESS A NUMBER',
+      ' AI WRITE SORT, BUBBLE SORT DEMO',
+      '',
+      'NOTE: Requires Anthropic API key.',
+      'Get one at console.anthropic.com',
+      '',
+    ];
+    await this.printPaged(lines);
+  }
+
+  async aiAsk(question) {
+    if (!this.ai.getApiKey()) {
+      this.display.printLine('');
+      this.display.printLine('NO API KEY SET.');
+      this.display.printLine('USE: AI KEY YOUR-API-KEY');
+      this.display.printLine('GET KEY: CONSOLE.ANTHROPIC.COM');
+      return;
+    }
+
+    this.display.printLine('');
+    this.display.printString('THINKING');
+    this.display.render();
+
+    try {
+      // Show thinking dots
+      let dotCount = 0;
+      const dotInterval = setInterval(() => {
+        if (dotCount < 20) {
+          this.display.printChar('.');
+          this.display.render();
+          dotCount++;
+        }
+      }, 300);
+
+      const stream = this.ai.streamMessage(
+        question,
+        this.ai.getSystemPrompt(),
+        true
+      );
+
+      // Clear thinking line on first chunk
+      let firstChunk = true;
+      let lineCount = 0;
+      let colCount = 0;
+      const pageSize = this.display.height - 2;
+
+      for await (const chunk of stream) {
+        if (firstChunk) {
+          clearInterval(dotInterval);
+          // Move to new line after THINKING...
+          this.display.printLine('');
+          this.display.printLine('');
+          firstChunk = false;
+        }
+
+        // Print character by character with word wrapping
+        for (const ch of chunk) {
+          if (ch === '\n') {
+            this.display.printChar('\n');
+            this.display.render();
+            colCount = 0;
+            lineCount++;
+          } else {
+            this.display.printChar(ch.toUpperCase());
+            colCount++;
+            if (colCount >= this.display.width) {
+              colCount = 0;
+              lineCount++;
+            }
+          }
+
+          // Page break
+          if (lineCount >= pageSize) {
+            this.display.render();
+            this.display.printLine('');
+            this.display.printString('MORE...');
+            this.display.render();
+            await this.waitForKey();
+            this.display.printLine('');
+            lineCount = 0;
+          }
+        }
+        this.display.render();
+      }
+
+      if (firstChunk) {
+        clearInterval(dotInterval);
+      }
+      this.display.printLine('');
+
+    } catch (e) {
+      this.display.printLine('');
+      this.display.printLine('?' + e.message);
+    }
+  }
+
+  async aiWriteProgram(argStr) {
+    if (!this.ai.getApiKey()) {
+      this.display.printLine('');
+      this.display.printLine('NO API KEY SET.');
+      this.display.printLine('USE: AI KEY YOUR-API-KEY');
+      return;
+    }
+
+    // Parse: filename, description
+    const commaIdx = argStr.indexOf(',');
+    let filename, description;
+    if (commaIdx >= 0) {
+      filename = argStr.substring(0, commaIdx).trim();
+      description = argStr.substring(commaIdx + 1).trim();
+    } else {
+      // No comma - treat everything as description, auto-name
+      filename = '';
+      description = argStr;
+    }
+
+    if (!description) {
+      this.display.printLine('?SYNTAX ERROR');
+      this.display.printLine('USE: AI WRITE NAME, DESCRIPTION');
+      return;
+    }
+
+    // Generate filename if not provided
+    if (!filename) {
+      filename = 'AIPROG';
+    }
+    filename = filename.toUpperCase();
+    if (!filename.endsWith('.BAS')) {
+      filename += '.BAS';
+    }
+
+    this.display.printLine('');
+    this.display.printString('WRITING PROGRAM');
+    this.display.render();
+
+    try {
+      let dotCount = 0;
+      const dotInterval = setInterval(() => {
+        if (dotCount < 20) {
+          this.display.printChar('.');
+          this.display.render();
+          dotCount++;
+        }
+      }, 300);
+
+      const stream = this.ai.streamMessage(
+        description,
+        this.ai.getWriteSystemPrompt(),
+        false
+      );
+
+      let fullResponse = '';
+      let firstChunk = true;
+
+      for await (const chunk of stream) {
+        if (firstChunk) {
+          clearInterval(dotInterval);
+          this.display.printLine('');
+          this.display.printLine('');
+          firstChunk = false;
+        }
+        fullResponse += chunk;
+        // Show code as it streams in
+        for (const ch of chunk) {
+          if (ch === '\n') {
+            this.display.printChar('\n');
+          } else {
+            this.display.printChar(ch.toUpperCase());
+          }
+        }
+        this.display.render();
+      }
+
+      if (firstChunk) {
+        clearInterval(dotInterval);
+      }
+
+      // Parse the BASIC program from response
+      const programLines = this.parseBasicProgram(fullResponse);
+
+      if (Object.keys(programLines).length === 0) {
+        this.display.printLine('');
+        this.display.printLine('?NO VALID PROGRAM GENERATED');
+        return;
+      }
+
+      // Load into interpreter memory
+      this.interpreter.program = {};
+      this.interpreter.sortedLines = [];
+      this.interpreter.clearVars();
+
+      for (const [num, src] of Object.entries(programLines)) {
+        this.interpreter.storeLine(parseInt(num), src);
+      }
+
+      // Save to filesystem
+      const content = App.VirtualFileSystem.programToText(this.interpreter.program);
+      const err = this.fs.writeFile(filename, content, 'A');
+
+      this.display.printLine('');
+      if (err) {
+        this.display.printLine('?SAVE ERROR: ' + err);
+      } else {
+        const lineCount = Object.keys(programLines).length;
+        this.display.printLine('');
+        this.display.printLine('PROGRAM SAVED: ' + filename);
+        this.display.printLine(lineCount + ' LINES');
+        this.display.printLine('TYPE RUN TO EXECUTE');
+      }
+
+    } catch (e) {
+      this.display.printLine('');
+      this.display.printLine('?' + e.message);
+    }
+  }
+
+  parseBasicProgram(text) {
+    const program = {};
+    const lines = text.split('\n');
+    for (const line of lines) {
+      const trimmed = line.trim();
+      // Match lines starting with a number
+      const match = trimmed.match(/^(\d+)\s+(.*)/);
+      if (match) {
+        const lineNum = parseInt(match[1]);
+        const code = match[2];
+        if (lineNum >= 0 && lineNum <= 63999) {
+          program[lineNum] = code;
+        }
+      }
+    }
+    return program;
   }
 
   async showTutorial(page) {

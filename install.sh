@@ -8,7 +8,7 @@ echo "Creating directories..."
 mkdir -p "$DIR/css"
 mkdir -p "$DIR/js"
 echo ""
-echo "Writing index.html (1/13)..."
+echo "Writing index.html (1/14)..."
 cat > "$DIR/index.html" << 'EOF_INDEX_HTML'
 <!DOCTYPE html>
 <html lang="en">
@@ -44,6 +44,7 @@ cat > "$DIR/index.html" << 'EOF_INDEX_HTML'
 <script src="js/samples.js"></script>
 <script src="js/tutorial.js"></script>
 <script src="js/display.js"></script>
+<script src="js/claude.js"></script>
 <script src="js/interpreter.js"></script>
 <script src="js/emulator.js"></script>
 <script src="js/main.js"></script>
@@ -52,7 +53,7 @@ cat > "$DIR/index.html" << 'EOF_INDEX_HTML'
 </html>
 EOF_INDEX_HTML
 
-echo "Writing css/style.css (2/13)..."
+echo "Writing css/style.css (2/14)..."
 cat > "$DIR/css/style.css" << 'EOF_STYLE_CSS'
 /* ===== RESET & BASE ===== */
 * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -222,7 +223,7 @@ body {
 }
 EOF_STYLE_CSS
 
-echo "Writing js/constants.js (3/13)..."
+echo "Writing js/constants.js (3/14)..."
 cat > "$DIR/js/constants.js" << 'EOF_CONSTANTS_JS'
 window.App = window.App || {};
 
@@ -272,7 +273,7 @@ App.HIRES_COLORS = [
 ];
 EOF_CONSTANTS_JS
 
-echo "Writing js/audio.js (4/13)..."
+echo "Writing js/audio.js (4/14)..."
 cat > "$DIR/js/audio.js" << 'EOF_AUDIO_JS'
 window.App = window.App || {};
 
@@ -303,7 +304,7 @@ App.beep = function(duration, frequency) {
 };
 EOF_AUDIO_JS
 
-echo "Writing js/tokenizer.js (5/13)..."
+echo "Writing js/tokenizer.js (5/14)..."
 cat > "$DIR/js/tokenizer.js" << 'EOF_TOKENIZER_JS'
 window.App = window.App || {};
 
@@ -451,7 +452,7 @@ class Tokenizer {
 App.Tokenizer = Tokenizer;
 EOF_TOKENIZER_JS
 
-echo "Writing js/parser.js (6/13)..."
+echo "Writing js/parser.js (6/14)..."
 cat > "$DIR/js/parser.js" << 'EOF_PARSER_JS'
 window.App = window.App || {};
 
@@ -669,7 +670,7 @@ class Parser {
 App.Parser = Parser;
 EOF_PARSER_JS
 
-echo "Writing js/filesystem.js (7/13)..."
+echo "Writing js/filesystem.js (7/14)..."
 cat > "$DIR/js/filesystem.js" << 'EOF_FILESYSTEM_JS'
 window.App = window.App || {};
 
@@ -983,7 +984,7 @@ class VirtualFileSystem {
 App.VirtualFileSystem = VirtualFileSystem;
 EOF_FILESYSTEM_JS
 
-echo "Writing js/samples.js (8/13)..."
+echo "Writing js/samples.js (8/14)..."
 cat > "$DIR/js/samples.js" << 'EOF_SAMPLES_JS'
 window.App = window.App || {};
 
@@ -1213,7 +1214,7 @@ App.getSamples = function() {
 };
 EOF_SAMPLES_JS
 
-echo "Writing js/tutorial.js (9/13)..."
+echo "Writing js/tutorial.js (9/14)..."
 cat > "$DIR/js/tutorial.js" << 'EOF_TUTORIAL_JS'
 window.App = window.App || {};
 
@@ -1417,7 +1418,7 @@ App.getTutorialPages = function() {
 };
 EOF_TUTORIAL_JS
 
-echo "Writing js/display.js (10/13)..."
+echo "Writing js/display.js (10/14)..."
 cat > "$DIR/js/display.js" << 'EOF_DISPLAY_JS'
 window.App = window.App || {};
 
@@ -1651,7 +1652,182 @@ class Display {
 App.Display = Display;
 EOF_DISPLAY_JS
 
-echo "Writing js/interpreter.js (11/13)..."
+echo "Writing js/claude.js (11/14)..."
+cat > "$DIR/js/claude.js" << 'EOF_CLAUDE_JS'
+window.App = window.App || {};
+
+class ClaudeAI {
+  constructor() {
+    this.apiKey = localStorage.getItem('claude_api_key') || '';
+    this.model = localStorage.getItem('claude_model') || 'claude-sonnet-4-5-20250929';
+    this.conversationHistory = [];
+    this.maxHistory = 10;
+  }
+
+  setApiKey(key) {
+    this.apiKey = key;
+    localStorage.setItem('claude_api_key', key);
+  }
+
+  getApiKey() {
+    return this.apiKey;
+  }
+
+  setModel(model) {
+    this.model = model;
+    localStorage.setItem('claude_model', model);
+  }
+
+  getModel() {
+    return this.model;
+  }
+
+  clearHistory() {
+    this.conversationHistory = [];
+  }
+
+  addToHistory(role, content) {
+    this.conversationHistory.push({ role, content });
+    if (this.conversationHistory.length > this.maxHistory * 2) {
+      this.conversationHistory = this.conversationHistory.slice(-this.maxHistory * 2);
+    }
+  }
+
+  getSystemPrompt() {
+    return `You are an AI assistant built into an Apple II+ emulator running Applesoft BASIC with DOS 3.3.
+You are displayed on a 40-column screen. Keep your answers concise and formatted for 40 characters width.
+
+IMPORTANT FORMATTING RULES:
+- Keep lines under 38 characters
+- Use short, clear sentences
+- Use UPPERCASE for BASIC keywords
+- No markdown formatting (no *, #, etc.)
+- Use blank lines to separate sections
+- For lists, use simple dashes or numbers
+
+You know everything about:
+- Apple II, Apple II+, Apple IIe hardware
+- Applesoft BASIC programming
+- DOS 3.3 and ProDOS commands
+- 6502 assembly language
+- Retro computing history
+
+Available emulator commands:
+PROGRAM: RUN, LIST, NEW, CONT, DEL,
+  TRACE, NOTRACE, FP
+DISK: CATALOG, SAVE, LOAD, DELETE,
+  LOCK, UNLOCK, RENAME, VERIFY, INIT
+FILE I/O: OPEN, CLOSE, WRITE, APPEND,
+  EXEC, POSITION, BSAVE, BLOAD
+DEVICE: PR#, IN#, MON, NOMON
+PRODOS: PREFIX, CREATE, CD, PWD
+AI: AI KEY, AI MODEL, AI HELP,
+  AI NEW, AI WRITE
+
+When asked to write BASIC programs, output ONLY valid Applesoft BASIC numbered lines. No explanations before or after the code unless explicitly asked. Use line numbers starting at 10, incrementing by 10.`;
+  }
+
+  getWriteSystemPrompt() {
+    return `You are a BASIC program generator for an Apple II+ emulator running Applesoft BASIC.
+
+CRITICAL: Output ONLY numbered Applesoft BASIC program lines.
+- No text before or after the program
+- No explanations, no comments outside REM
+- Line numbers start at 10, increment by 10
+- Use valid Applesoft BASIC syntax only
+- Max line length: 239 characters
+- Available commands: PRINT, INPUT, GOTO,
+  GOSUB, RETURN, IF/THEN, FOR/NEXT,
+  DIM, READ, DATA, REM, LET, END, STOP,
+  HOME, HTAB, VTAB, INVERSE, NORMAL,
+  FLASH, TEXT, GR, COLOR=, PLOT, HLIN,
+  VLIN, HGR, HCOLOR=, HPLOT,
+  PEEK, POKE, CALL, GET, TAB,
+  LEFT$, RIGHT$, MID$, LEN, VAL, STR$,
+  CHR$, ASC, INT, RND, SQR, ABS, SGN,
+  SIN, COS, TAN, ATN, LOG, EXP, FRE,
+  POS, SPC, NOT, AND, OR
+- String vars end with $, arrays use DIM
+- Use HTAB/VTAB for cursor positioning
+- Use HOME to clear screen
+- Use GET A$ for single keypress input`;
+  }
+
+  async *streamMessage(userPrompt, systemPrompt, useHistory) {
+    if (!this.apiKey) {
+      throw new Error('NO API KEY. USE: AI KEY YOUR-KEY');
+    }
+
+    const messages = useHistory
+      ? [...this.conversationHistory, { role: 'user', content: userPrompt }]
+      : [{ role: 'user', content: userPrompt }];
+
+    const response = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-api-key': this.apiKey,
+        'anthropic-version': '2023-06-01',
+        'anthropic-dangerous-direct-browser-access': 'true'
+      },
+      body: JSON.stringify({
+        model: this.model,
+        max_tokens: 2048,
+        system: systemPrompt,
+        messages: messages,
+        stream: true
+      })
+    });
+
+    if (!response.ok) {
+      let errMsg = 'API ERROR ' + response.status;
+      if (response.status === 401) errMsg = 'INVALID API KEY';
+      if (response.status === 429) errMsg = 'RATE LIMITED - WAIT';
+      if (response.status === 529) errMsg = 'API OVERLOADED - WAIT';
+      throw new Error(errMsg);
+    }
+
+    const reader = response.body.getReader();
+    const decoder = new TextDecoder();
+    let buffer = '';
+    let fullResponse = '';
+
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+
+      buffer += decoder.decode(value, { stream: true });
+      const lines = buffer.split('\n');
+      buffer = lines.pop();
+
+      for (const line of lines) {
+        if (line.startsWith('data: ')) {
+          const data = line.substring(6).trim();
+          if (data === '[DONE]') break;
+          try {
+            const parsed = JSON.parse(data);
+            if (parsed.type === 'content_block_delta' && parsed.delta?.text) {
+              fullResponse += parsed.delta.text;
+              yield parsed.delta.text;
+            }
+          } catch (e) {
+            // skip non-JSON lines
+          }
+        }
+      }
+    }
+
+    if (useHistory) {
+      this.addToHistory('user', userPrompt);
+      this.addToHistory('assistant', fullResponse);
+    }
+  }
+}
+
+App.ClaudeAI = ClaudeAI;
+EOF_CLAUDE_JS
+
+echo "Writing js/interpreter.js (12/14)..."
 cat > "$DIR/js/interpreter.js" << 'EOF_INTERPRETER_JS'
 window.App = window.App || {};
 
@@ -2960,7 +3136,7 @@ class Interpreter {
 App.Interpreter = Interpreter;
 EOF_INTERPRETER_JS
 
-echo "Writing js/emulator.js (12/13)..."
+echo "Writing js/emulator.js (13/14)..."
 cat > "$DIR/js/emulator.js" << 'EOF_EMULATOR_JS'
 window.App = window.App || {};
 
@@ -2972,6 +3148,7 @@ class Emulator {
     this.display = new App.Display(this.displayElement, this.canvasElement);
     this.interpreter = new App.Interpreter(this.display);
     this.fs = new App.VirtualFileSystem();
+    this.ai = new App.ClaudeAI();
     this.inputBuffer = '';
     this.commandMode = true;
     this.setupInput();
@@ -2988,6 +3165,7 @@ class Emulator {
     this.display.printLine('');
     this.display.printLine('DISK VOLUME ' + this.fs.volumeNumber);
     this.display.printLine('TYPE "HELP" FOR COMMANDS');
+    this.display.printLine('TYPE "AI HELP" FOR CLAUDE AI');
     this.display.printLine('TYPE "CATALOG" FOR DISK CONTENTS');
     this.display.printLine('');
     this.display.printLine('READY.');
@@ -3200,6 +3378,12 @@ class Emulator {
       const pageArg = upper.substring(8).trim();
       await this.showTutorial(pageArg ? parseInt(pageArg) : 1);
       this.showPrompt();
+      return;
+    }
+
+    // === Claude AI Commands ===
+    if (upper === 'AI' || upper.startsWith('AI ')) {
+      await this.handleAiCommand(upper);
       return;
     }
 
@@ -3835,11 +4019,352 @@ class Emulator {
       'PRODOS:',
       ' PREFIX  CREATE  CATALOG',
       '',
+      'CLAUDE AI:',
+      ' AI HELP  AI KEY  AI MODEL',
+      ' AI question  AI WRITE name,desc',
+      '',
       'CATALOG: *=LOCKED  A=APPLESOFT',
       ' B=BINARY T=TEXT I=INTEGER',
       '',
     ];
     await this.printPaged(lines);
+  }
+
+  // ===== CLAUDE AI =====
+
+  async handleAiCommand(upper) {
+    const arg = upper.substring(2).trim();
+
+    // AI KEY - set API key
+    if (arg.startsWith('KEY ')) {
+      const key = arg.substring(4).trim();
+      if (!key) {
+        this.display.printLine('?SYNTAX ERROR');
+      } else {
+        this.ai.setApiKey(key);
+        this.display.printLine('');
+        this.display.printLine('API KEY SAVED.');
+        const masked = key.substring(0, 7) + '...' + key.slice(-4);
+        this.display.printLine('KEY: ' + masked);
+      }
+      this.showPrompt();
+      return;
+    }
+
+    // AI KEY (show current)
+    if (arg === 'KEY') {
+      const key = this.ai.getApiKey();
+      if (key) {
+        const masked = key.substring(0, 7) + '...' + key.slice(-4);
+        this.display.printLine('KEY: ' + masked);
+      } else {
+        this.display.printLine('NO API KEY SET.');
+        this.display.printLine('USE: AI KEY SK-ANT-...');
+      }
+      this.showPrompt();
+      return;
+    }
+
+    // AI MODEL - set/show model
+    if (arg === 'MODEL') {
+      this.display.printLine('MODEL: ' + this.ai.getModel());
+      this.showPrompt();
+      return;
+    }
+    if (arg.startsWith('MODEL ')) {
+      const model = arg.substring(6).trim().toLowerCase();
+      this.ai.setModel(model);
+      this.display.printLine('MODEL SET: ' + model);
+      this.showPrompt();
+      return;
+    }
+
+    // AI NEW - clear conversation history
+    if (arg === 'NEW') {
+      this.ai.clearHistory();
+      this.display.printLine('AI CONVERSATION CLEARED.');
+      this.showPrompt();
+      return;
+    }
+
+    // AI HELP
+    if (arg === 'HELP' || arg === '') {
+      await this.showAiHelp();
+      this.showPrompt();
+      return;
+    }
+
+    // AI WRITE filename description
+    if (arg.startsWith('WRITE ')) {
+      await this.aiWriteProgram(arg.substring(6).trim());
+      this.showPrompt();
+      return;
+    }
+
+    // AI question - ask Claude
+    await this.aiAsk(arg);
+    this.showPrompt();
+  }
+
+  async showAiHelp() {
+    const lines = [
+      '',
+      '=== CLAUDE AI COMMANDS ===',
+      '',
+      'AI KEY sk-ant-xxxxx',
+      '  Set your Anthropic API key',
+      'AI KEY',
+      '  Show current key',
+      '',
+      'AI MODEL model-name',
+      '  Set model (default: sonnet)',
+      'AI MODEL',
+      '  Show current model',
+      '',
+      'AI your question here',
+      '  Ask Claude anything',
+      'AI NEW',
+      '  Clear conversation history',
+      '',
+      'AI WRITE filename, description',
+      '  Claude writes a BASIC program',
+      '  and saves it to disk',
+      '',
+      'EXAMPLES:',
+      ' AI WHAT IS PEEK AND POKE?',
+      ' AI HOW DO I DRAW GRAPHICS?',
+      ' AI WRITE GAME, GUESS A NUMBER',
+      ' AI WRITE SORT, BUBBLE SORT DEMO',
+      '',
+      'NOTE: Requires Anthropic API key.',
+      'Get one at console.anthropic.com',
+      '',
+    ];
+    await this.printPaged(lines);
+  }
+
+  async aiAsk(question) {
+    if (!this.ai.getApiKey()) {
+      this.display.printLine('');
+      this.display.printLine('NO API KEY SET.');
+      this.display.printLine('USE: AI KEY YOUR-API-KEY');
+      this.display.printLine('GET KEY: CONSOLE.ANTHROPIC.COM');
+      return;
+    }
+
+    this.display.printLine('');
+    this.display.printString('THINKING');
+    this.display.render();
+
+    try {
+      // Show thinking dots
+      let dotCount = 0;
+      const dotInterval = setInterval(() => {
+        if (dotCount < 20) {
+          this.display.printChar('.');
+          this.display.render();
+          dotCount++;
+        }
+      }, 300);
+
+      const stream = this.ai.streamMessage(
+        question,
+        this.ai.getSystemPrompt(),
+        true
+      );
+
+      // Clear thinking line on first chunk
+      let firstChunk = true;
+      let lineCount = 0;
+      let colCount = 0;
+      const pageSize = this.display.height - 2;
+
+      for await (const chunk of stream) {
+        if (firstChunk) {
+          clearInterval(dotInterval);
+          // Move to new line after THINKING...
+          this.display.printLine('');
+          this.display.printLine('');
+          firstChunk = false;
+        }
+
+        // Print character by character with word wrapping
+        for (const ch of chunk) {
+          if (ch === '\n') {
+            this.display.printChar('\n');
+            this.display.render();
+            colCount = 0;
+            lineCount++;
+          } else {
+            this.display.printChar(ch.toUpperCase());
+            colCount++;
+            if (colCount >= this.display.width) {
+              colCount = 0;
+              lineCount++;
+            }
+          }
+
+          // Page break
+          if (lineCount >= pageSize) {
+            this.display.render();
+            this.display.printLine('');
+            this.display.printString('MORE...');
+            this.display.render();
+            await this.waitForKey();
+            this.display.printLine('');
+            lineCount = 0;
+          }
+        }
+        this.display.render();
+      }
+
+      if (firstChunk) {
+        clearInterval(dotInterval);
+      }
+      this.display.printLine('');
+
+    } catch (e) {
+      this.display.printLine('');
+      this.display.printLine('?' + e.message);
+    }
+  }
+
+  async aiWriteProgram(argStr) {
+    if (!this.ai.getApiKey()) {
+      this.display.printLine('');
+      this.display.printLine('NO API KEY SET.');
+      this.display.printLine('USE: AI KEY YOUR-API-KEY');
+      return;
+    }
+
+    // Parse: filename, description
+    const commaIdx = argStr.indexOf(',');
+    let filename, description;
+    if (commaIdx >= 0) {
+      filename = argStr.substring(0, commaIdx).trim();
+      description = argStr.substring(commaIdx + 1).trim();
+    } else {
+      // No comma - treat everything as description, auto-name
+      filename = '';
+      description = argStr;
+    }
+
+    if (!description) {
+      this.display.printLine('?SYNTAX ERROR');
+      this.display.printLine('USE: AI WRITE NAME, DESCRIPTION');
+      return;
+    }
+
+    // Generate filename if not provided
+    if (!filename) {
+      filename = 'AIPROG';
+    }
+    filename = filename.toUpperCase();
+    if (!filename.endsWith('.BAS')) {
+      filename += '.BAS';
+    }
+
+    this.display.printLine('');
+    this.display.printString('WRITING PROGRAM');
+    this.display.render();
+
+    try {
+      let dotCount = 0;
+      const dotInterval = setInterval(() => {
+        if (dotCount < 20) {
+          this.display.printChar('.');
+          this.display.render();
+          dotCount++;
+        }
+      }, 300);
+
+      const stream = this.ai.streamMessage(
+        description,
+        this.ai.getWriteSystemPrompt(),
+        false
+      );
+
+      let fullResponse = '';
+      let firstChunk = true;
+
+      for await (const chunk of stream) {
+        if (firstChunk) {
+          clearInterval(dotInterval);
+          this.display.printLine('');
+          this.display.printLine('');
+          firstChunk = false;
+        }
+        fullResponse += chunk;
+        // Show code as it streams in
+        for (const ch of chunk) {
+          if (ch === '\n') {
+            this.display.printChar('\n');
+          } else {
+            this.display.printChar(ch.toUpperCase());
+          }
+        }
+        this.display.render();
+      }
+
+      if (firstChunk) {
+        clearInterval(dotInterval);
+      }
+
+      // Parse the BASIC program from response
+      const programLines = this.parseBasicProgram(fullResponse);
+
+      if (Object.keys(programLines).length === 0) {
+        this.display.printLine('');
+        this.display.printLine('?NO VALID PROGRAM GENERATED');
+        return;
+      }
+
+      // Load into interpreter memory
+      this.interpreter.program = {};
+      this.interpreter.sortedLines = [];
+      this.interpreter.clearVars();
+
+      for (const [num, src] of Object.entries(programLines)) {
+        this.interpreter.storeLine(parseInt(num), src);
+      }
+
+      // Save to filesystem
+      const content = App.VirtualFileSystem.programToText(this.interpreter.program);
+      const err = this.fs.writeFile(filename, content, 'A');
+
+      this.display.printLine('');
+      if (err) {
+        this.display.printLine('?SAVE ERROR: ' + err);
+      } else {
+        const lineCount = Object.keys(programLines).length;
+        this.display.printLine('');
+        this.display.printLine('PROGRAM SAVED: ' + filename);
+        this.display.printLine(lineCount + ' LINES');
+        this.display.printLine('TYPE RUN TO EXECUTE');
+      }
+
+    } catch (e) {
+      this.display.printLine('');
+      this.display.printLine('?' + e.message);
+    }
+  }
+
+  parseBasicProgram(text) {
+    const program = {};
+    const lines = text.split('\n');
+    for (const line of lines) {
+      const trimmed = line.trim();
+      // Match lines starting with a number
+      const match = trimmed.match(/^(\d+)\s+(.*)/);
+      if (match) {
+        const lineNum = parseInt(match[1]);
+        const code = match[2];
+        if (lineNum >= 0 && lineNum <= 63999) {
+          program[lineNum] = code;
+        }
+      }
+    }
+    return program;
   }
 
   async showTutorial(page) {
@@ -3868,7 +4393,7 @@ class Emulator {
 App.Emulator = Emulator;
 EOF_EMULATOR_JS
 
-echo "Writing js/main.js (13/13)..."
+echo "Writing js/main.js (14/14)..."
 cat > "$DIR/js/main.js" << 'EOF_MAIN_JS'
 window.App = window.App || {};
 
