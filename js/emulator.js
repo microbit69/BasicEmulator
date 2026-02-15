@@ -47,6 +47,25 @@ class Emulator {
       if (tag === 'SELECT' || tag === 'BUTTON') return;
       this.handleKeyDown(e);
     });
+
+    // Paste support (Ctrl+V / Cmd+V)
+    document.addEventListener('paste', (e) => {
+      e.preventDefault();
+      const text = (e.clipboardData || window.clipboardData).getData('text');
+      if (text) this.handlePaste(text);
+    });
+  }
+
+  handlePaste(text) {
+    // Clean: keep printable ASCII, convert to uppercase
+    const clean = text.replace(/[\r\n]/g, '').toUpperCase();
+    for (const ch of clean) {
+      if (ch.charCodeAt(0) >= 32 && ch.charCodeAt(0) < 127) {
+        this.inputBuffer += ch;
+        this.display.printChar(ch);
+      }
+    }
+    this.display.render();
   }
 
   handleKeyDown(e) {
@@ -55,6 +74,9 @@ class Emulator {
       this.ctrlC();
       return;
     }
+
+    // Allow Ctrl+V / Cmd+V for paste (handled by paste event)
+    if ((e.ctrlKey || e.metaKey) && e.key === 'v') return;
 
     if (e.ctrlKey || e.metaKey || e.altKey) return;
 
