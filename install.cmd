@@ -47,7 +47,7 @@ $content = @'
 (function() {
   // CRT glass coordinates in source image (1536x1024)
   // Measured from AppleIIBG01.png glass boundaries
-  var GL = 397, GT = 97, GW = 450, GH = 375, IW = 1536, IH = 1024;
+  var GL = 383, GT = 97, GW = 480, GH = 375, IW = 1536, IH = 1024;
   // Drive LED positions as percentage of image (left%, top%)
   var D1LP = 74.5, D1TP = 59.5, D2LP = 74.5, D2TP = 77.5, DLS = 10;
   function pos() {
@@ -164,8 +164,8 @@ body {
 #screen {
   position: absolute;
   top: 4%;
-  left: 3%;
-  right: 3%;
+  left: 1%;
+  right: 1%;
   bottom: 4%;
   z-index: 1;
 }
@@ -182,7 +182,7 @@ body {
   line-height: 1.2;
   color: #ffb000;
   white-space: pre;
-  letter-spacing: clamp(0px, 0.45vh, 5px);
+  letter-spacing: clamp(0px, 0.3vh, 4px);
   text-shadow: 0 0 5px rgba(255, 176, 0, 0.5), 0 0 10px rgba(255, 176, 0, 0.2);
   width: 100%;
   height: 100%;
