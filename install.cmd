@@ -40,7 +40,7 @@ $content = @'
 
 <input type="file" id="file-upload" accept=".bas,.txt,.BAS,.TXT" multiple>
 
-<!-- Inline screen positioning - cannot be cached separately -->
+<!-- Inline screen positioning with debug output -->
 <script>
 (function() {
   var GL = 220, GT = 78, GW = 490, GH = 382, IW = 1536, IH = 1024;
@@ -53,10 +53,23 @@ $content = @'
     var ff = fr.getBoundingClientRect();
     var ox = ir.left - ff.left, oy = ir.top - ff.top;
     var sx = ir.width / IW, sy = ir.height / IH;
-    sc.style.left   = (ox + GL * sx) + 'px';
-    sc.style.top    = (oy + GT * sy) + 'px';
-    sc.style.width  = (GW * sx) + 'px';
-    sc.style.height = (GH * sy) + 'px';
+    var l = ox + GL * sx, t = oy + GT * sy;
+    var w = GW * sx, h = GH * sy;
+    sc.style.left   = l + 'px';
+    sc.style.top    = t + 'px';
+    sc.style.width  = w + 'px';
+    sc.style.height = h + 'px';
+    // DEBUG panel
+    var d = document.getElementById('dbg');
+    if (!d) { d = document.createElement('div'); d.id = 'dbg';
+      d.style.cssText = 'position:fixed;bottom:0;left:0;background:yellow;color:black;padding:8px;z-index:9999;font:12px monospace;';
+      document.body.appendChild(d); }
+    d.innerHTML =
+      'img: ' + Math.round(ir.left) + ',' + Math.round(ir.top) + ' ' + Math.round(ir.width) + 'x' + Math.round(ir.height) +
+      '<br>frame: ' + Math.round(ff.left) + ',' + Math.round(ff.top) + ' ' + Math.round(ff.width) + 'x' + Math.round(ff.height) +
+      '<br>ox=' + Math.round(ox) + ' oy=' + Math.round(oy) + ' sx=' + sx.toFixed(3) + ' sy=' + sy.toFixed(3) +
+      '<br>overlay: left=' + Math.round(l) + ' top=' + Math.round(t) + ' w=' + Math.round(w) + ' h=' + Math.round(h) +
+      '<br>viewport: ' + window.innerWidth + 'x' + window.innerHeight;
   }
   window.addEventListener('load', pos);
   window.addEventListener('resize', pos);
