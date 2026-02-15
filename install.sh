@@ -55,8 +55,14 @@ cat > "$DIR/index.html" << 'EOF_INDEX_HTML'
     sc.style.top    = t + 'px';
     sc.style.width  = w + 'px';
     sc.style.height = h + 'px';
-    // DEBUG: show values in title bar
-    document.title = 'L=' + Math.round(l) + ' T=' + Math.round(t) + ' W=' + Math.round(w) + ' H=' + Math.round(h);
+    // DEBUG: check if computed style matches what we set
+    setTimeout(function() {
+      var cs = getComputedStyle(sc);
+      document.title = 'SET:L=' + Math.round(l) + ',W=' + Math.round(w) +
+        ' | GOT:L=' + cs.left + ',W=' + cs.width +
+        ' | cls=' + sc.className +
+        ' | style=' + sc.style.cssText.substring(0, 80);
+    }, 1500);
   }
   window.addEventListener('load', pos);
   window.addEventListener('resize', pos);
