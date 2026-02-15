@@ -142,20 +142,109 @@ body {
   display: none;
 }
 
-/* ===== POWER LED ===== */
+/* ===== POWER BUTTON ===== */
+#power-btn {
+  width: 28px;
+  height: 28px;
+  background: #222;
+  border: 2px solid #444;
+  border-radius: 6px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-top: 12px;
+  transition: border-color 0.2s, background 0.2s;
+  user-select: none;
+}
+
+#power-btn:hover {
+  border-color: #666;
+  background: #2a2a2a;
+}
+
+#power-btn:active {
+  background: #181818;
+  transform: scale(0.95);
+}
+
 #power-led {
   width: 8px;
   height: 8px;
-  background: #ffb000;
+  background: #333;
   border-radius: 50%;
+  box-shadow: none;
+  transition: background 0.3s, box-shadow 0.3s;
+}
+
+#power-led.on {
+  background: #ffb000;
   box-shadow: 0 0 6px #ffb000;
-  margin-top: 12px;
   animation: led-glow 2s ease-in-out infinite alternate;
 }
 
 @keyframes led-glow {
   0% { box-shadow: 0 0 4px #ffb000; }
   100% { box-shadow: 0 0 10px #ffb000, 0 0 20px rgba(255, 176, 0, 0.3); }
+}
+
+/* ===== CRT POWER ON/OFF ===== */
+#screen-container.off #text-display {
+  visibility: hidden;
+}
+
+#screen-container.off #lores-canvas {
+  visibility: hidden;
+}
+
+#screen-container.off {
+  background: #020200;
+}
+
+#screen-container.crt-on {
+  animation: crt-turn-on 0.4s ease-out;
+}
+
+@keyframes crt-turn-on {
+  0% {
+    filter: brightness(0);
+  }
+  20% {
+    filter: brightness(2.5) saturate(0);
+  }
+  40% {
+    filter: brightness(1.5);
+  }
+  100% {
+    filter: brightness(1);
+  }
+}
+
+#screen-container.crt-off {
+  animation: crt-turn-off 0.35s ease-in forwards;
+}
+
+@keyframes crt-turn-off {
+  0% {
+    filter: brightness(1);
+    transform: scale(1, 1);
+  }
+  50% {
+    filter: brightness(2);
+    transform: scale(1.02, 0.6);
+  }
+  70% {
+    filter: brightness(3);
+    transform: scale(0.8, 0.01);
+  }
+  90% {
+    filter: brightness(1);
+    transform: scale(0.4, 0.005);
+  }
+  100% {
+    filter: brightness(0);
+    transform: scale(0, 0);
+  }
 }
 
 /* ===== RESPONSIVE ===== */

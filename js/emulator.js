@@ -4,6 +4,9 @@ class Emulator {
   constructor() {
     this.displayElement = document.getElementById('text-display');
     this.canvasElement = document.getElementById('lores-canvas');
+    this.screenContainer = document.getElementById('screen-container');
+    this.powerBtn = document.getElementById('power-btn');
+    this.powerLed = document.getElementById('power-led');
     this.fileUpload = document.getElementById('file-upload');
     this.display = new App.Display(this.displayElement, this.canvasElement);
     this.interpreter = new App.Interpreter(this.display);
@@ -11,10 +14,174 @@ class Emulator {
     this.ai = new App.ClaudeAI();
     this.inputBuffer = '';
     this.commandMode = true;
+    this.poweredOn = false;
+    this.booting = false;
     this.setupInput();
     this.setupFileUpload();
+    this.setupPowerButton();
     this.installSamples();
+    // Start in OFF state
+    this.screenContainer.classList.add('off');
+  }
+
+  // ===== POWER BUTTON =====
+
+  setupPowerButton() {
+    this.powerBtn.addEventListener('click', () => this.togglePower());
+  }
+
+  async togglePower() {
+    if (this.booting) return; // ignore clicks during boot
+    if (this.poweredOn) {
+      this.powerOff();
+    } else {
+      await this.powerOn();
+    }
+  }
+
+  async powerOn() {
+    this.booting = true;
+    this.poweredOn = true;
+    this.powerLed.classList.add('on');
+
+    // CRT turn-on effect
+    this.screenContainer.classList.remove('off', 'crt-off');
+    this.screenContainer.classList.add('crt-on');
+    this.display.clear();
+
+    // Power-on beep
+    App.beep(50, 1000);
+
+    await this.sleep(100);
+
+    // === Phase 1: Memory garbage (random chars flash briefly) ===
+    this.fillScreenGarbage();
+    this.display.render();
+    await this.sleep(150);
+
+    // === Phase 2: Screen clears, Apple II ROM banner ===
+    this.display.clear();
+    await this.sleep(200);
+
+    // Show the classic Apple II monitor ROM startup
+    this.display.printLine('APPLE ][');
+    this.display.render();
+    await this.sleep(400);
+
+    // === Phase 3: Memory test ===
+    App.beep(30, 600);
+    const memSteps = ['4K', '8K', '16K', '32K', '48K'];
+    for (const step of memSteps) {
+      this.display.cursorX = 0;
+      this.display.cursorY = 2;
+      // Clear the line first
+      for (let x = 0; x < this.display.width; x++) {
+        this.display.screenBuffer[2][x] = ' ';
+      }
+      const msg = 'MEMORY TEST... ' + step;
+      for (let i = 0; i < msg.length; i++) {
+        this.display.screenBuffer[2][i] = msg[i];
+      }
+      this.display.render();
+      await this.sleep(80);
+    }
+    // Final memory result
+    this.display.cursorX = 0;
+    this.display.cursorY = 2;
+    for (let x = 0; x < this.display.width; x++) {
+      this.display.screenBuffer[2][x] = ' ';
+    }
+    const memOk = '48K RAM  -  SYSTEM OK';
+    for (let i = 0; i < memOk.length; i++) {
+      this.display.screenBuffer[2][i] = memOk[i];
+    }
+    this.display.render();
+    App.beep(30, 800);
+    await this.sleep(300);
+
+    // === Phase 4: Disk drive simulation ===
+    this.display.cursorY = 4;
+    this.display.cursorX = 0;
+    this.display.printString('DISK II  SLOT 6  DRIVE 1');
+    this.display.render();
+    await this.sleep(200);
+
+    // Disk drive clicking sounds
+    for (let i = 0; i < 6; i++) {
+      App.beep(8, 200 + Math.random() * 100);
+      await this.sleep(60 + Math.random() * 40);
+    }
+    await this.sleep(150);
+
+    // === Phase 5: DOS loading ===
+    this.display.cursorY = 6;
+    this.display.cursorX = 0;
+    this.display.printString('LOADING DOS...');
+    this.display.render();
+
+    // More disk sounds
+    for (let i = 0; i < 4; i++) {
+      App.beep(6, 180 + Math.random() * 80);
+      await this.sleep(80 + Math.random() * 60);
+    }
+    await this.sleep(300);
+
+    this.display.cursorY = 7;
+    this.display.cursorX = 0;
+    this.display.printString('DOS VERSION 3.3  16-SECTOR');
+    this.display.render();
+    await this.sleep(200);
+
+    // === Phase 6: BASIC loading ===
+    this.display.cursorY = 9;
+    this.display.cursorX = 0;
+    this.display.printString('APPLESOFT BASIC');
+    this.display.render();
+    App.beep(15, 500);
+    await this.sleep(300);
+
+    // === Phase 7: Final boot screen ===
+    this.display.clear();
+    await this.sleep(100);
     this.boot();
+
+    this.screenContainer.classList.remove('crt-on');
+    this.booting = false;
+  }
+
+  powerOff() {
+    this.poweredOn = false;
+    this.powerLed.classList.remove('on');
+
+    // Stop any running program
+    this.interpreter.running = false;
+    this.interpreter.stopped = true;
+    this.interpreter.inputCallback = null;
+    this.interpreter.getCallback = null;
+
+    // CRT turn-off effect
+    this.screenContainer.classList.remove('crt-on');
+    this.screenContainer.classList.add('crt-off');
+
+    setTimeout(() => {
+      this.display.clear();
+      this.screenContainer.classList.remove('crt-off');
+      this.screenContainer.classList.add('off');
+    }, 400);
+  }
+
+  fillScreenGarbage() {
+    const chars = '@#$%&*!?/\\|+=<>[]{}~^0123456789ABCDEF';
+    for (let y = 0; y < this.display.height; y++) {
+      for (let x = 0; x < this.display.width; x++) {
+        this.display.screenBuffer[y][x] = chars[Math.floor(Math.random() * chars.length)];
+        this.display.attrBuffer[y][x] = Math.random() > 0.7 ? 1 : 0;
+      }
+    }
+  }
+
+  sleep(ms) {
+    return new Promise(resolve => setTimeout(resolve, ms));
   }
 
   boot() {
@@ -57,6 +224,7 @@ class Emulator {
   }
 
   handlePaste(text) {
+    if (!this.poweredOn || this.booting) return;
     // Keep original case in buffer (needed for API keys etc.)
     // Display uppercase on screen (Apple II style)
     const clean = text.replace(/[\r\n]/g, '');
@@ -70,6 +238,8 @@ class Emulator {
   }
 
   handleKeyDown(e) {
+    if (!this.poweredOn || this.booting) return;
+
     if (e.ctrlKey && e.key === 'c') {
       e.preventDefault();
       this.ctrlC();
@@ -850,7 +1020,9 @@ class Emulator {
     this.interpreter.getCallback = null;
     this.display.showTextMode();
     this.interpreter.reset();
-    this.boot();
+    if (this.poweredOn) {
+      this.boot();
+    }
   }
 
   // ===== PAGED OUTPUT (press key to continue) =====
