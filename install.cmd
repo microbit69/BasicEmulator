@@ -299,6 +299,7 @@ body {
   position: absolute;
   border-radius: 50%;
   background: rgba(60, 40, 10, 0.6);
+  border: 2px solid red;
   z-index: 20;
   pointer-events: none;
   transition: background 0.1s, box-shadow 0.1s;
