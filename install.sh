@@ -39,16 +39,17 @@ cat > "$DIR/index.html" << 'EOF_INDEX_HTML'
 <!-- Inline screen positioning with debug output -->
 <script>
 (function() {
-  // TEST: set overlay to FULL IMAGE to verify coordinate system
+  // Position screen overlay using % of frame (= % of image)
+  // Adjust these values to align red outline with CRT glass
+  var LEFT = 20.0, TOP = 8.5, WIDTH = 29.0, HEIGHT = 35.0;
   function pos() {
-    var fr  = document.getElementById('apple2-frame');
     var sc  = document.getElementById('screen-container');
-    if (!fr || !sc) return;
-    // Fill entire frame - red outline should match image borders exactly
-    sc.style.left   = '0px';
-    sc.style.top    = '0px';
-    sc.style.width  = '100%';
-    sc.style.height = '100%';
+    if (!sc) return;
+    sc.style.left   = LEFT + '%';
+    sc.style.top    = TOP + '%';
+    sc.style.width  = WIDTH + '%';
+    sc.style.height = HEIGHT + '%';
+    document.title = 'L=' + LEFT + '% T=' + TOP + '% W=' + WIDTH + '% H=' + HEIGHT + '%';
   }
   window.addEventListener('load', pos);
   window.addEventListener('resize', pos);
