@@ -4860,6 +4860,7 @@ class Emulator {
 
       // Clear thinking line on first chunk
       let firstChunk = true;
+      let fullResponse = '';
       let lineCount = 0;
       let colCount = 0;
       const pageSize = this.display.height - 2;
@@ -4872,6 +4873,8 @@ class Emulator {
           this.display.printLine('');
           firstChunk = false;
         }
+
+        fullResponse += chunk;
 
         // Print character by character with word wrapping
         for (const ch of chunk) {
@@ -4907,6 +4910,47 @@ class Emulator {
         clearInterval(dotInterval);
       }
       this.display.printLine('');
+
+      // Check if the response contains a BASIC program and auto-load/save it
+      const programLines = this.parseBasicProgram(fullResponse);
+      const programKeys = Object.keys(programLines);
+      if (programKeys.length >= 2) {
+        // Load into interpreter memory
+        this.interpreter.program = {};
+        this.interpreter.sortedLines = [];
+        this.interpreter.clearVars();
+
+        for (const [num, src] of Object.entries(programLines)) {
+          this.interpreter.storeLine(parseInt(num), src);
+        }
+
+        // Auto-generate filename from question
+        let filename = 'AIPROG';
+        const words = question.trim().toUpperCase().split(/\s+/);
+        for (const w of words) {
+          if (w.length >= 3 && !['THE','AND','FOR','HOW','CAN','YOU','WRITE','MAKE','CREATE','BUILD','PROGRAM','THAT','WITH','PLEASE','BASIC'].includes(w)) {
+            filename = w.substring(0, 8);
+            break;
+          }
+        }
+        if (!filename.endsWith('.BAS')) {
+          filename += '.BAS';
+        }
+
+        // Save to filesystem
+        const content = App.VirtualFileSystem.programToText(this.interpreter.program);
+        const err = this.fs.writeFile(filename, content, 'A');
+
+        this.display.printLine('');
+        if (err) {
+          this.display.printLine('PROGRAM LOADED (' + programKeys.length + ' LINES)');
+          this.display.printLine('?SAVE ERROR: ' + err);
+        } else {
+          this.display.printLine('PROGRAM SAVED: ' + filename);
+          this.display.printLine(programKeys.length + ' LINES');
+        }
+        this.display.printLine('TYPE RUN TO EXECUTE');
+      }
 
     } catch (e) {
       this.display.printLine('');
