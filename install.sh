@@ -44,8 +44,8 @@ cat > "$DIR/index.html" << 'EOF_INDEX_HTML'
   // CRT glass coordinates in source image (1536x1024)
   // Measured from AppleIIBG01.png glass boundaries
   var GL = 407, GT = 97, GW = 430, GH = 375, IW = 1536, IH = 1024;
-  // Drive LED positions in source image pixels (1536x1024)
-  var D1X = 1040, D1Y = 635, D2X = 1040, D2Y = 818, DLS = 10;
+  // Drive LED positions as percentage of image (left%, top%)
+  var D1LP = 71.0, D1TP = 45.0, D2LP = 71.0, D2TP = 63.0, DLS = 10;
   function pos() {
     var img = document.getElementById('bg-image');
     var fr  = document.getElementById('apple2-frame');
@@ -64,10 +64,10 @@ cat > "$DIR/index.html" << 'EOF_INDEX_HTML'
     sc.style.top    = t + 'px';
     sc.style.width  = w + 'px';
     sc.style.height = h + 'px';
-    // Position drive LEDs
+    // Position drive LEDs using percentage of frame
     var ds = DLS * sx;
-    if (d1) { d1.style.left = (ox + D1X * sx) + 'px'; d1.style.top = (oy + D1Y * sy) + 'px'; d1.style.width = ds + 'px'; d1.style.height = ds + 'px'; }
-    if (d2) { d2.style.left = (ox + D2X * sx) + 'px'; d2.style.top = (oy + D2Y * sy) + 'px'; d2.style.width = ds + 'px'; d2.style.height = ds + 'px'; }
+    if (d1) { d1.style.left = D1LP + '%'; d1.style.top = D1TP + '%'; d1.style.width = ds + 'px'; d1.style.height = ds + 'px'; }
+    if (d2) { d2.style.left = D2LP + '%'; d2.style.top = D2TP + '%'; d2.style.width = ds + 'px'; d2.style.height = ds + 'px'; }
     document.title = 'Applesoft BASIC Interpreter';
   }
   // Ensure pos() runs after the background image is fully loaded & rendered
