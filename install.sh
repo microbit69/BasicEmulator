@@ -70,14 +70,15 @@ body {
    All overlays use % relative to this frame = image pixel coords.
    Image is 1536x1024, so displayed width = 100vh * 1.5              */
 
-/* CRT glass position - adjusted from screenshot feedback.
-   The Zenith monitor has a very thick bezel, so the actual glass
-   area is much smaller and more inset than the outer monitor frame. */
+/* CRT glass edges measured from 1536x1024 source image:
+   left:   178px → 11.6%    right:  712px → 46.4%
+   top:     78px →  7.6%    bottom: 460px → 44.9%
+   width:  534px → 34.8%    height: 382px → 37.3%   */
 :root {
-  --screen-left: 25%;
-  --screen-top: 11%;
-  --screen-width: 30%;
-  --screen-height: 35%;
+  --screen-left: 11.6%;
+  --screen-top: 7.6%;
+  --screen-width: 34.8%;
+  --screen-height: 37.3%;
 }
 
 #apple2-frame {
@@ -147,17 +148,17 @@ body {
 
 /* ===== TEXT DISPLAY ===== */
 /* Font sizing based on viewport height (image height = 100vh):
-   Screen height = 35vh, text area ~32vh (after padding)
-   24 lines at line-height 1.2: font-size = 32 / (24*1.2) ≈ 1.11vh
-   Screen width = 30% * 150vh = 45vh, text area ~42vh
-   40 chars need to fit in text area width                           */
+   Screen height = 37.3vh, text area ~34vh (after padding)
+   24 lines at line-height 1.2: font-size = 34 / (24*1.2) ≈ 1.18vh
+   Screen width = 34.8% * 150vh ≈ 52vh, text area ~49vh
+   40 chars at 1.18vh * 0.6 ≈ 28.3vh → letter-spacing fills rest    */
 #text-display {
   font-family: 'Courier New', 'Lucida Console', monospace;
-  font-size: clamp(6px, 1.11vh, 16px);
+  font-size: clamp(7px, 1.18vh, 16px);
   line-height: 1.2;
   color: #ffb000;
   white-space: pre;
-  letter-spacing: clamp(0px, 0.4vh, 5px);
+  letter-spacing: clamp(0px, 0.45vh, 5px);
   text-shadow: 0 0 5px rgba(255, 176, 0, 0.5), 0 0 10px rgba(255, 176, 0, 0.2);
   width: 100%;
   height: 100%;
