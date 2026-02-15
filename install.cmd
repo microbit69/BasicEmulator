@@ -2427,6 +2427,15 @@ class Interpreter {
         continue;
       }
       if (!inQuote && ch === ':') {
+        // In Applesoft BASIC, IF...THEN consumes the rest of the line
+        // (all colons after THEN are part of the IF block)
+        const upperCurrent = current.toUpperCase().trimStart();
+        if (upperCurrent.startsWith('IF') && this.findKeywordInString(upperCurrent, 'THEN') !== -1) {
+          // This is an IF...THEN statement - everything remaining belongs to it
+          current += source.substring(i);
+          i = source.length;
+          continue;
+        }
         parts.push(current);
         current = '';
         i++;
