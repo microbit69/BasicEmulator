@@ -38,7 +38,7 @@ body {
   position: absolute;
   left: 0; top: 0; width: 0; height: 0; /* JS overrides these */
   background: transparent;
-  border-radius: 20px / 16px;
+  border-radius: 30px / 24px;
   overflow: hidden;
   z-index: 2;
 }
@@ -49,10 +49,10 @@ body {
   position: absolute;
   inset: 0;
   border-radius: inherit;
-  background: radial-gradient(ellipse 80% 75% at 50% 50%,
-    transparent 50%,
-    rgba(0,0,0,0.25) 70%,
-    rgba(0,0,0,0.6) 100%);
+  background: radial-gradient(ellipse 70% 65% at 50% 50%,
+    transparent 40%,
+    rgba(0,0,0,0.35) 65%,
+    rgba(0,0,0,0.85) 100%);
   pointer-events: none;
   z-index: 10;
 }
