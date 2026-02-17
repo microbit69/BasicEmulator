@@ -21,7 +21,7 @@ $content = @'
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Applesoft BASIC Interpreter</title>
-<link rel="stylesheet" href="css/style.css?v=27">
+<link rel="stylesheet" href="css/style.css?v=100">
 </head>
 <body>
 
@@ -141,18 +141,18 @@ $content = @'
 </script>
 
 <!-- Scripts loaded in dependency order (no ES modules for file:// compatibility) -->
-<script src="js/constants.js?v=27"></script>
-<script src="js/audio.js?v=27"></script>
-<script src="js/tokenizer.js?v=27"></script>
-<script src="js/parser.js?v=27"></script>
-<script src="js/filesystem.js?v=27"></script>
-<script src="js/samples.js?v=27"></script>
-<script src="js/tutorial.js?v=27"></script>
-<script src="js/display.js?v=27"></script>
-<script src="js/claude.js?v=27"></script>
-<script src="js/interpreter.js?v=27"></script>
-<script src="js/emulator.js?v=27"></script>
-<script src="js/main.js?v=27"></script>
+<script src="js/constants.js?v=100"></script>
+<script src="js/audio.js?v=100"></script>
+<script src="js/tokenizer.js?v=100"></script>
+<script src="js/parser.js?v=100"></script>
+<script src="js/filesystem.js?v=100"></script>
+<script src="js/samples.js?v=100"></script>
+<script src="js/tutorial.js?v=100"></script>
+<script src="js/display.js?v=100"></script>
+<script src="js/claude.js?v=100"></script>
+<script src="js/interpreter.js?v=100"></script>
+<script src="js/emulator.js?v=100"></script>
+<script src="js/main.js?v=100"></script>
 
 </body>
 </html>
