@@ -2300,7 +2300,7 @@ class Display {
     this._imgData.data[i] = r;
     this._imgData.data[i+1] = g;
     this._imgData.data[i+2] = b;
-    this._imgData.data[i+3] = (r === 0 && g === 0 && b === 0) ? 0 : 128;
+    this._imgData.data[i+3] = (r === 0 && g === 0 && b === 0) ? 0 : 90;
   }
 
   _fillRect(x, y, w, h, r, g, b) {
@@ -2681,7 +2681,7 @@ class Display {
     // Draw only this pixel — clearRect first to avoid alpha accumulation
     if (colorOn) {
       this.ctx.clearRect(x, y, 1, 1);
-      this.ctx.globalAlpha = 0.5;
+      this.ctx.globalAlpha = 0.35;
       this.ctx.fillStyle = this.amberHex;
       this.ctx.fillRect(x, y, 1, 1);
       this.ctx.globalAlpha = 1.0;
@@ -2694,7 +2694,7 @@ class Display {
   drawHiResLine(x1, y1, x2, y2, colorOn) {
     // Set fill style once for the whole line
     if (colorOn) {
-      this.ctx.globalAlpha = 0.5;
+      this.ctx.globalAlpha = 0.35;
       this.ctx.fillStyle = this.amberHex;
     }
     const maxY = (this.screenMode === 'hgr') ? 160 : 192;
