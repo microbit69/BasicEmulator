@@ -17,7 +17,7 @@ cat > "$DIR/index.html" << 'EOF_INDEX_HTML'
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Applesoft BASIC Interpreter</title>
-<link rel="stylesheet" href="css/style.css?v=17">
+<link rel="stylesheet" href="css/style.css?v=20">
 </head>
 <body>
 
@@ -93,9 +93,6 @@ cat > "$DIR/index.html" << 'EOF_INDEX_HTML'
 
   // Base values for percentage scaling
   var baseGW = GW, baseGH = GH, scalePct = 98;
-  // Apply initial scale
-  GW = Math.round(baseGW * scalePct / 100);
-  GH = Math.round(baseGH * scalePct / 100);
   function updateScale(delta) {
     scalePct = Math.max(50, Math.min(150, scalePct + delta));
     GW = Math.round(baseGW * scalePct / 100);
@@ -140,18 +137,18 @@ cat > "$DIR/index.html" << 'EOF_INDEX_HTML'
 </script>
 
 <!-- Scripts loaded in dependency order (no ES modules for file:// compatibility) -->
-<script src="js/constants.js?v=17"></script>
-<script src="js/audio.js?v=17"></script>
-<script src="js/tokenizer.js?v=17"></script>
-<script src="js/parser.js?v=17"></script>
-<script src="js/filesystem.js?v=17"></script>
-<script src="js/samples.js?v=17"></script>
-<script src="js/tutorial.js?v=17"></script>
-<script src="js/display.js?v=17"></script>
-<script src="js/claude.js?v=17"></script>
-<script src="js/interpreter.js?v=17"></script>
-<script src="js/emulator.js?v=17"></script>
-<script src="js/main.js?v=17"></script>
+<script src="js/constants.js?v=20"></script>
+<script src="js/audio.js?v=20"></script>
+<script src="js/tokenizer.js?v=20"></script>
+<script src="js/parser.js?v=20"></script>
+<script src="js/filesystem.js?v=20"></script>
+<script src="js/samples.js?v=20"></script>
+<script src="js/tutorial.js?v=20"></script>
+<script src="js/display.js?v=20"></script>
+<script src="js/claude.js?v=20"></script>
+<script src="js/interpreter.js?v=20"></script>
+<script src="js/emulator.js?v=20"></script>
+<script src="js/main.js?v=20"></script>
 
 </body>
 </html>
