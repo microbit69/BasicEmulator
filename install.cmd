@@ -21,7 +21,7 @@ $content = @'
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Applesoft BASIC Interpreter</title>
-<link rel="stylesheet" href="css/style.css?v=3">
+<link rel="stylesheet" href="css/style.css?v=4">
 </head>
 <body>
 
@@ -29,8 +29,7 @@ $content = @'
   <img id="bg-image" src="img/AppleIIBG01.png" alt="Apple II">
   <div id="screen-container">
     <div id="screen">
-      <canvas id="lores-canvas" width="280" height="192"></canvas>
-      <div id="text-display"></div>
+      <canvas id="apple2-canvas" width="280" height="192"></canvas>
     </div>
   </div>
   <div id="power-btn" title="Power On/Off">
@@ -93,23 +92,23 @@ $content = @'
 </script>
 
 <!-- Scripts loaded in dependency order (no ES modules for file:// compatibility) -->
-<script src="js/constants.js?v=3"></script>
-<script src="js/audio.js?v=3"></script>
-<script src="js/tokenizer.js?v=3"></script>
-<script src="js/parser.js?v=3"></script>
-<script src="js/filesystem.js?v=3"></script>
-<script src="js/samples.js?v=3"></script>
-<script src="js/tutorial.js?v=3"></script>
-<script src="js/display.js?v=3"></script>
-<script src="js/claude.js?v=3"></script>
-<script src="js/interpreter.js?v=3"></script>
-<script src="js/emulator.js?v=3"></script>
-<script src="js/main.js?v=3"></script>
+<script src="js/constants.js?v=4"></script>
+<script src="js/audio.js?v=4"></script>
+<script src="js/tokenizer.js?v=4"></script>
+<script src="js/parser.js?v=4"></script>
+<script src="js/filesystem.js?v=4"></script>
+<script src="js/samples.js?v=4"></script>
+<script src="js/tutorial.js?v=4"></script>
+<script src="js/display.js?v=4"></script>
+<script src="js/claude.js?v=4"></script>
+<script src="js/interpreter.js?v=4"></script>
+<script src="js/emulator.js?v=4"></script>
+<script src="js/main.js?v=4"></script>
 
 </body>
 </html>
 '@
-Set-Content -Path "$dir\index.html" -Value $content -Encoding UTF8
+[System.IO.File]::WriteAllText("$dir\index.html", $content, [System.Text.Encoding]::UTF8)
 
 Write-Host "Writing css\style.css (2/15)..."
 $content = @'
@@ -156,10 +155,7 @@ body {
   border-radius: 4px;
   overflow: hidden;
   z-index: 2;
-  /* outline removed - alignment done */
 }
-
-/* CRT effects removed for fully transparent background */
 
 #screen {
   position: absolute;
@@ -170,68 +166,14 @@ body {
   z-index: 1;
 }
 
-/* ===== TEXT DISPLAY ===== */
-/* Font sizing based on viewport height (image height = 100vh):
-   Screen height = 37.3vh, text area ~34vh (after padding)
-   24 lines at line-height 1.2: font-size = 34 / (24*1.2) ≈ 1.18vh
-   Screen width = 34.8% * 150vh ≈ 52vh, text area ~49vh
-   40 chars at 1.18vh * 0.6 ≈ 28.3vh → letter-spacing fills rest    */
-#text-display {
-  font-family: 'Courier New', 'Lucida Console', monospace;
-  font-size: clamp(7px, 1.18vh, 16px);
-  line-height: 1.2;
-  color: #ffb000;
-  white-space: pre;
-  letter-spacing: clamp(0px, 0.3vh, 4px);
-  text-shadow: 0 0 5px rgba(255, 176, 0, 0.5), 0 0 10px rgba(255, 176, 0, 0.2);
-  width: 100%;
-  height: 100%;
-  user-select: none;
-  position: relative;
-  overflow: hidden;
-}
-
-/* ===== CURSOR ===== */
-.cursor {
-  display: inline;
-  animation: blink 1s step-end infinite;
-  background-color: #ffb000;
-  color: #080400;
-  text-shadow: none;
-}
-
-@keyframes blink {
-  0%, 49% { opacity: 1; }
-  50%, 100% { opacity: 0; }
-}
-
-.inverse {
-  background-color: #ffb000;
-  color: #080400;
-  text-shadow: none;
-}
-
-.flash {
-  animation: flash-text 0.5s step-end infinite;
-  background-color: #ffb000;
-  color: #080400;
-  text-shadow: none;
-}
-
-@keyframes flash-text {
-  0%, 49% { background-color: #ffb000; color: #080400; }
-  50%, 100% { background-color: transparent; color: #ffb000; }
-}
-
-/* ===== LO-RES GRAPHICS CANVAS ===== */
-#lores-canvas {
+/* ===== MAIN CANVAS (text + graphics — everything) ===== */
+#apple2-canvas {
   position: absolute;
   top: 0;
   left: 0;
   width: 100%;
-  height: 83.3%;  /* 20/24 rows for mixed mode */
-  z-index: 2;
-  display: none;
+  height: 100%;
+  z-index: 1;
   image-rendering: pixelated;
   image-rendering: crisp-edges;
 }
@@ -311,11 +253,7 @@ body {
 }
 
 /* ===== CRT POWER ON/OFF ===== */
-#screen-container.off #text-display {
-  visibility: hidden;
-}
-
-#screen-container.off #lores-canvas {
+#screen-container.off #apple2-canvas {
   visibility: hidden;
 }
 
@@ -373,7 +311,7 @@ body {
   }
 }
 '@
-Set-Content -Path "$dir\css\style.css" -Value $content -Encoding UTF8
+[System.IO.File]::WriteAllText("$dir\css\style.css", $content, [System.Text.Encoding]::UTF8)
 
 Write-Host "Writing js\constants.js (3/15)..."
 $content = @'
@@ -383,12 +321,25 @@ window.App = window.App || {};
 App.SCREEN_WIDTH = 40;
 App.SCREEN_HEIGHT = 24;
 
-// Lo-Res graphics
+// Lo-Res graphics (40×48 pixels, mixed mode uses 40×40 + 4 text rows)
 App.LORES_WIDTH = 40;
 App.LORES_HEIGHT = 48;
-App.LORES_GRAPHICS_ROWS = 40;
+App.LORES_GRAPHICS_ROWS = 40;  // rows used in mixed mode
 
-// Apple II Lo-Res color palette
+// Hi-Res graphics (280×192 pixels, mixed mode uses 280×160 + 4 text rows)
+App.HIRES_WIDTH = 280;
+App.HIRES_HEIGHT = 192;
+App.HIRES_GRAPHICS_ROWS = 160; // rows used in mixed mode
+
+// Character cell dimensions (7×8 pixels → 40×24 = 280×192)
+App.CHAR_WIDTH = 7;
+App.CHAR_HEIGHT = 8;
+
+// Monochrome amber color
+App.AMBER_COLOR = '#ffb000';
+
+// Apple II Lo-Res color palette (original RGB values, kept as reference)
+// In monochrome mode these are mapped to brightness levels
 App.LORES_COLORS = [
   '#000000', // 0  Black
   '#dd0033', // 1  Magenta/Red
@@ -408,23 +359,20 @@ App.LORES_COLORS = [
   '#ffffff', // 15 White
 ];
 
-// Hi-Res graphics
-App.HIRES_WIDTH = 280;
-App.HIRES_HEIGHT = 192;
-
-// Apple II Hi-Res color palette (HCOLOR= 0-7)
+// Apple II Hi-Res color palette (original HCOLOR= 0-7)
+// In monochrome mode: 0,4=off (black), all others=on (amber)
 App.HIRES_COLORS = [
-  '#000000', // 0  Black
-  '#11dd00', // 1  Green
-  '#dd22dd', // 2  Violet/Purple
-  '#ffffff', // 3  White
-  '#000000', // 4  Black
-  '#ff6600', // 5  Orange
-  '#2222ff', // 6  Blue
-  '#ffffff', // 7  White
+  '#000000', // 0  Black (off)
+  '#11dd00', // 1  Green (on)
+  '#dd22dd', // 2  Violet (on)
+  '#ffffff', // 3  White (on)
+  '#000000', // 4  Black (off)
+  '#ff6600', // 5  Orange (on)
+  '#2222ff', // 6  Blue (on)
+  '#ffffff', // 7  White (on)
 ];
 '@
-Set-Content -Path "$dir\js\constants.js" -Value $content -Encoding UTF8
+[System.IO.File]::WriteAllText("$dir\js\constants.js", $content, [System.Text.Encoding]::UTF8)
 
 Write-Host "Writing js\audio.js (4/15)..."
 $content = @'
@@ -710,7 +658,7 @@ App.crtOff = function() {
   } catch (e) { /* Audio not available */ }
 };
 '@
-Set-Content -Path "$dir\js\audio.js" -Value $content -Encoding UTF8
+[System.IO.File]::WriteAllText("$dir\js\audio.js", $content, [System.Text.Encoding]::UTF8)
 
 Write-Host "Writing js\tokenizer.js (5/15)..."
 $content = @'
@@ -859,7 +807,7 @@ class Tokenizer {
 
 App.Tokenizer = Tokenizer;
 '@
-Set-Content -Path "$dir\js\tokenizer.js" -Value $content -Encoding UTF8
+[System.IO.File]::WriteAllText("$dir\js\tokenizer.js", $content, [System.Text.Encoding]::UTF8)
 
 Write-Host "Writing js\parser.js (6/15)..."
 $content = @'
@@ -1078,7 +1026,7 @@ class Parser {
 
 App.Parser = Parser;
 '@
-Set-Content -Path "$dir\js\parser.js" -Value $content -Encoding UTF8
+[System.IO.File]::WriteAllText("$dir\js\parser.js", $content, [System.Text.Encoding]::UTF8)
 
 Write-Host "Writing js\filesystem.js (7/15)..."
 $content = @'
@@ -1393,7 +1341,7 @@ class VirtualFileSystem {
 
 App.VirtualFileSystem = VirtualFileSystem;
 '@
-Set-Content -Path "$dir\js\filesystem.js" -Value $content -Encoding UTF8
+[System.IO.File]::WriteAllText("$dir\js\filesystem.js", $content, [System.Text.Encoding]::UTF8)
 
 Write-Host "Writing js\samples.js (8/15)..."
 $content = @'
@@ -1494,6 +1442,7 @@ App.getSamples = function() {
 
     lores_demo: `
 10 REM LO-RES GRAPHICS DEMO
+15 REM MIXED MODE: 40X40 GFX + TEXT
 20 GR
 30 REM DRAW COLOR BARS
 40 FOR C = 0 TO 15
@@ -1518,6 +1467,81 @@ App.getSamples = function() {
 230 GET A$
 240 TEXT
 250 END`,
+
+    hires_demo: `
+10 REM HI-RES GRAPHICS DEMO
+15 REM 280X160 MIXED MODE + TEXT
+20 HGR
+30 HCOLOR= 3
+40 REM DRAW BORDER
+50 HPLOT 0,0 TO 279,0
+60 HPLOT 279,0 TO 279,159
+70 HPLOT 279,159 TO 0,159
+80 HPLOT 0,159 TO 0,0
+90 REM DRAW STARBURST
+100 FOR A = 0 TO 6.28 STEP 0.2
+110 X = INT(COS(A) * 70 + 140)
+120 Y = INT(SIN(A) * 70 + 80)
+130 HPLOT 140,80 TO X,Y
+140 NEXT A
+150 REM DRAW SINE WAVE
+160 HPLOT 0,80
+170 FOR X = 1 TO 279
+180 Y = INT(SIN(X / 20) * 30 + 80)
+190 HPLOT TO X,Y
+200 NEXT X
+210 VTAB 22
+220 PRINT "HI-RES DEMO - 280X160"
+230 PRINT "PRESS ANY KEY...";
+240 GET A$
+250 TEXT
+260 END`,
+
+    hires_draw: `
+10 REM HI-RES DRAWING TOOL
+15 REM USE I/J/K/M TO MOVE, SPACE=DRAW
+20 HGR
+30 HCOLOR= 3
+40 X = 140 : Y = 80
+50 D = 0
+60 REM DRAW CROSSHAIR
+70 HPLOT X-2,Y TO X+2,Y
+80 HPLOT X,Y-2 TO X,Y+2
+90 VTAB 22
+100 PRINT "I=UP J=LEFT K=RIGHT M=DOWN"
+110 PRINT "SPACE=TOGGLE  Q=QUIT";
+120 GET A$
+130 REM ERASE CROSSHAIR IF NOT DRAWING
+140 IF D = 0 THEN HCOLOR= 0 : HPLOT X-2,Y TO X+2,Y : HPLOT X,Y-2 TO X,Y+2 : HCOLOR= 3
+150 IF A$ = "I" AND Y > 2 THEN Y = Y - 2
+160 IF A$ = "M" AND Y < 157 THEN Y = Y + 2
+170 IF A$ = "J" AND X > 2 THEN X = X - 2
+180 IF A$ = "K" AND X < 277 THEN X = X + 2
+190 IF A$ = " " THEN D = 1 - D
+200 IF A$ = "Q" THEN TEXT : END
+210 IF D = 1 THEN HPLOT X,Y
+220 GOTO 60`,
+
+    lores_animate: `
+10 REM LO-RES ANIMATION
+15 REM BOUNCING BALL
+20 GR
+30 X = 20 : Y = 20
+40 DX = 1 : DY = 1
+50 COLOR= 0
+60 PLOT X,Y
+70 X = X + DX : Y = Y + DY
+80 IF X < 1 OR X > 38 THEN DX = -DX
+90 IF Y < 1 OR Y > 38 THEN DY = -DY
+100 COLOR= 15
+110 PLOT X,Y
+120 REM TRAIL EFFECT
+130 COLOR= 9
+140 PLOT X - DX,Y - DY
+150 FOR W = 1 TO 5 : NEXT W
+160 VTAB 22
+170 PRINT "BOUNCING BALL  CTRL-C=STOP";
+180 GOTO 50`,
 
     starfield: `
 10 REM STARFIELD ANIMATION
@@ -1620,11 +1644,48 @@ App.getSamples = function() {
 260 PRINT
 270 PRINT
 280 PRINT C;" PRIMES FOUND."
-290 END`
+290 END`,
+
+    hires_circles: `
+10 REM HI-RES CIRCLES
+15 REM DRAWS CONCENTRIC CIRCLES
+20 HGR
+30 HCOLOR= 3
+40 CX = 140 : CY = 80
+50 FOR R = 10 TO 75 STEP 8
+60 FOR A = 0 TO 6.28 STEP 0.05
+70 X = INT(COS(A) * R + CX)
+80 Y = INT(SIN(A) * R + CY)
+90 IF A = 0 THEN HPLOT X,Y : GOTO 110
+100 HPLOT TO X,Y
+110 NEXT A
+120 NEXT R
+130 VTAB 22
+140 PRINT "CONCENTRIC CIRCLES"
+150 PRINT "PRESS ANY KEY...";
+160 GET A$
+170 TEXT
+180 END`,
+
+    lores_rainbow: `
+10 REM LO-RES RAINBOW
+15 REM ANIMATED COLOR WAVE
+20 GR
+30 FOR F = 0 TO 200
+40 FOR X = 0 TO 39
+50 C = INT((X + F) / 2.5) - INT(INT((X + F) / 2.5) / 16) * 16
+60 COLOR= C
+70 VLIN 0,39 AT X
+80 NEXT X
+90 VTAB 22
+100 PRINT "RAINBOW WAVE  CTRL-C=STOP";
+110 NEXT F
+120 TEXT
+130 END`
   };
 };
 '@
-Set-Content -Path "$dir\js\samples.js" -Value $content -Encoding UTF8
+[System.IO.File]::WriteAllText("$dir\js\samples.js", $content, [System.Text.Encoding]::UTF8)
 
 Write-Host "Writing js\tutorial.js (9/15)..."
 $content = @'
@@ -1767,9 +1828,12 @@ App.getTutorialPages = function() {
       'RANDOM NUMBER 1-6:',
       '  PRINT INT(RND(1)*6)+1',
     ],
-    // Page 8: Graphics
+    // Page 8: Lo-Res Graphics
     [
       '--- LO-RES GRAPHICS ---',
+      '',
+      'MIXED MODE: 40X40 PIXELS +',
+      '4 TEXT ROWS AT THE BOTTOM.',
       '',
       'GR          GRAPHICS MODE',
       'COLOR= N    SET COLOR (0-15)',
@@ -1778,15 +1842,50 @@ App.getTutorialPages = function() {
       'VLIN Y1,Y2 AT X  VERT LINE',
       'TEXT        BACK TO TEXT',
       '',
-      'EXAMPLE:',
-      '  10 GR',
-      '  20 COLOR= 1',
-      '  30 FOR X = 0 TO 39',
-      '  40 PLOT X,20',
-      '  50 NEXT X',
-      '  60 GET A$ : TEXT',
+      'COLORS SHOWN AS AMBER',
+      'BRIGHTNESS (MONOCHROME).',
+      '',
+      'TRY: LOAD "SAMPLES/LORES_DEMO"',
     ],
-    // Page 9: File System
+    // Page 9: Hi-Res Graphics
+    [
+      '--- HI-RES GRAPHICS ---',
+      '',
+      'MIXED MODE: 280X160 PIXELS',
+      '+ 4 TEXT ROWS AT BOTTOM.',
+      '',
+      'HGR         PAGE 1 HI-RES',
+      'HGR2        PAGE 2 HI-RES',
+      'HCOLOR= N   0,4=OFF ELSE=ON',
+      'HPLOT X,Y   PLOT POINT',
+      'HPLOT TO X,Y  LINE TO POINT',
+      'HPLOT X,Y TO X2,Y2  LINE',
+      '',
+      'MONOCHROME AMBER ON/OFF.',
+      '',
+      'TRY: LOAD "SAMPLES/HIRES_DEMO"',
+      'OR:  LOAD "SAMPLES/HIRES_DRAW"',
+    ],
+    // Page 10: Screen Pages & Soft Switches
+    [
+      '--- SCREEN PAGES ---',
+      '',
+      'APPLE II HAS 2 SCREEN PAGES',
+      'FOR FLICKER-FREE ANIMATION:',
+      '',
+      'HGR   = PAGE 1 (DEFAULT)',
+      'HGR2  = PAGE 2',
+      '',
+      'POKE SOFT SWITCHES:',
+      ' POKE 49236,0  SHOW PAGE 1',
+      ' POKE 49237,0  SHOW PAGE 2',
+      ' POKE 49234,0  FULL SCREEN',
+      ' POKE 49235,0  MIXED MODE',
+      '',
+      'DRAW ON ONE PAGE WHILE',
+      'SHOWING THE OTHER = SMOOTH!',
+    ],
+    // Page 11: File System
     [
       '--- FILE SYSTEM ---',
       '',
@@ -1802,10 +1901,9 @@ App.getTutorialPages = function() {
       '  LOAD "X"   LOAD PROGRAM',
       '  TYPE "X"   VIEW FILE',
       '  DELETE "X"  DELETE FILE',
-      '  CREATE "X"  NEW FILE',
       '  RENAME "A","B"  RENAME',
     ],
-    // Page 10: Upload/Download & Samples
+    // Page 12: Upload/Download & Samples
     [
       '--- UPLOAD & DOWNLOAD ---',
       '',
@@ -1819,84 +1917,457 @@ App.getTutorialPages = function() {
       '',
       '--- SAMPLE PROGRAMS ---',
       '',
-      'SAMPLE PROGRAMS ARE IN THE',
-      '/SAMPLES DIRECTORY:',
-      '  CD "SAMPLES"',
-      '  CATALOG',
-      '  LOAD "HELLO"',
-      '  RUN',
+      'SAMPLES IN /SAMPLES:',
+      '  CD "SAMPLES" : CATALOG',
+      '  LOAD "HIRES_DEMO" : RUN',
+      '  LOAD "LORES_RAINBOW" : RUN',
     ],
   ];
 };
 '@
-Set-Content -Path "$dir\js\tutorial.js" -Value $content -Encoding UTF8
+[System.IO.File]::WriteAllText("$dir\js\tutorial.js", $content, [System.Text.Encoding]::UTF8)
 
 Write-Host "Writing js\display.js (10/15)..."
 $content = @'
 window.App = window.App || {};
 
+/**
+ * Apple II+ Display — canvas-based 280×192 monochrome amber
+ *
+ * Everything (text AND graphics) is rendered onto a single <canvas>.
+ * Two off-screen pages are kept in memory for page-flipping.
+ *
+ * Modes
+ *  TEXT      – 40×24 character text (default)
+ *  GR        – Lo-Res 40×40 mixed (+ 4 text rows at bottom)
+ *  GR FULL   – Lo-Res 40×48 full-screen graphics
+ *  HGR/HGR2 – Hi-Res 280×160 mixed (+ 4 text rows at bottom)
+ *  HGR FULL  – Hi-Res 280×192 full-screen graphics
+ *
+ * The mixed-mode bottom 4 text rows always occupy scanlines 160–191
+ * (rows 20–23 of the 24-row text grid).
+ */
+
 class Display {
-  constructor(element, canvasElement) {
-    this.element = element;
+  constructor(canvasElement) {
+    // --- Canvas setup ---
     this.canvas = canvasElement;
-    this.ctx = canvasElement.getContext('2d');
-    this.width = App.SCREEN_WIDTH;
-    this.height = App.SCREEN_HEIGHT;
+    this.canvas.width = 280;
+    this.canvas.height = 192;
+    this.ctx = this.canvas.getContext('2d', { willReadFrequently: true });
+
+    // --- Text dimensions ---
+    this.width = 40;   // columns
+    this.height = 24;  // rows
+
+    // Character cell: 7px wide × 8px tall → 40×24 = 280×192
+    this.charW = 7;
+    this.charH = 8;
+
+    // --- Colors ---
+    this.amberHex = '#ffb000';
+    this.amberR = 255;
+    this.amberG = 176;
+    this.amberB = 0;
+
+    // --- Cursor ---
     this.cursorX = 0;
     this.cursorY = 0;
-    this.screenBuffer = [];
-    this.attrBuffer = [];  // text attributes: 0=normal, 1=inverse, 2=flash
-    this.displayMode = 0;  // 0=normal, 1=inverse, 2=flash
-    this.textWidth = 40;
+    this.cursorVisible = true;
+    this._cursorBlinkOn = true;
+    this._cursorTimer = setInterval(() => {
+      this._cursorBlinkOn = !this._cursorBlinkOn;
+      this._renderCursor();
+    }, 500);
+
+    // --- Text attributes ---
+    this.displayMode = 0; // 0=normal, 1=inverse, 2=flash
+
+    // --- Screen mode ---
+    //  'text' | 'gr' | 'gr_full' | 'hgr' | 'hgr_full'
+    this.screenMode = 'text';
+    this.mixedMode = true;    // true = bottom 4 rows are text
+    this.activePage = 0;      // 0 = page 1, 1 = page 2
+    this.displayPage = 0;     // which page is shown
+
+    // --- Two pages of text buffer (40×24 each) ---
+    this.textPages = [
+      this._createTextPage(),
+      this._createTextPage()
+    ];
+
+    // --- Two pages of Lo-Res pixel data (40×48 each, color indices 0-15) ---
+    this.loResPages = [
+      this._createLoResPage(),
+      this._createLoResPage()
+    ];
+
+    // --- Two pages of Hi-Res pixel data (280×192 booleans — on/off amber) ---
+    this.hiResPages = [
+      this._createHiResPage(),
+      this._createHiResPage()
+    ];
+
+    // --- Scroll ---
     this.scrollTop = 0;
     this.scrollBottom = 24;
+    this.textWidth = 40;
+
+    // --- Build font bitmap ---
+    this._buildFont();
+
+    // Initial clear
     this.clear();
   }
 
+  // ===== PAGE HELPERS =====
+
+  _createTextPage() {
+    const chars = [];
+    const attrs = [];
+    for (let y = 0; y < 24; y++) {
+      chars.push(new Array(40).fill(' '));
+      attrs.push(new Array(40).fill(0)); // 0=normal, 1=inverse, 2=flash
+    }
+    return { chars, attrs };
+  }
+
+  _createLoResPage() {
+    const data = [];
+    for (let y = 0; y < 48; y++) {
+      data.push(new Array(40).fill(0));
+    }
+    return data;
+  }
+
+  _createHiResPage() {
+    return new Uint8Array(280 * 192); // 0=off, 1=on (amber)
+  }
+
+  // Shorthand: current text page
+  get _tp() { return this.textPages[this.activePage]; }
+  get _tpDisp() { return this.textPages[this.displayPage]; }
+  get screenBuffer() { return this._tp.chars; }
+  get attrBuffer() { return this._tp.attrs; }
+
+  // ===== 5×7 BITMAP FONT =====
+
+  _buildFont() {
+    // 5×7 pixel glyphs for ASCII 32–127, stored as 7 bytes per char
+    // Each byte represents one row, bits 4..0 = pixels left-to-right
+    this._fontData = {};
+
+    const F = (ch, rows) => { this._fontData[ch] = rows; };
+
+    // Printable ASCII (space through tilde)
+    F(32, [0x00,0x00,0x00,0x00,0x00,0x00,0x00]); // space
+    F(33, [0x04,0x04,0x04,0x04,0x04,0x00,0x04]); // !
+    F(34, [0x0A,0x0A,0x00,0x00,0x00,0x00,0x00]); // "
+    F(35, [0x0A,0x1F,0x0A,0x0A,0x1F,0x0A,0x00]); // #
+    F(36, [0x04,0x0F,0x14,0x0E,0x05,0x1E,0x04]); // $
+    F(37, [0x18,0x19,0x02,0x04,0x08,0x13,0x03]); // %
+    F(38, [0x08,0x14,0x14,0x08,0x15,0x12,0x0D]); // &
+    F(39, [0x04,0x04,0x00,0x00,0x00,0x00,0x00]); // '
+    F(40, [0x02,0x04,0x08,0x08,0x08,0x04,0x02]); // (
+    F(41, [0x08,0x04,0x02,0x02,0x02,0x04,0x08]); // )
+    F(42, [0x00,0x04,0x15,0x0E,0x15,0x04,0x00]); // *
+    F(43, [0x00,0x04,0x04,0x1F,0x04,0x04,0x00]); // +
+    F(44, [0x00,0x00,0x00,0x00,0x00,0x04,0x08]); // ,
+    F(45, [0x00,0x00,0x00,0x1F,0x00,0x00,0x00]); // -
+    F(46, [0x00,0x00,0x00,0x00,0x00,0x00,0x04]); // .
+    F(47, [0x01,0x01,0x02,0x04,0x08,0x10,0x10]); // /
+    F(48, [0x0E,0x11,0x13,0x15,0x19,0x11,0x0E]); // 0
+    F(49, [0x04,0x0C,0x04,0x04,0x04,0x04,0x0E]); // 1
+    F(50, [0x0E,0x11,0x01,0x06,0x08,0x10,0x1F]); // 2
+    F(51, [0x0E,0x11,0x01,0x06,0x01,0x11,0x0E]); // 3
+    F(52, [0x02,0x06,0x0A,0x12,0x1F,0x02,0x02]); // 4
+    F(53, [0x1F,0x10,0x1E,0x01,0x01,0x11,0x0E]); // 5
+    F(54, [0x06,0x08,0x10,0x1E,0x11,0x11,0x0E]); // 6
+    F(55, [0x1F,0x01,0x02,0x04,0x08,0x08,0x08]); // 7
+    F(56, [0x0E,0x11,0x11,0x0E,0x11,0x11,0x0E]); // 8
+    F(57, [0x0E,0x11,0x11,0x0F,0x01,0x02,0x0C]); // 9
+    F(58, [0x00,0x00,0x04,0x00,0x00,0x04,0x00]); // :
+    F(59, [0x00,0x00,0x04,0x00,0x00,0x04,0x08]); // ;
+    F(60, [0x02,0x04,0x08,0x10,0x08,0x04,0x02]); // <
+    F(61, [0x00,0x00,0x1F,0x00,0x1F,0x00,0x00]); // =
+    F(62, [0x08,0x04,0x02,0x01,0x02,0x04,0x08]); // >
+    F(63, [0x0E,0x11,0x01,0x02,0x04,0x00,0x04]); // ?
+    F(64, [0x0E,0x11,0x17,0x15,0x17,0x10,0x0E]); // @
+    F(65, [0x0E,0x11,0x11,0x1F,0x11,0x11,0x11]); // A
+    F(66, [0x1E,0x11,0x11,0x1E,0x11,0x11,0x1E]); // B
+    F(67, [0x0E,0x11,0x10,0x10,0x10,0x11,0x0E]); // C
+    F(68, [0x1C,0x12,0x11,0x11,0x11,0x12,0x1C]); // D
+    F(69, [0x1F,0x10,0x10,0x1E,0x10,0x10,0x1F]); // E
+    F(70, [0x1F,0x10,0x10,0x1E,0x10,0x10,0x10]); // F
+    F(71, [0x0E,0x11,0x10,0x17,0x11,0x11,0x0F]); // G
+    F(72, [0x11,0x11,0x11,0x1F,0x11,0x11,0x11]); // H
+    F(73, [0x0E,0x04,0x04,0x04,0x04,0x04,0x0E]); // I
+    F(74, [0x07,0x02,0x02,0x02,0x02,0x12,0x0C]); // J
+    F(75, [0x11,0x12,0x14,0x18,0x14,0x12,0x11]); // K
+    F(76, [0x10,0x10,0x10,0x10,0x10,0x10,0x1F]); // L
+    F(77, [0x11,0x1B,0x15,0x15,0x11,0x11,0x11]); // M
+    F(78, [0x11,0x19,0x15,0x13,0x11,0x11,0x11]); // N
+    F(79, [0x0E,0x11,0x11,0x11,0x11,0x11,0x0E]); // O
+    F(80, [0x1E,0x11,0x11,0x1E,0x10,0x10,0x10]); // P
+    F(81, [0x0E,0x11,0x11,0x11,0x15,0x12,0x0D]); // Q
+    F(82, [0x1E,0x11,0x11,0x1E,0x14,0x12,0x11]); // R
+    F(83, [0x0E,0x11,0x10,0x0E,0x01,0x11,0x0E]); // S
+    F(84, [0x1F,0x04,0x04,0x04,0x04,0x04,0x04]); // T
+    F(85, [0x11,0x11,0x11,0x11,0x11,0x11,0x0E]); // U
+    F(86, [0x11,0x11,0x11,0x11,0x0A,0x0A,0x04]); // V
+    F(87, [0x11,0x11,0x11,0x15,0x15,0x15,0x0A]); // W
+    F(88, [0x11,0x11,0x0A,0x04,0x0A,0x11,0x11]); // X
+    F(89, [0x11,0x11,0x0A,0x04,0x04,0x04,0x04]); // Y
+    F(90, [0x1F,0x01,0x02,0x04,0x08,0x10,0x1F]); // Z
+    F(91, [0x0E,0x08,0x08,0x08,0x08,0x08,0x0E]); // [
+    F(92, [0x10,0x10,0x08,0x04,0x02,0x01,0x01]); // backslash
+    F(93, [0x0E,0x02,0x02,0x02,0x02,0x02,0x0E]); // ]
+    F(94, [0x04,0x0A,0x11,0x00,0x00,0x00,0x00]); // ^
+    F(95, [0x00,0x00,0x00,0x00,0x00,0x00,0x1F]); // _
+    F(96, [0x08,0x04,0x00,0x00,0x00,0x00,0x00]); // `
+    // Lower-case mapped to upper-case on Apple II+ (no lower case)
+    // We still store them for completeness but Apple II shows uppercase
+    F(97, [0x00,0x00,0x0E,0x01,0x0F,0x11,0x0F]);  // a
+    F(98, [0x10,0x10,0x1E,0x11,0x11,0x11,0x1E]);  // b
+    F(99, [0x00,0x00,0x0E,0x11,0x10,0x11,0x0E]);  // c
+    F(100,[0x01,0x01,0x0F,0x11,0x11,0x11,0x0F]);  // d
+    F(101,[0x00,0x00,0x0E,0x11,0x1F,0x10,0x0E]);  // e
+    F(102,[0x06,0x08,0x1E,0x08,0x08,0x08,0x08]);  // f
+    F(103,[0x00,0x00,0x0F,0x11,0x0F,0x01,0x0E]);  // g
+    F(104,[0x10,0x10,0x1E,0x11,0x11,0x11,0x11]);  // h
+    F(105,[0x04,0x00,0x0C,0x04,0x04,0x04,0x0E]);  // i
+    F(106,[0x02,0x00,0x06,0x02,0x02,0x12,0x0C]);  // j
+    F(107,[0x10,0x10,0x12,0x14,0x18,0x14,0x12]);  // k
+    F(108,[0x0C,0x04,0x04,0x04,0x04,0x04,0x0E]);  // l
+    F(109,[0x00,0x00,0x1A,0x15,0x15,0x11,0x11]);  // m
+    F(110,[0x00,0x00,0x1E,0x11,0x11,0x11,0x11]);  // n
+    F(111,[0x00,0x00,0x0E,0x11,0x11,0x11,0x0E]);  // o
+    F(112,[0x00,0x00,0x1E,0x11,0x1E,0x10,0x10]);  // p
+    F(113,[0x00,0x00,0x0F,0x11,0x0F,0x01,0x01]);  // q
+    F(114,[0x00,0x00,0x16,0x19,0x10,0x10,0x10]);  // r
+    F(115,[0x00,0x00,0x0F,0x10,0x0E,0x01,0x1E]);  // s
+    F(116,[0x08,0x08,0x1E,0x08,0x08,0x09,0x06]);  // t
+    F(117,[0x00,0x00,0x11,0x11,0x11,0x13,0x0D]);  // u
+    F(118,[0x00,0x00,0x11,0x11,0x11,0x0A,0x04]);  // v
+    F(119,[0x00,0x00,0x11,0x11,0x15,0x15,0x0A]);  // w
+    F(120,[0x00,0x00,0x11,0x0A,0x04,0x0A,0x11]);  // x
+    F(121,[0x00,0x00,0x11,0x11,0x0F,0x01,0x0E]);  // y
+    F(122,[0x00,0x00,0x1F,0x02,0x04,0x08,0x1F]);  // z
+    F(123,[0x02,0x04,0x04,0x08,0x04,0x04,0x02]);  // {
+    F(124,[0x04,0x04,0x04,0x04,0x04,0x04,0x04]);  // |
+    F(125,[0x08,0x04,0x04,0x02,0x04,0x04,0x08]);  // }
+    F(126,[0x00,0x00,0x08,0x15,0x02,0x00,0x00]);  // ~
+  }
+
+  // Draw a single character at text cell (col, row)
+  _drawChar(col, row, ch, attr) {
+    const px = col * this.charW;
+    const py = row * this.charH;
+    const code = ch.charCodeAt(0);
+    const glyph = this._fontData[code] || this._fontData[32];
+
+    const isInverse = (attr === 1);
+    const isFlash = (attr === 2);
+    const showInverse = isInverse || (isFlash && this._cursorBlinkOn);
+
+    if (showInverse) {
+      // Fill cell with amber, draw black pixels for glyph
+      this._fillRect(px, py, this.charW, this.charH, this.amberR, this.amberG, this.amberB);
+      for (let gy = 0; gy < 7; gy++) {
+        const row_bits = glyph[gy];
+        for (let gx = 0; gx < 5; gx++) {
+          if (row_bits & (0x10 >> gx)) {
+            this._setPixel(px + gx + 1, py + gy, 0, 0, 0);
+          }
+        }
+      }
+    } else {
+      // Clear cell to black, draw amber pixels for glyph
+      this._fillRect(px, py, this.charW, this.charH, 0, 0, 0);
+      for (let gy = 0; gy < 7; gy++) {
+        const row_bits = glyph[gy];
+        for (let gx = 0; gx < 5; gx++) {
+          if (row_bits & (0x10 >> gx)) {
+            this._setPixel(px + gx + 1, py + gy, this.amberR, this.amberG, this.amberB);
+          }
+        }
+      }
+    }
+  }
+
+  // ===== LOW-LEVEL PIXEL OPS (work on the visible canvas) =====
+
+  _setPixel(x, y, r, g, b) {
+    if (x < 0 || x >= 280 || y < 0 || y >= 192) return;
+    if (!this._imgData) {
+      this._imgData = this.ctx.getImageData(0, 0, 280, 192);
+    }
+    const i = (y * 280 + x) * 4;
+    this._imgData.data[i] = r;
+    this._imgData.data[i+1] = g;
+    this._imgData.data[i+2] = b;
+    this._imgData.data[i+3] = 255;
+  }
+
+  _fillRect(x, y, w, h, r, g, b) {
+    for (let dy = 0; dy < h; dy++) {
+      for (let dx = 0; dx < w; dx++) {
+        this._setPixel(x + dx, y + dy, r, g, b);
+      }
+    }
+  }
+
+  _flush() {
+    if (this._imgData) {
+      this.ctx.putImageData(this._imgData, 0, 0);
+      this._imgData = null;
+    }
+  }
+
+  // ===== FULL RENDER =====
+
+  render() {
+    this._imgData = this.ctx.getImageData(0, 0, 280, 192);
+    const page = this.displayPage;
+
+    if (this.screenMode === 'text') {
+      this._renderTextFull(page, 0, 24);
+    } else if (this.screenMode === 'gr' || this.screenMode === 'gr_full') {
+      this._renderLoRes(page);
+      if (this.screenMode === 'gr') {
+        // Mixed mode: text rows 20-23 (scanlines 160-191)
+        this._renderTextFull(page, 20, 24);
+      }
+    } else if (this.screenMode === 'hgr' || this.screenMode === 'hgr_full') {
+      this._renderHiRes(page);
+      if (this.screenMode === 'hgr') {
+        // Mixed mode: text rows 20-23 (scanlines 160-191)
+        this._renderTextFull(page, 20, 24);
+      }
+    }
+
+    // Draw cursor
+    this._renderCursorInline();
+
+    this._flush();
+  }
+
+  _renderTextFull(page, startRow, endRow) {
+    const tp = this.textPages[page];
+    for (let row = startRow; row < endRow; row++) {
+      for (let col = 0; col < 40; col++) {
+        this._drawChar(col, row, tp.chars[row][col], tp.attrs[row][col]);
+      }
+    }
+  }
+
+  _renderLoRes(page) {
+    const lores = this.loResPages[page];
+    // Each lo-res pixel = 7px wide × 4px tall in 280×192
+    // 40 columns × 7 = 280, rows depend on mode
+    const maxRow = (this.screenMode === 'gr') ? 40 : 48;
+    for (let ly = 0; ly < maxRow; ly++) {
+      for (let lx = 0; lx < 40; lx++) {
+        const colorIdx = lores[ly][lx];
+        const rgb = this._loResColorToAmber(colorIdx);
+        const px = lx * 7;
+        const py = ly * 4;
+        this._fillRect(px, py, 7, 4, rgb[0], rgb[1], rgb[2]);
+      }
+    }
+  }
+
+  _renderHiRes(page) {
+    const hires = this.hiResPages[page];
+    const maxY = (this.screenMode === 'hgr') ? 160 : 192;
+    for (let y = 0; y < maxY; y++) {
+      for (let x = 0; x < 280; x++) {
+        const on = hires[y * 280 + x];
+        if (on) {
+          this._setPixel(x, y, this.amberR, this.amberG, this.amberB);
+        } else {
+          this._setPixel(x, y, 0, 0, 0);
+        }
+      }
+    }
+  }
+
+  // Convert lo-res color index (0-15) to monochrome amber brightness
+  _loResColorToAmber(colorIdx) {
+    // Map Apple II colors to brightness levels (0.0 - 1.0)
+    const brightness = [
+      0.00, // 0  Black
+      0.25, // 1  Magenta
+      0.15, // 2  Dark Blue
+      0.35, // 3  Purple
+      0.20, // 4  Dark Green
+      0.40, // 5  Grey 1
+      0.35, // 6  Medium Blue
+      0.55, // 7  Light Blue
+      0.30, // 8  Brown
+      0.50, // 9  Orange
+      0.60, // 10 Grey 2
+      0.65, // 11 Pink
+      0.50, // 12 Light Green
+      0.80, // 13 Yellow
+      0.65, // 14 Aqua
+      1.00, // 15 White
+    ];
+    const b = brightness[colorIdx & 15];
+    return [
+      Math.round(this.amberR * b),
+      Math.round(this.amberG * b),
+      Math.round(this.amberB * b)
+    ];
+  }
+
+  _renderCursorInline() {
+    if (!this.cursorVisible || !this._cursorBlinkOn) return;
+    // Only render cursor in text area
+    const row = this.cursorY;
+    const col = this.cursorX;
+    if (col < 0 || col >= 40 || row < 0 || row >= 24) return;
+
+    // In graphics modes, only draw cursor in text rows
+    if (this.screenMode === 'gr' && row < 20) return;
+    if (this.screenMode === 'hgr' && row < 20) return;
+    if (this.screenMode === 'gr_full' || this.screenMode === 'hgr_full') return;
+
+    // Draw a solid amber block for cursor
+    const px = col * this.charW;
+    const py = row * this.charH;
+    this._fillRect(px, py, this.charW, this.charH, this.amberR, this.amberG, this.amberB);
+
+    // Draw the character under cursor in black
+    const tp = this.textPages[this.displayPage];
+    const ch = tp.chars[row][col];
+    const glyph = this._fontData[ch.charCodeAt(0)] || this._fontData[32];
+    for (let gy = 0; gy < 7; gy++) {
+      const row_bits = glyph[gy];
+      for (let gx = 0; gx < 5; gx++) {
+        if (row_bits & (0x10 >> gx)) {
+          this._setPixel(px + gx + 1, py + gy, 0, 0, 0);
+        }
+      }
+    }
+  }
+
+  _renderCursor() {
+    // Called by the blink timer — just re-render fully
+    this.render();
+  }
+
+  // ===== TEXT OUTPUT API (same interface as before) =====
+
   clear() {
-    this.screenBuffer = [];
-    this.attrBuffer = [];
-    for (let y = 0; y < this.height; y++) {
-      this.screenBuffer.push(new Array(this.width).fill(' '));
-      this.attrBuffer.push(new Array(this.width).fill(0));
+    const tp = this._tp;
+    for (let y = 0; y < 24; y++) {
+      tp.chars[y].fill(' ');
+      tp.attrs[y].fill(0);
     }
     this.cursorX = 0;
     this.cursorY = 0;
     this.render();
-  }
-
-  render() {
-    let html = '';
-    for (let y = 0; y < this.height; y++) {
-      let line = '';
-      for (let x = 0; x < this.width; x++) {
-        const ch = this.screenBuffer[y][x];
-        const attr = this.attrBuffer[y][x];
-        const escaped = this.escapeHtml(ch);
-        if (y === this.cursorY && x === this.cursorX) {
-          line += `<span class="cursor">${escaped}</span>`;
-        } else if (attr === 1) {
-          line += `<span class="inverse">${escaped}</span>`;
-        } else if (attr === 2) {
-          line += `<span class="flash">${escaped}</span>`;
-        } else {
-          line += escaped;
-        }
-      }
-      html += line;
-      if (y < this.height - 1) html += '\n';
-    }
-    this.element.innerHTML = html;
-  }
-
-  escapeHtml(ch) {
-    switch (ch) {
-      case '&': return '&amp;';
-      case '<': return '&lt;';
-      case '>': return '&gt;';
-      case '"': return '&quot;';
-      default: return ch;
-    }
   }
 
   printChar(ch) {
@@ -1916,15 +2387,15 @@ class Display {
     }
 
     if (ch === '\x07') {
-      App.beep();
+      if (typeof App.beep === 'function') App.beep();
       return;
     }
 
     if (ch === '\x08') { // Backspace
       if (this.cursorX > 0) {
         this.cursorX--;
-        this.screenBuffer[this.cursorY][this.cursorX] = ' ';
-        this.attrBuffer[this.cursorY][this.cursorX] = 0;
+        this._tp.chars[this.cursorY][this.cursorX] = ' ';
+        this._tp.attrs[this.cursorY][this.cursorX] = 0;
       }
       return;
     }
@@ -1938,8 +2409,8 @@ class Display {
       }
     }
 
-    this.screenBuffer[this.cursorY][this.cursorX] = ch;
-    this.attrBuffer[this.cursorY][this.cursorX] = this.displayMode;
+    this._tp.chars[this.cursorY][this.cursorX] = ch;
+    this._tp.attrs[this.cursorY][this.cursorX] = this.displayMode;
     this.cursorX++;
   }
 
@@ -1955,32 +2426,34 @@ class Display {
   }
 
   scrollUp() {
-    this.screenBuffer.shift();
-    this.screenBuffer.push(new Array(this.width).fill(' '));
-    this.attrBuffer.shift();
-    this.attrBuffer.push(new Array(this.width).fill(0));
+    const tp = this._tp;
+    // Determine which rows scroll based on mode
+    const top = 0;
+    const bottom = this.height;
+    tp.chars.splice(top, 1);
+    tp.chars.splice(bottom - 1, 0, new Array(40).fill(' '));
+    tp.attrs.splice(top, 1);
+    tp.attrs.splice(bottom - 1, 0, new Array(40).fill(0));
   }
 
-  // Clear from cursor to end of screen
   clearToEnd() {
-    // Clear rest of current line
+    const tp = this._tp;
     for (let x = this.cursorX; x < this.width; x++) {
-      this.screenBuffer[this.cursorY][x] = ' ';
-      this.attrBuffer[this.cursorY][x] = 0;
+      tp.chars[this.cursorY][x] = ' ';
+      tp.attrs[this.cursorY][x] = 0;
     }
-    // Clear all lines below
     for (let y = this.cursorY + 1; y < this.height; y++) {
-      this.screenBuffer[y] = new Array(this.width).fill(' ');
-      this.attrBuffer[y] = new Array(this.width).fill(0);
+      tp.chars[y].fill(' ');
+      tp.attrs[y].fill(0);
     }
     this.render();
   }
 
-  // Clear from cursor to end of line
   clearToEndOfLine() {
+    const tp = this._tp;
     for (let x = this.cursorX; x < this.width; x++) {
-      this.screenBuffer[this.cursorY][x] = ' ';
-      this.attrBuffer[this.cursorY][x] = 0;
+      tp.chars[this.cursorY][x] = ' ';
+      tp.attrs[this.cursorY][x] = 0;
     }
     this.render();
   }
@@ -1993,78 +2466,175 @@ class Display {
     this.cursorY = Math.max(0, Math.min(this.height - 1, row - 1));
   }
 
-  setInputMode(active) {
-    this.inputMode = active;
-  }
+  setInputMode(active) { this.inputMode = active; }
+  setGetMode(active) { this.getMode = active; }
 
-  setGetMode(active) {
-    this.getMode = active;
-  }
+  // ===== GRAPHICS MODE SWITCHING =====
 
-  // Lo-Res graphics
   initLoRes() {
-    this.canvas.style.display = 'block';
-    this.canvas.width = App.LORES_WIDTH * 7;
-    this.canvas.height = App.LORES_GRAPHICS_ROWS * 4;
-    this.ctx = this.canvas.getContext('2d');
-    this.ctx.fillStyle = '#000000';
-    this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
+    this.screenMode = 'gr';
+    this.mixedMode = true;
+
+    // Clear lo-res graphics area
+    const lores = this.loResPages[this.activePage];
+    for (let y = 0; y < 48; y++) {
+      lores[y].fill(0);
+    }
+
+    // Set cursor to text window (rows 20-23)
     this.cursorX = 0;
     this.cursorY = 20;
-    for (let y = 20; y < this.height; y++) {
-      this.screenBuffer[y] = new Array(this.width).fill(' ');
-      this.attrBuffer[y] = new Array(this.width).fill(0);
+
+    // Clear text rows 20-23
+    const tp = this._tp;
+    for (let y = 20; y < 24; y++) {
+      tp.chars[y].fill(' ');
+      tp.attrs[y].fill(0);
     }
     this.render();
   }
 
-  drawLoResPixel(x, y, color) {
-    const pixW = 7;
-    const pixH = 4;
-    this.ctx.fillStyle = App.LORES_COLORS[color & 15];
-    this.ctx.fillRect(x * pixW, y * pixH, pixW, pixH);
+  initLoResFull() {
+    this.screenMode = 'gr_full';
+    this.mixedMode = false;
+    const lores = this.loResPages[this.activePage];
+    for (let y = 0; y < 48; y++) {
+      lores[y].fill(0);
+    }
+    this.render();
+  }
+
+  initHiRes(page) {
+    const p = (page === 2) ? 1 : 0;
+    this.activePage = p;
+    this.displayPage = p;
+    this.screenMode = 'hgr';
+    this.mixedMode = true;
+
+    // Clear hi-res page
+    this.hiResPages[p].fill(0);
+
+    // Set cursor to text window (rows 20-23)
+    this.cursorX = 0;
+    this.cursorY = 20;
+
+    // Clear text rows 20-23
+    const tp = this._tp;
+    for (let y = 20; y < 24; y++) {
+      tp.chars[y].fill(' ');
+      tp.attrs[y].fill(0);
+    }
+    this.render();
+  }
+
+  initHiResFull(page) {
+    const p = (page === 2) ? 1 : 0;
+    this.activePage = p;
+    this.displayPage = p;
+    this.screenMode = 'hgr_full';
+    this.mixedMode = false;
+    this.hiResPages[p].fill(0);
+    this.render();
   }
 
   showTextMode() {
-    this.canvas.style.display = 'none';
+    this.screenMode = 'text';
+    this.mixedMode = false;
     this.clear();
   }
 
-  // Hi-Res graphics
-  initHiRes() {
-    this.canvas.style.display = 'block';
-    this.canvas.width = App.HIRES_WIDTH;
-    this.canvas.height = App.HIRES_HEIGHT;
-    this.ctx = this.canvas.getContext('2d');
-    this.ctx.fillStyle = '#000000';
-    this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
-    this.cursorX = 0;
-    this.cursorY = 20;
-    for (let y = 20; y < this.height; y++) {
-      this.screenBuffer[y] = new Array(this.width).fill(' ');
-      this.attrBuffer[y] = new Array(this.width).fill(0);
+  // ===== PAGE FLIPPING =====
+
+  setActivePage(page) {
+    this.activePage = (page === 2) ? 1 : 0;
+  }
+
+  setDisplayPage(page) {
+    this.displayPage = (page === 2) ? 1 : 0;
+    this.render();
+  }
+
+  // ===== LO-RES GRAPHICS DRAWING =====
+
+  drawLoResPixel(x, y, color) {
+    if (x < 0 || x >= 40) return;
+    const maxY = (this.screenMode === 'gr') ? 40 : 48;
+    if (y < 0 || y >= maxY) return;
+    this.loResPages[this.activePage][y][x] = color & 15;
+
+    // Draw immediately to canvas
+    const rgb = this._loResColorToAmber(color & 15);
+    const px = x * 7;
+    const py = y * 4;
+    this.ctx.fillStyle = `rgb(${rgb[0]},${rgb[1]},${rgb[2]})`;
+    this.ctx.fillRect(px, py, 7, 4);
+  }
+
+  getLoResPixel(x, y) {
+    if (x < 0 || x >= 40 || y < 0 || y >= 48) return 0;
+    return this.loResPages[this.activePage][y][x];
+  }
+
+  // ===== HI-RES GRAPHICS DRAWING =====
+
+  drawHiResPixel(x, y, colorOn) {
+    if (x < 0 || x >= 280) return;
+    const maxY = (this.screenMode === 'hgr') ? 160 : 192;
+    if (y < 0 || y >= maxY) return;
+    const hires = this.hiResPages[this.activePage];
+    hires[y * 280 + x] = colorOn ? 1 : 0;
+
+    // Draw immediately
+    if (colorOn) {
+      this.ctx.fillStyle = this.amberHex;
+    } else {
+      this.ctx.fillStyle = '#000000';
+    }
+    this.ctx.fillRect(x, y, 1, 1);
+  }
+
+  drawHiResLine(x1, y1, x2, y2, colorOn) {
+    // Bresenham line algorithm
+    let dx = Math.abs(x2 - x1);
+    let dy = Math.abs(y2 - y1);
+    let sx = x1 < x2 ? 1 : -1;
+    let sy = y1 < y2 ? 1 : -1;
+    let err = dx - dy;
+
+    while (true) {
+      this.drawHiResPixel(x1, y1, colorOn);
+      if (x1 === x2 && y1 === y2) break;
+      const e2 = 2 * err;
+      if (e2 > -dy) { err -= dy; x1 += sx; }
+      if (e2 < dx) { err += dx; y1 += sy; }
+    }
+  }
+
+  clearHiRes(colorOn) {
+    const hires = this.hiResPages[this.activePage];
+    const maxY = (this.screenMode === 'hgr') ? 160 : 192;
+    const val = colorOn ? 1 : 0;
+    for (let y = 0; y < maxY; y++) {
+      for (let x = 0; x < 280; x++) {
+        hires[y * 280 + x] = val;
+      }
     }
     this.render();
   }
 
-  drawHiResPixel(x, y, color) {
-    this.ctx.fillStyle = App.HIRES_COLORS[color & 7];
-    this.ctx.fillRect(x, y, 1, 1);
-  }
+  // ===== CLEANUP =====
 
-  drawHiResLine(x1, y1, x2, y2, color) {
-    this.ctx.strokeStyle = App.HIRES_COLORS[color & 7];
-    this.ctx.lineWidth = 1;
-    this.ctx.beginPath();
-    this.ctx.moveTo(x1 + 0.5, y1 + 0.5);
-    this.ctx.lineTo(x2 + 0.5, y2 + 0.5);
-    this.ctx.stroke();
+  destroy() {
+    if (this._cursorTimer) {
+      clearInterval(this._cursorTimer);
+      this._cursorTimer = null;
+    }
   }
 }
 
 App.Display = Display;
 '@
-Set-Content -Path "$dir\js\display.js" -Value $content -Encoding UTF8
+[System.IO.File]::WriteAllText("$dir\js\display.js", $content, [System.Text.Encoding]::UTF8)
 
 Write-Host "Writing js\claude.js (11/15)..."
 $content = @'
@@ -2299,7 +2869,7 @@ CRITICAL: Output ONLY numbered Applesoft BASIC program lines.
 
 App.ClaudeAI = ClaudeAI;
 '@
-Set-Content -Path "$dir\js\claude.js" -Value $content -Encoding UTF8
+[System.IO.File]::WriteAllText("$dir\js\claude.js", $content, [System.Text.Encoding]::UTF8)
 
 Write-Host "Writing js\interpreter.js (12/15)..."
 $content = @'
@@ -2328,7 +2898,6 @@ class Interpreter {
     this.inverseMode = false;
     this.flashMode = false;
     this.textMode = true;
-    this.loResScreen = null;
     this.loResColor = 0;
     this.hiResColor = 3;
     this.hiResLastX = 0;
@@ -2674,9 +3243,8 @@ class Interpreter {
       return;
     }
 
-    if (upperStmt === 'GR' || upperStmt.startsWith('GR')) {
+    if (upperStmt === 'GR' || (upperStmt.startsWith('GR') && !upperStmt.startsWith('GRAPHICS'))) {
       this.textMode = false;
-      this.loResScreen = new Array(App.LORES_HEIGHT).fill(null).map(() => new Array(App.LORES_WIDTH).fill(0));
       this.display.initLoRes();
       return;
     }
@@ -2706,11 +3274,19 @@ class Interpreter {
     if (upperStmt.startsWith('NOTRACE')) { this.traceMode = false; return; }
 
     // ===== HI-RES GRAPHICS =====
-    if (upperStmt === 'HGR' || upperStmt === 'HGR2' || (upperStmt.startsWith('HGR') && !upperStmt.startsWith('HGRAPHICS'))) {
+    if (upperStmt === 'HGR' || (upperStmt.startsWith('HGR') && !upperStmt.startsWith('HGR2') && !upperStmt.startsWith('HGRAPHICS'))) {
+      this.textMode = false;
+      this.hiResMode = true;
+      this.hiResColor = 3;  // White (on) by default
+      this.display.initHiRes(1);
+      return;
+    }
+
+    if (upperStmt === 'HGR2' || upperStmt.startsWith('HGR2')) {
       this.textMode = false;
       this.hiResMode = true;
       this.hiResColor = 3;
-      this.display.initHiRes();
+      this.display.initHiRes(2);
       return;
     }
 
@@ -3167,9 +3743,9 @@ class Interpreter {
 
   // ===== LO-RES GRAPHICS =====
   loResPlot(x, y) {
-    if (!this.loResScreen) return;
-    if (x < 0 || x >= App.LORES_WIDTH || y < 0 || y >= App.LORES_GRAPHICS_ROWS) return;
-    this.loResScreen[y][x] = this.loResColor;
+    if (x < 0 || x >= 40) return;
+    const maxY = (this.display.screenMode === 'gr') ? 40 : 48;
+    if (y < 0 || y >= maxY) return;
     this.display.drawLoResPixel(x, y, this.loResColor);
   }
 
@@ -3223,11 +3799,19 @@ class Interpreter {
 
     // Graphics soft switches
     if (uaddr === 49232) { /* TEXT mode */ this.textMode = true; this.display.showTextMode(); return; }
-    if (uaddr === 49233) { /* GRAPHICS mode */ return; }
-    if (uaddr === 49234) { /* full screen */ return; }
-    if (uaddr === 49235) { /* mixed mode */ return; }
-    if (uaddr === 49236) { /* page 1 */ return; }
-    if (uaddr === 49237) { /* page 2 */ return; }
+    if (uaddr === 49233) { /* GRAPHICS mode - activate current graphics mode */ return; }
+    if (uaddr === 49234) { /* full screen */
+      if (this.display.screenMode === 'gr') { this.display.screenMode = 'gr_full'; this.display.render(); }
+      else if (this.display.screenMode === 'hgr') { this.display.screenMode = 'hgr_full'; this.display.render(); }
+      return;
+    }
+    if (uaddr === 49235) { /* mixed mode */
+      if (this.display.screenMode === 'gr_full') { this.display.screenMode = 'gr'; this.display.render(); }
+      else if (this.display.screenMode === 'hgr_full') { this.display.screenMode = 'hgr'; this.display.render(); }
+      return;
+    }
+    if (uaddr === 49236) { /* page 1 */ this.display.setDisplayPage(1); return; }
+    if (uaddr === 49237) { /* page 2 */ this.display.setDisplayPage(2); return; }
     if (uaddr === 49238) { /* lo-res */ return; }
     if (uaddr === 49239) { /* hi-res */ return; }
 
@@ -3272,8 +3856,7 @@ class Interpreter {
     // CALL 62450: Clear hi-res screen to black
     if (uaddr === 62450) {
       if (this.hiResMode) {
-        this.display.ctx.fillStyle = '#000000';
-        this.display.ctx.fillRect(0, 0, App.HIRES_WIDTH, App.HIRES_HEIGHT);
+        this.display.clearHiRes(false);
       }
       return;
     }
@@ -3281,8 +3864,7 @@ class Interpreter {
     // CALL 62454: Clear hi-res screen to current HCOLOR
     if (uaddr === 62454) {
       if (this.hiResMode) {
-        this.display.ctx.fillStyle = App.HIRES_COLORS[this.hiResColor & 7];
-        this.display.ctx.fillRect(0, 0, App.HIRES_WIDTH, App.HIRES_HEIGHT);
+        this.display.clearHiRes(this._hcolorIsOn());
       }
       return;
     }
@@ -3291,9 +3873,15 @@ class Interpreter {
   }
 
   // ===== HPLOT =====
+  // hiResColor: 0,4=black(off), 1,2,3,5,6,7=on (monochrome amber)
+  _hcolorIsOn() {
+    return this.hiResColor !== 0 && this.hiResColor !== 4;
+  }
+
   executeHplot(argStr) {
     if (!argStr || argStr.trim().length === 0) return;
     const upper = argStr.toUpperCase().trim();
+    const colorOn = this._hcolorIsOn();
 
     // HPLOT TO x,y [TO x,y ...] - draw from last position
     if (upper.startsWith('TO')) {
@@ -3302,7 +3890,7 @@ class Interpreter {
         const commaPos = this.findComma(seg.trim());
         const x = Math.floor(this.evaluateExpressionFromString(seg.trim().substring(0, commaPos).trim()));
         const y = Math.floor(this.evaluateExpressionFromString(seg.trim().substring(commaPos + 1).trim()));
-        this.display.drawHiResLine(this.hiResLastX, this.hiResLastY, x, y, this.hiResColor);
+        this.display.drawHiResLine(this.hiResLastX, this.hiResLastY, x, y, colorOn);
         this.hiResLastX = x;
         this.hiResLastY = y;
       }
@@ -3318,12 +3906,12 @@ class Interpreter {
 
     if (parts.length === 1) {
       // Single point
-      this.display.drawHiResPixel(x1, y1, this.hiResColor);
+      this.display.drawHiResPixel(x1, y1, colorOn);
       this.hiResLastX = x1;
       this.hiResLastY = y1;
     } else {
       // First point then lines
-      this.display.drawHiResPixel(x1, y1, this.hiResColor);
+      this.display.drawHiResPixel(x1, y1, colorOn);
       this.hiResLastX = x1;
       this.hiResLastY = y1;
       for (let i = 1; i < parts.length; i++) {
@@ -3331,7 +3919,7 @@ class Interpreter {
         const cp = this.findComma(seg);
         const x = Math.floor(this.evaluateExpressionFromString(seg.substring(0, cp).trim()));
         const y = Math.floor(this.evaluateExpressionFromString(seg.substring(cp + 1).trim()));
-        this.display.drawHiResLine(this.hiResLastX, this.hiResLastY, x, y, this.hiResColor);
+        this.display.drawHiResLine(this.hiResLastX, this.hiResLastY, x, y, colorOn);
         this.hiResLastX = x;
         this.hiResLastY = y;
       }
@@ -3511,13 +4099,9 @@ class Interpreter {
       }
       case 'POS': return this.display.cursorX;
       case 'SCRN': {
-        if (!this.loResScreen) return 0;
         const x = Math.floor(args[0]);
         const y = Math.floor(args[1]);
-        if (x >= 0 && x < App.LORES_WIDTH && y >= 0 && y < App.LORES_GRAPHICS_ROWS) {
-          return this.loResScreen[y][x];
-        }
-        return 0;
+        return this.display.getLoResPixel(x, y);
       }
       case 'PDL': return Math.floor(Math.random() * 256);
       case 'FRE': return 38911;
@@ -3613,7 +4197,7 @@ class Interpreter {
 
 App.Interpreter = Interpreter;
 '@
-Set-Content -Path "$dir\js\interpreter.js" -Value $content -Encoding UTF8
+[System.IO.File]::WriteAllText("$dir\js\interpreter.js", $content, [System.Text.Encoding]::UTF8)
 
 Write-Host "Writing js\emulator.js (13/15)..."
 $content = @'
@@ -3621,15 +4205,14 @@ window.App = window.App || {};
 
 class Emulator {
   constructor() {
-    this.displayElement = document.getElementById('text-display');
-    this.canvasElement = document.getElementById('lores-canvas');
+    this.canvasElement = document.getElementById('apple2-canvas');
     this.screenContainer = document.getElementById('screen-container');
     this.frame = document.getElementById('apple2-frame');
     this.bgImage = document.getElementById('bg-image');
     this.powerBtn = document.getElementById('power-btn');
     this.powerLed = document.getElementById('power-led');
     this.fileUpload = document.getElementById('file-upload');
-    this.display = new App.Display(this.displayElement, this.canvasElement);
+    this.display = new App.Display(this.canvasElement);
     this.interpreter = new App.Interpreter(this.display);
     this.drives = [new App.VirtualFileSystem(), new App.VirtualFileSystem()];
     this.drives[1].volumeName = 'BACKUP';
@@ -3847,6 +4430,9 @@ class Emulator {
     this.display.printLine('');
     this.display.printLine('SLOT 6: DRIVE 1 & DRIVE 2');
     this.display.printLine('DISK VOLUME ' + this.fs.volumeNumber);
+    this.display.printLine('280X192 MONOCHROME DISPLAY');
+    this.display.printLine('LO-RES 40X40 / HI-RES 280X160');
+    this.display.printLine('');
     this.display.printLine('TYPE "HELP" FOR COMMANDS');
     this.display.printLine('TYPE "AI HELP" FOR CLAUDE AI');
     this.display.printLine('TYPE "CATALOG" FOR DISK CONTENTS');
@@ -4803,24 +5389,30 @@ class Emulator {
       'TEXT          Return to text mode',
       'SPEED= n      Output speed 0-255',
       '',
-      '--- LOW-RES GRAPHICS (40x48) ---',
-      'GR            Init lo-res graphics',
+      '--- LOW-RES GRAPHICS (40x40+TEXT) ---',
+      'GR            Init lo-res mixed mode',
+      '              (40x40 gfx + 4 text rows)',
       'COLOR= n      Set color 0-15',
+      '              (amber brightness levels)',
       'PLOT x,y      Plot single block',
       'HLIN x1,x2 AT y  Horizontal line',
       'VLIN y1,y2 AT x  Vertical line',
       '',
-      '--- HI-RES GRAPHICS (280x192) ---',
+      '--- HI-RES GRAPHICS (280x160+TEXT) ---',
       'HGR           Init hi-res page 1',
+      '              (280x160 gfx + 4 text rows)',
       'HGR2          Init hi-res page 2',
-      'HCOLOR= n     Set color 0-7',
+      'HCOLOR= n     0,4=off  1-3,5-7=on',
+      '              (monochrome amber)',
       'HPLOT x,y     Plot point',
       'HPLOT TO x,y  Draw line to point',
       'HPLOT x,y TO x2,y2  Draw line',
-      'ROT= n        Shape rotation 0-63',
-      'SCALE= n      Shape scale factor',
-      'DRAW n AT x,y   Draw shape (stub)',
-      'XDRAW n AT x,y  XOR draw shape (stub)',
+      '',
+      '--- SCREEN PAGES ---',
+      'POKE 49236,0  Show page 1',
+      'POKE 49237,0  Show page 2',
+      'POKE 49234,0  Full screen (no text)',
+      'POKE 49235,0  Mixed mode (with text)',
       '',
       '--- PEEK / POKE / CALL ---',
       'PEEK(addr)    Read memory location',
@@ -5384,7 +5976,7 @@ class Emulator {
 
 App.Emulator = Emulator;
 '@
-Set-Content -Path "$dir\js\emulator.js" -Value $content -Encoding UTF8
+[System.IO.File]::WriteAllText("$dir\js\emulator.js", $content, [System.Text.Encoding]::UTF8)
 
 Write-Host "Writing js\main.js (14/15)..."
 $content = @'
@@ -5395,7 +5987,7 @@ window.addEventListener('DOMContentLoaded', function() {
   window.emulator = emulator;
 });
 '@
-Set-Content -Path "$dir\js\main.js" -Value $content -Encoding UTF8
+[System.IO.File]::WriteAllText("$dir\js\main.js", $content, [System.Text.Encoding]::UTF8)
 
 Write-Host "Writing img\AppleIIBG01.png (15/15)..."
 $b64 = @'
@@ -32347,10 +32939,7 @@ I0CQMik0U32DQJbqhiUARRx7/d3bAJlWiwtHSPwDK8BDbqPdMg8AAAAASUVORK5CYII=
 
 Write-Host ""
 Write-Host "========================================"
-Write-Host "  Installation Complete!"
+Write-Host "  Installation complete!"
 Write-Host "========================================"
 Write-Host ""
-Write-Host "Files installed to: $dir"
-Write-Host ""
-Write-Host "Open index.html in your browser."
-Write-Host ""
+Write-Host "Open $dir\index.html in your browser."
