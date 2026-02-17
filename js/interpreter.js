@@ -23,7 +23,6 @@ class Interpreter {
     this.inverseMode = false;
     this.flashMode = false;
     this.textMode = true;
-    this.loResScreen = null;
     this.loResColor = 0;
     this.hiResColor = 3;
     this.hiResLastX = 0;
@@ -369,9 +368,8 @@ class Interpreter {
       return;
     }
 
-    if (upperStmt === 'GR' || upperStmt.startsWith('GR')) {
+    if (upperStmt === 'GR' || (upperStmt.startsWith('GR') && !upperStmt.startsWith('GRAPHICS'))) {
       this.textMode = false;
-      this.loResScreen = new Array(App.LORES_HEIGHT).fill(null).map(() => new Array(App.LORES_WIDTH).fill(0));
       this.display.initLoRes();
       return;
     }
@@ -401,11 +399,19 @@ class Interpreter {
     if (upperStmt.startsWith('NOTRACE')) { this.traceMode = false; return; }
 
     // ===== HI-RES GRAPHICS =====
-    if (upperStmt === 'HGR' || upperStmt === 'HGR2' || (upperStmt.startsWith('HGR') && !upperStmt.startsWith('HGRAPHICS'))) {
+    if (upperStmt === 'HGR' || (upperStmt.startsWith('HGR') && !upperStmt.startsWith('HGR2') && !upperStmt.startsWith('HGRAPHICS'))) {
+      this.textMode = false;
+      this.hiResMode = true;
+      this.hiResColor = 3;  // White (on) by default
+      this.display.initHiRes(1);
+      return;
+    }
+
+    if (upperStmt === 'HGR2' || upperStmt.startsWith('HGR2')) {
       this.textMode = false;
       this.hiResMode = true;
       this.hiResColor = 3;
-      this.display.initHiRes();
+      this.display.initHiRes(2);
       return;
     }
 
@@ -862,9 +868,9 @@ class Interpreter {
 
   // ===== LO-RES GRAPHICS =====
   loResPlot(x, y) {
-    if (!this.loResScreen) return;
-    if (x < 0 || x >= App.LORES_WIDTH || y < 0 || y >= App.LORES_GRAPHICS_ROWS) return;
-    this.loResScreen[y][x] = this.loResColor;
+    if (x < 0 || x >= 40) return;
+    const maxY = (this.display.screenMode === 'gr') ? 40 : 48;
+    if (y < 0 || y >= maxY) return;
     this.display.drawLoResPixel(x, y, this.loResColor);
   }
 
@@ -918,11 +924,19 @@ class Interpreter {
 
     // Graphics soft switches
     if (uaddr === 49232) { /* TEXT mode */ this.textMode = true; this.display.showTextMode(); return; }
-    if (uaddr === 49233) { /* GRAPHICS mode */ return; }
-    if (uaddr === 49234) { /* full screen */ return; }
-    if (uaddr === 49235) { /* mixed mode */ return; }
-    if (uaddr === 49236) { /* page 1 */ return; }
-    if (uaddr === 49237) { /* page 2 */ return; }
+    if (uaddr === 49233) { /* GRAPHICS mode - activate current graphics mode */ return; }
+    if (uaddr === 49234) { /* full screen */
+      if (this.display.screenMode === 'gr') { this.display.screenMode = 'gr_full'; this.display.render(); }
+      else if (this.display.screenMode === 'hgr') { this.display.screenMode = 'hgr_full'; this.display.render(); }
+      return;
+    }
+    if (uaddr === 49235) { /* mixed mode */
+      if (this.display.screenMode === 'gr_full') { this.display.screenMode = 'gr'; this.display.render(); }
+      else if (this.display.screenMode === 'hgr_full') { this.display.screenMode = 'hgr'; this.display.render(); }
+      return;
+    }
+    if (uaddr === 49236) { /* page 1 */ this.display.setDisplayPage(1); return; }
+    if (uaddr === 49237) { /* page 2 */ this.display.setDisplayPage(2); return; }
     if (uaddr === 49238) { /* lo-res */ return; }
     if (uaddr === 49239) { /* hi-res */ return; }
 
@@ -967,8 +981,7 @@ class Interpreter {
     // CALL 62450: Clear hi-res screen to black
     if (uaddr === 62450) {
       if (this.hiResMode) {
-        this.display.ctx.fillStyle = '#000000';
-        this.display.ctx.fillRect(0, 0, App.HIRES_WIDTH, App.HIRES_HEIGHT);
+        this.display.clearHiRes(false);
       }
       return;
     }
@@ -976,8 +989,7 @@ class Interpreter {
     // CALL 62454: Clear hi-res screen to current HCOLOR
     if (uaddr === 62454) {
       if (this.hiResMode) {
-        this.display.ctx.fillStyle = App.HIRES_COLORS[this.hiResColor & 7];
-        this.display.ctx.fillRect(0, 0, App.HIRES_WIDTH, App.HIRES_HEIGHT);
+        this.display.clearHiRes(this._hcolorIsOn());
       }
       return;
     }
@@ -986,9 +998,15 @@ class Interpreter {
   }
 
   // ===== HPLOT =====
+  // hiResColor: 0,4=black(off), 1,2,3,5,6,7=on (monochrome amber)
+  _hcolorIsOn() {
+    return this.hiResColor !== 0 && this.hiResColor !== 4;
+  }
+
   executeHplot(argStr) {
     if (!argStr || argStr.trim().length === 0) return;
     const upper = argStr.toUpperCase().trim();
+    const colorOn = this._hcolorIsOn();
 
     // HPLOT TO x,y [TO x,y ...] - draw from last position
     if (upper.startsWith('TO')) {
@@ -997,7 +1015,7 @@ class Interpreter {
         const commaPos = this.findComma(seg.trim());
         const x = Math.floor(this.evaluateExpressionFromString(seg.trim().substring(0, commaPos).trim()));
         const y = Math.floor(this.evaluateExpressionFromString(seg.trim().substring(commaPos + 1).trim()));
-        this.display.drawHiResLine(this.hiResLastX, this.hiResLastY, x, y, this.hiResColor);
+        this.display.drawHiResLine(this.hiResLastX, this.hiResLastY, x, y, colorOn);
         this.hiResLastX = x;
         this.hiResLastY = y;
       }
@@ -1013,12 +1031,12 @@ class Interpreter {
 
     if (parts.length === 1) {
       // Single point
-      this.display.drawHiResPixel(x1, y1, this.hiResColor);
+      this.display.drawHiResPixel(x1, y1, colorOn);
       this.hiResLastX = x1;
       this.hiResLastY = y1;
     } else {
       // First point then lines
-      this.display.drawHiResPixel(x1, y1, this.hiResColor);
+      this.display.drawHiResPixel(x1, y1, colorOn);
       this.hiResLastX = x1;
       this.hiResLastY = y1;
       for (let i = 1; i < parts.length; i++) {
@@ -1026,7 +1044,7 @@ class Interpreter {
         const cp = this.findComma(seg);
         const x = Math.floor(this.evaluateExpressionFromString(seg.substring(0, cp).trim()));
         const y = Math.floor(this.evaluateExpressionFromString(seg.substring(cp + 1).trim()));
-        this.display.drawHiResLine(this.hiResLastX, this.hiResLastY, x, y, this.hiResColor);
+        this.display.drawHiResLine(this.hiResLastX, this.hiResLastY, x, y, colorOn);
         this.hiResLastX = x;
         this.hiResLastY = y;
       }
@@ -1206,13 +1224,9 @@ class Interpreter {
       }
       case 'POS': return this.display.cursorX;
       case 'SCRN': {
-        if (!this.loResScreen) return 0;
         const x = Math.floor(args[0]);
         const y = Math.floor(args[1]);
-        if (x >= 0 && x < App.LORES_WIDTH && y >= 0 && y < App.LORES_GRAPHICS_ROWS) {
-          return this.loResScreen[y][x];
-        }
-        return 0;
+        return this.display.getLoResPixel(x, y);
       }
       case 'PDL': return Math.floor(Math.random() * 256);
       case 'FRE': return 38911;

@@ -2,15 +2,14 @@ window.App = window.App || {};
 
 class Emulator {
   constructor() {
-    this.displayElement = document.getElementById('text-display');
-    this.canvasElement = document.getElementById('lores-canvas');
+    this.canvasElement = document.getElementById('apple2-canvas');
     this.screenContainer = document.getElementById('screen-container');
     this.frame = document.getElementById('apple2-frame');
     this.bgImage = document.getElementById('bg-image');
     this.powerBtn = document.getElementById('power-btn');
     this.powerLed = document.getElementById('power-led');
     this.fileUpload = document.getElementById('file-upload');
-    this.display = new App.Display(this.displayElement, this.canvasElement);
+    this.display = new App.Display(this.canvasElement);
     this.interpreter = new App.Interpreter(this.display);
     this.drives = [new App.VirtualFileSystem(), new App.VirtualFileSystem()];
     this.drives[1].volumeName = 'BACKUP';

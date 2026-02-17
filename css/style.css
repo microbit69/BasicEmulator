@@ -41,10 +41,7 @@ body {
   border-radius: 4px;
   overflow: hidden;
   z-index: 2;
-  /* outline removed - alignment done */
 }
-
-/* CRT effects removed for fully transparent background */
 
 #screen {
   position: absolute;
@@ -55,68 +52,14 @@ body {
   z-index: 1;
 }
 
-/* ===== TEXT DISPLAY ===== */
-/* Font sizing based on viewport height (image height = 100vh):
-   Screen height = 37.3vh, text area ~34vh (after padding)
-   24 lines at line-height 1.2: font-size = 34 / (24*1.2) ≈ 1.18vh
-   Screen width = 34.8% * 150vh ≈ 52vh, text area ~49vh
-   40 chars at 1.18vh * 0.6 ≈ 28.3vh → letter-spacing fills rest    */
-#text-display {
-  font-family: 'Courier New', 'Lucida Console', monospace;
-  font-size: clamp(7px, 1.18vh, 16px);
-  line-height: 1.2;
-  color: #ffb000;
-  white-space: pre;
-  letter-spacing: clamp(0px, 0.3vh, 4px);
-  text-shadow: 0 0 5px rgba(255, 176, 0, 0.5), 0 0 10px rgba(255, 176, 0, 0.2);
-  width: 100%;
-  height: 100%;
-  user-select: none;
-  position: relative;
-  overflow: hidden;
-}
-
-/* ===== CURSOR ===== */
-.cursor {
-  display: inline;
-  animation: blink 1s step-end infinite;
-  background-color: #ffb000;
-  color: #080400;
-  text-shadow: none;
-}
-
-@keyframes blink {
-  0%, 49% { opacity: 1; }
-  50%, 100% { opacity: 0; }
-}
-
-.inverse {
-  background-color: #ffb000;
-  color: #080400;
-  text-shadow: none;
-}
-
-.flash {
-  animation: flash-text 0.5s step-end infinite;
-  background-color: #ffb000;
-  color: #080400;
-  text-shadow: none;
-}
-
-@keyframes flash-text {
-  0%, 49% { background-color: #ffb000; color: #080400; }
-  50%, 100% { background-color: transparent; color: #ffb000; }
-}
-
-/* ===== LO-RES GRAPHICS CANVAS ===== */
-#lores-canvas {
+/* ===== MAIN CANVAS (text + graphics — everything) ===== */
+#apple2-canvas {
   position: absolute;
   top: 0;
   left: 0;
   width: 100%;
-  height: 83.3%;  /* 20/24 rows for mixed mode */
-  z-index: 2;
-  display: none;
+  height: 100%;
+  z-index: 1;
   image-rendering: pixelated;
   image-rendering: crisp-edges;
 }
@@ -196,11 +139,7 @@ body {
 }
 
 /* ===== CRT POWER ON/OFF ===== */
-#screen-container.off #text-display {
-  visibility: hidden;
-}
-
-#screen-container.off #lores-canvas {
+#screen-container.off #apple2-canvas {
   visibility: hidden;
 }
 
