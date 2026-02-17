@@ -57,6 +57,10 @@ class Emulator {
     this.poweredOn = true;
     this.powerLed.classList.add('on');
 
+    // Reset display and interpreter state from any previous session
+    this.display.showTextMode();
+    this.interpreter.reset();
+
     // CRT turn-on: electromagnetic pop + screen activation
     App.crtPop();
     this.screenContainer.classList.remove('off', 'crt-off');

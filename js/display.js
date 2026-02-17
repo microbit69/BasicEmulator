@@ -496,8 +496,9 @@ class Display {
 
   scrollUp() {
     const tp = this._tp;
-    // Determine which rows scroll based on mode
-    const top = 0;
+    // In mixed mode (GR/HGR), only scroll the text window (rows 20-23)
+    const isMixed = (this.screenMode === 'gr' || this.screenMode === 'hgr');
+    const top = isMixed ? 20 : 0;
     const bottom = this.height;
     tp.chars.splice(top, 1);
     tp.chars.splice(bottom - 1, 0, new Array(40).fill(' '));
@@ -609,6 +610,8 @@ class Display {
   showTextMode() {
     this.screenMode = 'text';
     this.mixedMode = false;
+    this.activePage = 0;
+    this.displayPage = 0;
     this.clear();
   }
 
