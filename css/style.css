@@ -38,23 +38,9 @@ body {
   position: absolute;
   left: 0; top: 0; width: 0; height: 0; /* JS overrides these */
   background: transparent;
-  border-radius: 30px / 24px;
+  border-radius: 4px;
   overflow: hidden;
   z-index: 2;
-}
-
-/* CRT glass curvature vignette */
-#screen-container::after {
-  content: '';
-  position: absolute;
-  inset: 0;
-  border-radius: inherit;
-  background: radial-gradient(ellipse 70% 65% at 50% 50%,
-    transparent 40%,
-    rgba(0,0,0,0.35) 65%,
-    rgba(0,0,0,0.85) 100%);
-  pointer-events: none;
-  z-index: 10;
 }
 
 #screen {

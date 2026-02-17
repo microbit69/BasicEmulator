@@ -21,7 +21,7 @@ $content = @'
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Applesoft BASIC Interpreter</title>
-<link rel="stylesheet" href="css/style.css?v=26">
+<link rel="stylesheet" href="css/style.css?v=27">
 </head>
 <body>
 
@@ -64,7 +64,7 @@ $content = @'
 (function() {
   // CRT glass coordinates in source image (1536x1024)
   // Measured from AppleIIBG01.png glass boundaries
-  var GL = 387, GT = 105, GW = 466, GH = 364, IW = 1536, IH = 1024;
+  var GL = 392, GT = 110, GW = 466, GH = 364, IW = 1536, IH = 1024;
   // Drive LED positions as percentage of image (left%, top%)
   var D1LP = 74.5, D1TP = 59.5, D2LP = 74.5, D2TP = 77.5, DLS = 10;
   function pos() {
@@ -96,7 +96,7 @@ $content = @'
   }
 
   // Base values for percentage scaling
-  var baseGW = GW, baseGH = GH, scalePct = 98;
+  var baseGW = GW, baseGH = GH, scalePct = 97;
   function updateScale(delta) {
     scalePct = Math.max(50, Math.min(150, scalePct + delta));
     GW = Math.round(baseGW * scalePct / 100);
@@ -141,18 +141,18 @@ $content = @'
 </script>
 
 <!-- Scripts loaded in dependency order (no ES modules for file:// compatibility) -->
-<script src="js/constants.js?v=26"></script>
-<script src="js/audio.js?v=26"></script>
-<script src="js/tokenizer.js?v=26"></script>
-<script src="js/parser.js?v=26"></script>
-<script src="js/filesystem.js?v=26"></script>
-<script src="js/samples.js?v=26"></script>
-<script src="js/tutorial.js?v=26"></script>
-<script src="js/display.js?v=26"></script>
-<script src="js/claude.js?v=26"></script>
-<script src="js/interpreter.js?v=26"></script>
-<script src="js/emulator.js?v=26"></script>
-<script src="js/main.js?v=26"></script>
+<script src="js/constants.js?v=27"></script>
+<script src="js/audio.js?v=27"></script>
+<script src="js/tokenizer.js?v=27"></script>
+<script src="js/parser.js?v=27"></script>
+<script src="js/filesystem.js?v=27"></script>
+<script src="js/samples.js?v=27"></script>
+<script src="js/tutorial.js?v=27"></script>
+<script src="js/display.js?v=27"></script>
+<script src="js/claude.js?v=27"></script>
+<script src="js/interpreter.js?v=27"></script>
+<script src="js/emulator.js?v=27"></script>
+<script src="js/main.js?v=27"></script>
 
 </body>
 </html>
@@ -201,23 +201,9 @@ body {
   position: absolute;
   left: 0; top: 0; width: 0; height: 0; /* JS overrides these */
   background: transparent;
-  border-radius: 30px / 24px;
+  border-radius: 4px;
   overflow: hidden;
   z-index: 2;
-}
-
-/* CRT glass curvature vignette */
-#screen-container::after {
-  content: '';
-  position: absolute;
-  inset: 0;
-  border-radius: inherit;
-  background: radial-gradient(ellipse 70% 65% at 50% 50%,
-    transparent 40%,
-    rgba(0,0,0,0.35) 65%,
-    rgba(0,0,0,0.85) 100%);
-  pointer-events: none;
-  z-index: 10;
 }
 
 #screen {
