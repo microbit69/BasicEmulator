@@ -17,7 +17,7 @@ cat > "$DIR/index.html" << 'EOF_INDEX_HTML'
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Applesoft BASIC Interpreter</title>
-<link rel="stylesheet" href="css/style.css?v=23">
+<link rel="stylesheet" href="css/style.css?v=25">
 </head>
 <body>
 
@@ -137,18 +137,18 @@ cat > "$DIR/index.html" << 'EOF_INDEX_HTML'
 </script>
 
 <!-- Scripts loaded in dependency order (no ES modules for file:// compatibility) -->
-<script src="js/constants.js?v=23"></script>
-<script src="js/audio.js?v=23"></script>
-<script src="js/tokenizer.js?v=23"></script>
-<script src="js/parser.js?v=23"></script>
-<script src="js/filesystem.js?v=23"></script>
-<script src="js/samples.js?v=23"></script>
-<script src="js/tutorial.js?v=23"></script>
-<script src="js/display.js?v=23"></script>
-<script src="js/claude.js?v=23"></script>
-<script src="js/interpreter.js?v=23"></script>
-<script src="js/emulator.js?v=23"></script>
-<script src="js/main.js?v=23"></script>
+<script src="js/constants.js?v=25"></script>
+<script src="js/audio.js?v=25"></script>
+<script src="js/tokenizer.js?v=25"></script>
+<script src="js/parser.js?v=25"></script>
+<script src="js/filesystem.js?v=25"></script>
+<script src="js/samples.js?v=25"></script>
+<script src="js/tutorial.js?v=25"></script>
+<script src="js/display.js?v=25"></script>
+<script src="js/claude.js?v=25"></script>
+<script src="js/interpreter.js?v=25"></script>
+<script src="js/emulator.js?v=25"></script>
+<script src="js/main.js?v=25"></script>
 
 </body>
 </html>
@@ -196,7 +196,7 @@ body {
   position: absolute;
   left: 0; top: 0; width: 0; height: 0; /* JS overrides these */
   background: transparent;
-  border-radius: 12px / 10px;
+  border-radius: 20px / 16px;
   overflow: hidden;
   z-index: 2;
 }
@@ -207,10 +207,10 @@ body {
   position: absolute;
   inset: 0;
   border-radius: inherit;
-  background: radial-gradient(ellipse 85% 80% at 50% 50%,
-    transparent 60%,
-    rgba(0,0,0,0.15) 80%,
-    rgba(0,0,0,0.45) 100%);
+  background: radial-gradient(ellipse 80% 75% at 50% 50%,
+    transparent 50%,
+    rgba(0,0,0,0.25) 70%,
+    rgba(0,0,0,0.6) 100%);
   pointer-events: none;
   z-index: 10;
 }
