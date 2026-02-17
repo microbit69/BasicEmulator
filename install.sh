@@ -17,7 +17,7 @@ cat > "$DIR/index.html" << 'EOF_INDEX_HTML'
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Applesoft BASIC Interpreter</title>
-<link rel="stylesheet" href="css/style.css?v=106">
+<link rel="stylesheet" href="css/style.css?v=107">
 </head>
 <body>
 
@@ -138,18 +138,18 @@ cat > "$DIR/index.html" << 'EOF_INDEX_HTML'
 </script>
 
 <!-- Scripts loaded in dependency order (no ES modules for file:// compatibility) -->
-<script src="js/constants.js?v=106"></script>
-<script src="js/audio.js?v=106"></script>
-<script src="js/tokenizer.js?v=106"></script>
-<script src="js/parser.js?v=106"></script>
-<script src="js/filesystem.js?v=106"></script>
-<script src="js/samples.js?v=106"></script>
-<script src="js/tutorial.js?v=106"></script>
-<script src="js/display.js?v=106"></script>
-<script src="js/claude.js?v=106"></script>
-<script src="js/interpreter.js?v=106"></script>
-<script src="js/emulator.js?v=106"></script>
-<script src="js/main.js?v=106"></script>
+<script src="js/constants.js?v=107"></script>
+<script src="js/audio.js?v=107"></script>
+<script src="js/tokenizer.js?v=107"></script>
+<script src="js/parser.js?v=107"></script>
+<script src="js/filesystem.js?v=107"></script>
+<script src="js/samples.js?v=107"></script>
+<script src="js/tutorial.js?v=107"></script>
+<script src="js/display.js?v=107"></script>
+<script src="js/claude.js?v=107"></script>
+<script src="js/interpreter.js?v=107"></script>
+<script src="js/emulator.js?v=107"></script>
+<script src="js/main.js?v=107"></script>
 
 </body>
 </html>
@@ -2287,7 +2287,7 @@ class Display {
     this._imgData.data[i] = r;
     this._imgData.data[i+1] = g;
     this._imgData.data[i+2] = b;
-    this._imgData.data[i+3] = (r === 0 && g === 0 && b === 0) ? 0 : 255;
+    this._imgData.data[i+3] = (r === 0 && g === 0 && b === 0) ? 0 : 191;
   }
 
   _fillRect(x, y, w, h, r, g, b) {
@@ -2667,8 +2667,10 @@ class Display {
 
     // Draw only this pixel — no full-canvas putImageData
     if (colorOn) {
+      this.ctx.globalAlpha = 0.75;
       this.ctx.fillStyle = this.amberHex;
       this.ctx.fillRect(x, y, 1, 1);
+      this.ctx.globalAlpha = 1.0;
     } else {
       // clearRect makes the pixel transparent (not opaque black)
       this.ctx.clearRect(x, y, 1, 1);
@@ -2678,6 +2680,7 @@ class Display {
   drawHiResLine(x1, y1, x2, y2, colorOn) {
     // Set fill style once for the whole line
     if (colorOn) {
+      this.ctx.globalAlpha = 0.75;
       this.ctx.fillStyle = this.amberHex;
     }
     const maxY = (this.screenMode === 'hgr') ? 160 : 192;
@@ -2704,6 +2707,7 @@ class Display {
       if (e2 > -dy) { err -= dy; x1 += sx; }
       if (e2 < dx) { err += dx; y1 += sy; }
     }
+    this.ctx.globalAlpha = 1.0;
   }
 
   clearHiRes(colorOn) {
