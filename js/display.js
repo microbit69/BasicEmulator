@@ -275,7 +275,7 @@ class Display {
     this._imgData.data[i] = r;
     this._imgData.data[i+1] = g;
     this._imgData.data[i+2] = b;
-    this._imgData.data[i+3] = 255;
+    this._imgData.data[i+3] = (r === 0 && g === 0 && b === 0) ? 0 : 255;
   }
 
   _fillRect(x, y, w, h, r, g, b) {
