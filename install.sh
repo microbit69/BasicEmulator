@@ -17,7 +17,7 @@ cat > "$DIR/index.html" << 'EOF_INDEX_HTML'
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Applesoft BASIC Interpreter</title>
-<link rel="stylesheet" href="css/style.css?v=16">
+<link rel="stylesheet" href="css/style.css?v=17">
 </head>
 <body>
 
@@ -49,7 +49,7 @@ cat > "$DIR/index.html" << 'EOF_INDEX_HTML'
   <label><input type="number" id="pos-step" value="1" min="1" max="50" style="width:40px"> step</label>
   <span style="color:#666;margin:0 2px">|</span>
   <button id="scale-down">%-</button>
-  <span id="scale-display" style="color:#ff0;font:bold 11px monospace">97%</span>
+  <span id="scale-display" style="color:#ff0;font:bold 11px monospace">98%</span>
   <button id="scale-up">%+</button>
 </div>
 
@@ -92,7 +92,10 @@ cat > "$DIR/index.html" << 'EOF_INDEX_HTML'
   }
 
   // Base values for percentage scaling
-  var baseGW = GW, baseGH = GH, scalePct = 97;
+  var baseGW = GW, baseGH = GH, scalePct = 98;
+  // Apply initial scale
+  GW = Math.round(baseGW * scalePct / 100);
+  GH = Math.round(baseGH * scalePct / 100);
   function updateScale(delta) {
     scalePct = Math.max(50, Math.min(150, scalePct + delta));
     GW = Math.round(baseGW * scalePct / 100);
@@ -137,18 +140,18 @@ cat > "$DIR/index.html" << 'EOF_INDEX_HTML'
 </script>
 
 <!-- Scripts loaded in dependency order (no ES modules for file:// compatibility) -->
-<script src="js/constants.js?v=16"></script>
-<script src="js/audio.js?v=16"></script>
-<script src="js/tokenizer.js?v=16"></script>
-<script src="js/parser.js?v=16"></script>
-<script src="js/filesystem.js?v=16"></script>
-<script src="js/samples.js?v=16"></script>
-<script src="js/tutorial.js?v=16"></script>
-<script src="js/display.js?v=16"></script>
-<script src="js/claude.js?v=16"></script>
-<script src="js/interpreter.js?v=16"></script>
-<script src="js/emulator.js?v=16"></script>
-<script src="js/main.js?v=16"></script>
+<script src="js/constants.js?v=17"></script>
+<script src="js/audio.js?v=17"></script>
+<script src="js/tokenizer.js?v=17"></script>
+<script src="js/parser.js?v=17"></script>
+<script src="js/filesystem.js?v=17"></script>
+<script src="js/samples.js?v=17"></script>
+<script src="js/tutorial.js?v=17"></script>
+<script src="js/display.js?v=17"></script>
+<script src="js/claude.js?v=17"></script>
+<script src="js/interpreter.js?v=17"></script>
+<script src="js/emulator.js?v=17"></script>
+<script src="js/main.js?v=17"></script>
 
 </body>
 </html>
@@ -302,7 +305,7 @@ body {
   top: 4px;
   left: 4px;
   z-index: 9999;
-  display: flex;
+  display: none;
   align-items: center;
   gap: 4px;
   background: rgba(0,0,0,0.85);
