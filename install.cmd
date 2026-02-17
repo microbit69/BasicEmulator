@@ -21,7 +21,7 @@ $content = @'
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Applesoft BASIC Interpreter</title>
-<link rel="stylesheet" href="css/style.css?v=107">
+<link rel="stylesheet" href="css/style.css?v=108">
 </head>
 <body>
 
@@ -142,18 +142,18 @@ $content = @'
 </script>
 
 <!-- Scripts loaded in dependency order (no ES modules for file:// compatibility) -->
-<script src="js/constants.js?v=107"></script>
-<script src="js/audio.js?v=107"></script>
-<script src="js/tokenizer.js?v=107"></script>
-<script src="js/parser.js?v=107"></script>
-<script src="js/filesystem.js?v=107"></script>
-<script src="js/samples.js?v=107"></script>
-<script src="js/tutorial.js?v=107"></script>
-<script src="js/display.js?v=107"></script>
-<script src="js/claude.js?v=107"></script>
-<script src="js/interpreter.js?v=107"></script>
-<script src="js/emulator.js?v=107"></script>
-<script src="js/main.js?v=107"></script>
+<script src="js/constants.js?v=108"></script>
+<script src="js/audio.js?v=108"></script>
+<script src="js/tokenizer.js?v=108"></script>
+<script src="js/parser.js?v=108"></script>
+<script src="js/filesystem.js?v=108"></script>
+<script src="js/samples.js?v=108"></script>
+<script src="js/tutorial.js?v=108"></script>
+<script src="js/display.js?v=108"></script>
+<script src="js/claude.js?v=108"></script>
+<script src="js/interpreter.js?v=108"></script>
+<script src="js/emulator.js?v=108"></script>
+<script src="js/main.js?v=108"></script>
 
 </body>
 </html>
@@ -2300,7 +2300,7 @@ class Display {
     this._imgData.data[i] = r;
     this._imgData.data[i+1] = g;
     this._imgData.data[i+2] = b;
-    this._imgData.data[i+3] = (r === 0 && g === 0 && b === 0) ? 0 : 191;
+    this._imgData.data[i+3] = (r === 0 && g === 0 && b === 0) ? 0 : 128;
   }
 
   _fillRect(x, y, w, h, r, g, b) {
@@ -2678,9 +2678,10 @@ class Display {
     const hires = this.hiResPages[this.activePage];
     hires[y * 280 + x] = colorOn ? 1 : 0;
 
-    // Draw only this pixel — no full-canvas putImageData
+    // Draw only this pixel — clearRect first to avoid alpha accumulation
     if (colorOn) {
-      this.ctx.globalAlpha = 0.75;
+      this.ctx.clearRect(x, y, 1, 1);
+      this.ctx.globalAlpha = 0.5;
       this.ctx.fillStyle = this.amberHex;
       this.ctx.fillRect(x, y, 1, 1);
       this.ctx.globalAlpha = 1.0;
@@ -2693,7 +2694,7 @@ class Display {
   drawHiResLine(x1, y1, x2, y2, colorOn) {
     // Set fill style once for the whole line
     if (colorOn) {
-      this.ctx.globalAlpha = 0.75;
+      this.ctx.globalAlpha = 0.5;
       this.ctx.fillStyle = this.amberHex;
     }
     const maxY = (this.screenMode === 'hgr') ? 160 : 192;
@@ -2709,10 +2710,10 @@ class Display {
     while (true) {
       if (x1 >= 0 && x1 < 280 && y1 >= 0 && y1 < maxY) {
         hires[y1 * 280 + x1] = colorOn ? 1 : 0;
+        // clearRect first to avoid alpha accumulation from render()
+        this.ctx.clearRect(x1, y1, 1, 1);
         if (colorOn) {
           this.ctx.fillRect(x1, y1, 1, 1);
-        } else {
-          this.ctx.clearRect(x1, y1, 1, 1);
         }
       }
       if (x1 === x2 && y1 === y2) break;
