@@ -77,7 +77,13 @@ class Display {
       this._createHiResPage()
     ];
 
-    // --- Scroll ---
+    // --- Text window (POKE 32-35) ---
+    this.wndLeft = 0;      // POKE 32 — left margin
+    this.wndWidth = 40;    // POKE 33 — window width
+    this.wndTop = 0;       // POKE 34 — top row
+    this.wndBottom = 24;   // POKE 35 — bottom row
+
+    // Legacy aliases
     this.scrollTop = 0;
     this.scrollBottom = 24;
     this.textWidth = 40;
@@ -440,18 +446,25 @@ class Display {
   }
 
   printChar(ch) {
+    // Effective window bounds
+    const wLeft = this.wndLeft || 0;
+    const wWidth = this.wndWidth || 40;
+    const wRight = Math.min(wLeft + wWidth, 40);
+    const wTop = this._effectiveTop();
+    const wBottom = this._effectiveBottom();
+
     if (ch === '\n') {
-      this.cursorX = 0;
+      this.cursorX = wLeft;
       this.cursorY++;
-      if (this.cursorY >= this.height) {
+      if (this.cursorY >= wBottom) {
         this.scrollUp();
-        this.cursorY = this.height - 1;
+        this.cursorY = wBottom - 1;
       }
       return;
     }
 
     if (ch === '\r') {
-      this.cursorX = 0;
+      this.cursorX = wLeft;
       return;
     }
 
@@ -461,7 +474,7 @@ class Display {
     }
 
     if (ch === '\x08') { // Backspace
-      if (this.cursorX > 0) {
+      if (this.cursorX > wLeft) {
         this.cursorX--;
         this._tp.chars[this.cursorY][this.cursorX] = ' ';
         this._tp.attrs[this.cursorY][this.cursorX] = 0;
@@ -469,18 +482,29 @@ class Display {
       return;
     }
 
-    if (this.cursorX >= this.width) {
-      this.cursorX = 0;
+    if (this.cursorX >= wRight) {
+      this.cursorX = wLeft;
       this.cursorY++;
-      if (this.cursorY >= this.height) {
+      if (this.cursorY >= wBottom) {
         this.scrollUp();
-        this.cursorY = this.height - 1;
+        this.cursorY = wBottom - 1;
       }
     }
 
     this._tp.chars[this.cursorY][this.cursorX] = ch;
     this._tp.attrs[this.cursorY][this.cursorX] = this.displayMode;
     this.cursorX++;
+  }
+
+  // Get effective top row for scrolling/window
+  _effectiveTop() {
+    const isMixed = (this.screenMode === 'gr' || this.screenMode === 'hgr');
+    return isMixed ? Math.max(20, this.wndTop || 0) : (this.wndTop || 0);
+  }
+
+  // Get effective bottom row for scrolling/window
+  _effectiveBottom() {
+    return this.wndBottom || 24;
   }
 
   printString(str) {
@@ -496,32 +520,58 @@ class Display {
 
   scrollUp() {
     const tp = this._tp;
-    // In mixed mode (GR/HGR), only scroll the text window (rows 20-23)
-    const isMixed = (this.screenMode === 'gr' || this.screenMode === 'hgr');
-    const top = isMixed ? 20 : 0;
-    const bottom = this.height;
-    tp.chars.splice(top, 1);
-    tp.chars.splice(bottom - 1, 0, new Array(40).fill(' '));
-    tp.attrs.splice(top, 1);
-    tp.attrs.splice(bottom - 1, 0, new Array(40).fill(0));
+    const wLeft = this.wndLeft || 0;
+    const wWidth = this.wndWidth || 40;
+    const wRight = Math.min(wLeft + wWidth, 40);
+    const top = this._effectiveTop();
+    const bottom = this._effectiveBottom();
+
+    if (wLeft === 0 && wRight === 40) {
+      // Full-width window: splice entire rows (fast path)
+      tp.chars.splice(top, 1);
+      tp.chars.splice(bottom - 1, 0, new Array(40).fill(' '));
+      tp.attrs.splice(top, 1);
+      tp.attrs.splice(bottom - 1, 0, new Array(40).fill(0));
+    } else {
+      // Partial-width window: shift only within window columns
+      for (let y = top; y < bottom - 1; y++) {
+        for (let x = wLeft; x < wRight; x++) {
+          tp.chars[y][x] = tp.chars[y + 1][x];
+          tp.attrs[y][x] = tp.attrs[y + 1][x];
+        }
+      }
+      // Clear bottom row within window
+      for (let x = wLeft; x < wRight; x++) {
+        tp.chars[bottom - 1][x] = ' ';
+        tp.attrs[bottom - 1][x] = 0;
+      }
+    }
   }
 
   clearToEnd() {
     const tp = this._tp;
-    for (let x = this.cursorX; x < this.width; x++) {
+    const wLeft = this.wndLeft || 0;
+    const wRight = Math.min((this.wndLeft || 0) + (this.wndWidth || 40), 40);
+    const wBottom = this._effectiveBottom();
+    // Clear from cursor to end of current line within window
+    for (let x = this.cursorX; x < wRight; x++) {
       tp.chars[this.cursorY][x] = ' ';
       tp.attrs[this.cursorY][x] = 0;
     }
-    for (let y = this.cursorY + 1; y < this.height; y++) {
-      tp.chars[y].fill(' ');
-      tp.attrs[y].fill(0);
+    // Clear remaining rows within window
+    for (let y = this.cursorY + 1; y < wBottom; y++) {
+      for (let x = wLeft; x < wRight; x++) {
+        tp.chars[y][x] = ' ';
+        tp.attrs[y][x] = 0;
+      }
     }
     this.render();
   }
 
   clearToEndOfLine() {
     const tp = this._tp;
-    for (let x = this.cursorX; x < this.width; x++) {
+    const wRight = Math.min((this.wndLeft || 0) + (this.wndWidth || 40), 40);
+    for (let x = this.cursorX; x < wRight; x++) {
       tp.chars[this.cursorY][x] = ' ';
       tp.attrs[this.cursorY][x] = 0;
     }
@@ -612,6 +662,11 @@ class Display {
     this.mixedMode = false;
     this.activePage = 0;
     this.displayPage = 0;
+    // Reset text window to full screen
+    this.wndLeft = 0;
+    this.wndWidth = 40;
+    this.wndTop = 0;
+    this.wndBottom = 24;
     this.clear();
   }
 
@@ -700,6 +755,26 @@ class Display {
       if (e2 < dx) { err += dx; y1 += sy; }
     }
     this.ctx.globalAlpha = 1.0;
+  }
+
+  xorHiResPixel(x, y) {
+    if (x < 0 || x >= 280) return;
+    const maxY = (this.screenMode === 'hgr') ? 160 : 192;
+    if (y < 0 || y >= maxY) return;
+    const hires = this.hiResPages[this.activePage];
+    const idx = y * 280 + x;
+    const current = hires[idx];
+    hires[idx] = current ? 0 : 1; // toggle
+    // Draw the toggled pixel
+    if (hires[idx]) {
+      this.ctx.clearRect(x, y, 1, 1);
+      this.ctx.globalAlpha = 0.35;
+      this.ctx.fillStyle = this.amberHex;
+      this.ctx.fillRect(x, y, 1, 1);
+      this.ctx.globalAlpha = 1.0;
+    } else {
+      this.ctx.clearRect(x, y, 1, 1);
+    }
   }
 
   clearHiRes(colorOn) {

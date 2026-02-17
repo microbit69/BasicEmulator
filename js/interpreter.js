@@ -36,8 +36,19 @@ class Interpreter {
     this.stoppedForStack = null;
     this.lastKeyPressed = 0;
     this.lastError = 0;
-    this.memory = {};
+    this.memory = new Uint8Array(65536);
+    this._initMemoryMap();
     this.userFunctions = {};
+    // Speaker toggle state for tone generation
+    this._speakerState = false;
+    this._speakerToggleCount = 0;
+    this._speakerToggleTime = 0;
+    // Game I/O annunciator outputs (AN0-AN3)
+    this._annunciators = [false, false, false, false];
+    // Paddle button states (updated from keyboard)
+    this._paddleButtons = [false, false, false];
+    // Shape table pointer (address in memory where shape table lives)
+    this._shapeTableAddr = 0;
     this.inputCallback = null;
     this.getCallback = null;
     this.onErrLine = null;
@@ -60,6 +71,36 @@ class Interpreter {
     this.shapeRotation = 0;
     this.shapeScale = 1;
     this.collectData();
+  }
+
+  // Initialize the 64KB memory map with Apple II ROM/hardware defaults
+  _initMemoryMap() {
+    // Zero page defaults
+    this.memory[0] = 0x4C;    // JMP instruction (Apple II ROM signature)
+    this.memory[1] = 0x00;
+    this.memory[2] = 0xE0;    // Jump target $E000 (Applesoft entry)
+
+    // Text window defaults
+    this.memory[32] = 0;      // WNDLFT - left edge
+    this.memory[33] = 40;     // WNDWTH - window width
+    this.memory[34] = 0;      // WNDTOP - top edge
+    this.memory[35] = 24;     // WNDBTM - bottom edge
+    this.memory[36] = 0;      // CH - cursor horizontal
+    this.memory[37] = 0;      // CV - cursor vertical
+
+    // BASIC pointers
+    this.memory[103] = 0x01;  // TXTTAB low - start of program
+    this.memory[104] = 0x08;  // TXTTAB high ($0801)
+    this.memory[115] = 0x01;  // MEMSIZ low
+    this.memory[116] = 0xC0;  // MEMSIZ high ($C001 = 48K)
+
+    // HIMEM
+    this.memory[0x73] = 0x00;
+    this.memory[0x74] = 0x96; // $9600
+
+    // ROM identification
+    this.memory[0xFBB3] = 0x06;  // Apple II+ identifier
+    this.memory[0xFFF8] = 0x00;  // Machine ID byte
   }
 
   // Collect all DATA statements
@@ -428,13 +469,13 @@ class Interpreter {
       return;
     }
 
-    // ===== DRAW / XDRAW (shape table stubs) =====
+    // ===== DRAW / XDRAW (shape table) =====
     if (upperStmt.startsWith('DRAW')) {
-      // Shape table drawing - stub: requires AT x,y
+      this.executeDrawShape(stmt.substring(4).trim(), false);
       return;
     }
     if (upperStmt.startsWith('XDRAW')) {
-      // XOR shape table drawing - stub
+      this.executeDrawShape(stmt.substring(5).trim(), true);
       return;
     }
 
@@ -911,41 +952,86 @@ class Interpreter {
     // Normalize negative addresses to unsigned 16-bit
     const uaddr = addr < 0 ? addr + 65536 : addr;
 
-    // Text window control
-    if (uaddr === 32) { /* left edge - ignored */ return; }
-    if (uaddr === 33) { this.display.textWidth = val; return; }
-    if (uaddr === 34) { this.display.scrollTop = val; return; }
-    if (uaddr === 35) { this.display.scrollBottom = val; return; }
+    // Always store value in memory map
+    this.memory[uaddr] = val;
+
+    // Text window control — sync to display
+    if (uaddr === 32) { this.display.wndLeft = val; return; }
+    if (uaddr === 33) { this.display.wndWidth = val; return; }
+    if (uaddr === 34) { this.display.wndTop = val; return; }
+    if (uaddr === 35) { this.display.wndBottom = val; return; }
     if (uaddr === 36) { this.display.cursorX = val; return; }
     if (uaddr === 37) { this.display.cursorY = val; return; }
 
-    // Keyboard strobe clear
-    if (uaddr === 49168) { this.lastKeyPressed = 0; return; }
+    // Inverse/Normal flag ($32 = 50)
+    if (uaddr === 50) {
+      if (val === 127) { this.inverseMode = true; this.flashMode = false; this.display.displayMode = 1; }
+      else if (val === 255) { this.inverseMode = false; this.flashMode = false; this.display.displayMode = 0; }
+      return;
+    }
 
-    // Graphics soft switches
-    if (uaddr === 49232) { /* TEXT mode */ this.textMode = true; this.display.showTextMode(); return; }
-    if (uaddr === 49233) { /* GRAPHICS mode - activate current graphics mode */ return; }
-    if (uaddr === 49234) { /* full screen */
+    // Keyboard strobe clear ($C010)
+    if (uaddr === 0xC010) { this.lastKeyPressed = 0; return; }
+
+    // Cassette output toggle ($C020) - ignored but acknowledged
+    if (uaddr === 0xC020) { return; }
+
+    // Speaker toggle ($C030)
+    if (uaddr === 0xC030) {
+      this._toggleSpeaker();
+      return;
+    }
+
+    // Graphics soft switches ($C050-$C057)
+    if (uaddr === 0xC050) { /* GR/HGR mode on */ return; }
+    if (uaddr === 0xC051) { /* TEXT mode */ this.textMode = true; this.display.showTextMode(); return; }
+    if (uaddr === 0xC052) { /* full screen (no mixed) */
       if (this.display.screenMode === 'gr') { this.display.screenMode = 'gr_full'; this.display.render(); }
       else if (this.display.screenMode === 'hgr') { this.display.screenMode = 'hgr_full'; this.display.render(); }
       return;
     }
-    if (uaddr === 49235) { /* mixed mode */
+    if (uaddr === 0xC053) { /* mixed mode */
       if (this.display.screenMode === 'gr_full') { this.display.screenMode = 'gr'; this.display.render(); }
       else if (this.display.screenMode === 'hgr_full') { this.display.screenMode = 'hgr'; this.display.render(); }
       return;
     }
-    if (uaddr === 49236) { /* page 1 */ this.display.setDisplayPage(1); return; }
-    if (uaddr === 49237) { /* page 2 */ this.display.setDisplayPage(2); return; }
-    if (uaddr === 49238) { /* lo-res */ return; }
-    if (uaddr === 49239) { /* hi-res */ return; }
+    if (uaddr === 0xC054) { /* page 1 */ this.display.setDisplayPage(1); return; }
+    if (uaddr === 0xC055) { /* page 2 */ this.display.setDisplayPage(2); return; }
+    if (uaddr === 0xC056) { /* lo-res mode */ return; }
+    if (uaddr === 0xC057) { /* hi-res mode */ return; }
 
-    // Speaker click (toggle speaker for sound)
-    if (uaddr === 49200) { App.beep(10, 440); return; }
+    // Game I/O annunciator outputs ($C058-$C05F)
+    if (uaddr >= 0xC058 && uaddr <= 0xC05F) {
+      const annIdx = Math.floor((uaddr - 0xC058) / 2);
+      this._annunciators[annIdx] = (uaddr & 1) === 1; // odd = on, even = off
+      return;
+    }
 
-    // Store in virtual memory for PEEK to read back
-    if (!this.memory) this.memory = {};
-    this.memory[uaddr] = val;
+    // Paddle trigger ($C070) — resets paddle capacitor timers
+    if (uaddr === 0xC070) { return; }
+
+    // Shape table pointer (conventionally at $E8/$E9)
+    if (uaddr === 0xE8 || uaddr === 0xE9) {
+      this._shapeTableAddr = this.memory[0xE8] | (this.memory[0xE9] << 8);
+      return;
+    }
+  }
+
+  // Speaker toggle — detect periodic toggling for tone generation
+  _toggleSpeaker() {
+    this._speakerState = !this._speakerState;
+    const now = performance.now();
+    if (now - this._speakerToggleTime < 50) {
+      this._speakerToggleCount++;
+      if (this._speakerToggleCount === 2) {
+        // Periodic toggling detected — emit a short click/tone
+        App.beep(10, 440);
+        this._speakerToggleCount = 0;
+      }
+    } else {
+      this._speakerToggleCount = 1;
+    }
+    this._speakerToggleTime = now;
   }
 
   // ===== CALL =====
@@ -974,6 +1060,13 @@ class Interpreter {
     // CALL -922 / CALL 64614: Line feed
     if (uaddr === 64614) {
       this.display.printChar('\n');
+      this.display.render();
+      return;
+    }
+
+    // CALL -912 / CALL 64624: Scroll up one line
+    if (uaddr === 64624) {
+      this.display.scrollUp();
       this.display.render();
       return;
     }
@@ -1049,6 +1142,153 @@ class Interpreter {
         this.hiResLastY = y;
       }
     }
+  }
+
+  // ===== SHAPE TABLE DRAWING =====
+
+  /**
+   * Execute DRAW n AT x,y or XDRAW n AT x,y
+   * Apple II shape table format:
+   *  - Shape table starts at address pointed to by $E8/$E9
+   *  - First 2 bytes: number of shapes (low byte) + unused
+   *  - Then pairs of (offset_low, offset_high) for each shape
+   *  - Shape vectors: each byte contains up to 3 plot vectors
+   *    Bits 2-0: vector A (move up/down/left/right + plot)
+   *    Bits 5-3: vector B
+   *    Bits 7-6: vector C (only 2 bits: direction only)
+   *  - Encoding per 3 bits: bit2=plot, bit1-0=direction
+   *    Direction: 0=up, 1=right, 2=down, 3=left
+   *  - Byte value 0x00 = end of shape
+   */
+  executeDrawShape(argStr, xorMode) {
+    if (!argStr || argStr.trim().length === 0) return;
+
+    // Parse: n AT x,y
+    const atPos = this.findKeywordInString(argStr, 'AT');
+    let shapeNum, x, y;
+
+    if (atPos !== -1) {
+      shapeNum = Math.floor(this.evaluateExpressionFromString(argStr.substring(0, atPos).trim()));
+      const coordStr = argStr.substring(atPos + 2).trim();
+      const commaPos = this.findComma(coordStr);
+      if (commaPos === -1) throw new Error('?SYNTAX ERROR');
+      x = Math.floor(this.evaluateExpressionFromString(coordStr.substring(0, commaPos).trim()));
+      y = Math.floor(this.evaluateExpressionFromString(coordStr.substring(commaPos + 1).trim()));
+    } else {
+      // DRAW n — draw at last HPLOT position
+      shapeNum = Math.floor(this.evaluateExpressionFromString(argStr.trim()));
+      x = this.hiResLastX;
+      y = this.hiResLastY;
+    }
+
+    if (shapeNum < 1) throw new Error('?ILLEGAL QUANTITY ERROR');
+
+    const tableAddr = this._shapeTableAddr || (this.memory[0xE8] | (this.memory[0xE9] << 8));
+    if (tableAddr === 0) {
+      // No shape table loaded — silently ignore (common in programs that haven't POKE'd the table)
+      return;
+    }
+
+    // Read shape table header
+    const numShapes = this.memory[tableAddr];
+    if (shapeNum > numShapes) throw new Error('?ILLEGAL QUANTITY ERROR');
+
+    // Get offset for this shape (1-indexed)
+    const offsetAddr = tableAddr + 2 + (shapeNum - 1) * 2;
+    const shapeOffset = this.memory[offsetAddr] | (this.memory[offsetAddr + 1] << 8);
+    const shapeAddr = tableAddr + shapeOffset;
+
+    // Decode and draw shape vectors
+    this._drawShapeVectors(shapeAddr, x, y, this.shapeRotation, this.shapeScale, xorMode);
+  }
+
+  _drawShapeVectors(shapeAddr, startX, startY, rotation, scale, xorMode) {
+    const colorOn = this._hcolorIsOn();
+    let cx = startX;
+    let cy = startY;
+    const rot = (rotation & 63); // 0-63
+    const scl = Math.max(1, scale);
+
+    // Rotation: 0-63 maps to 0-360 degrees (each step ~5.625°)
+    const angle = (rot * Math.PI * 2) / 64;
+    const cosA = Math.cos(angle);
+    const sinA = Math.sin(angle);
+
+    let addr = shapeAddr;
+    let safety = 0;
+
+    while (safety < 10000) {
+      const byte = this.memory[addr];
+      if (byte === 0) break; // End of shape
+      addr++;
+      safety++;
+
+      // Each byte encodes up to 3 vectors:
+      // Vector A: bits 2-0 (always processed)
+      // Vector B: bits 5-3 (processed if bits 5-3 are not all zero)
+      // Vector C: bits 7-6 (processed if bits 7-6 are not zero)
+
+      // Process vector A (bits 2-0): bit2=plot, bits 1-0=direction
+      const vecA = byte & 0x07;
+      if (vecA !== 0) {
+        const result = this._processShapeVector(vecA & 0x03, (vecA & 0x04) !== 0, cx, cy, cosA, sinA, scl, xorMode, colorOn);
+        cx = result.x;
+        cy = result.y;
+      }
+
+      // Process vector B (bits 5-3): bit5=plot, bits 4-3=direction
+      const vecB = (byte >> 3) & 0x07;
+      if (vecB !== 0) {
+        const result = this._processShapeVector(vecB & 0x03, (vecB & 0x04) !== 0, cx, cy, cosA, sinA, scl, xorMode, colorOn);
+        cx = result.x;
+        cy = result.y;
+      }
+
+      // Process vector C (bits 7-6): bit7=plot, bit6=direction (0=up, 1=right)
+      const vecC = (byte >> 6) & 0x03;
+      if (vecC !== 0) {
+        // Only 2 bits: bit1=plot, bit0=direction
+        const result = this._processShapeVector(vecC & 0x01, (vecC & 0x02) !== 0, cx, cy, cosA, sinA, scl, xorMode, colorOn);
+        cx = result.x;
+        cy = result.y;
+      }
+    }
+
+    // Update last position
+    this.hiResLastX = Math.round(cx);
+    this.hiResLastY = Math.round(cy);
+  }
+
+  _processShapeVector(direction, plot, cx, cy, cosA, sinA, scale, xorMode, colorOn) {
+    // Direction: 0=up, 1=right, 2=down, 3=left
+    let dx = 0, dy = 0;
+    switch (direction) {
+      case 0: dy = -1; break; // up
+      case 1: dx = 1; break;  // right
+      case 2: dy = 1; break;  // down
+      case 3: dx = -1; break; // left
+    }
+
+    // Apply rotation
+    const rdx = dx * cosA - dy * sinA;
+    const rdy = dx * sinA + dy * cosA;
+
+    // Apply scale
+    const nx = cx + rdx * scale;
+    const ny = cy + rdy * scale;
+
+    // Plot if flag is set
+    if (plot) {
+      const px = Math.round(nx);
+      const py = Math.round(ny);
+      if (xorMode) {
+        this.display.xorHiResPixel(px, py);
+      } else {
+        this.display.drawHiResPixel(px, py, colorOn);
+      }
+    }
+
+    return { x: nx, y: ny };
   }
 
   // ===== ASSIGNMENT =====
@@ -1233,31 +1473,67 @@ class Interpreter {
       case 'PEEK': {
         const addr = Math.floor(args[0]);
         const uaddr = addr < 0 ? addr + 65536 : addr;
+
+        // --- Zero page live values (synced from emulator state) ---
+        // Text window
+        if (uaddr === 32) return this.display.wndLeft || 0;
+        if (uaddr === 33) return this.display.wndWidth || 40;
+        if (uaddr === 34) return this.display.wndTop || 0;
+        if (uaddr === 35) return this.display.wndBottom || 24;
         // Cursor position
         if (uaddr === 36) return this.display.cursorX;
         if (uaddr === 37) return this.display.cursorY;
-        // Text window
-        if (uaddr === 32) return 0; // left edge
-        if (uaddr === 33) return this.display.textWidth || 40; // text width
-        if (uaddr === 34) return this.display.scrollTop || 0;
-        if (uaddr === 35) return this.display.scrollBottom || 24;
-        // Keyboard
-        if (uaddr === 49152) return this.lastKeyPressed ? (this.lastKeyPressed | 128) : 0;
-        if (uaddr === 49168) return 0; // keyboard strobe
+        // Random seed area — always dynamic
+        if (uaddr >= 78 && uaddr <= 82) return Math.floor(Math.random() * 256);
         // Current line number (low/high bytes)
         if (uaddr === 218) return this.currentLine & 255;
         if (uaddr === 219) return (this.currentLine >> 8) & 255;
         // Error code (ONERR)
         if (uaddr === 222) return this.lastError || 0;
-        // Graphics mode
+        // Graphics mode / HCOLOR
         if (uaddr === 230) return this.hiResColor;
-        // Random seed area
-        if (uaddr >= 78 && uaddr <= 82) return Math.floor(Math.random() * 256);
-        // Version info
-        if (uaddr === 0) return 76; // JMP instruction (Apple II ROM)
-        // Check virtual memory
-        if (this.memory && this.memory[uaddr] !== undefined) return this.memory[uaddr];
-        return 0;
+
+        // --- I/O Soft Switches ($C000-$C0FF) ---
+        // Keyboard data ($C000)
+        if (uaddr === 0xC000) return this.lastKeyPressed ? (this.lastKeyPressed | 128) : 0;
+        // Keyboard strobe clear ($C010) — clears high bit on read
+        if (uaddr === 0xC010) { this.lastKeyPressed = 0; return 0; }
+        // Cassette output toggle ($C020)
+        if (uaddr === 0xC020) return 0;
+        // Speaker toggle ($C030) — toggles speaker on read too
+        if (uaddr === 0xC030) { this._toggleSpeaker(); return 0; }
+
+        // Graphics soft switches ($C050-$C057) — reading also triggers them
+        if (uaddr === 0xC050) { /* graphics on */ return 0; }
+        if (uaddr === 0xC051) { /* text on */ return 0; }
+        if (uaddr === 0xC052) { /* full screen */ return 0; }
+        if (uaddr === 0xC053) { /* mixed mode */ return 0; }
+        if (uaddr === 0xC054) { /* page 1 */ return 0; }
+        if (uaddr === 0xC055) { /* page 2 */ return 0; }
+        if (uaddr === 0xC056) { /* lo-res */ return 0; }
+        if (uaddr === 0xC057) { /* hi-res */ return 0; }
+
+        // Game I/O annunciator outputs ($C058-$C05F)
+        if (uaddr >= 0xC058 && uaddr <= 0xC05F) {
+          const annIdx = Math.floor((uaddr - 0xC058) / 2);
+          this._annunciators[annIdx] = (uaddr & 1) === 1;
+          return 0;
+        }
+
+        // Paddle buttons ($C061-$C063) — high bit set = pressed
+        if (uaddr === 0xC061) return this._paddleButtons[0] ? 128 : 0;
+        if (uaddr === 0xC062) return this._paddleButtons[1] ? 128 : 0;
+        if (uaddr === 0xC063) return this._paddleButtons[2] ? 128 : 0;
+
+        // Paddle analog values ($C064-$C067)
+        // Return 0 = timer expired (paddle centered value simulation)
+        if (uaddr >= 0xC064 && uaddr <= 0xC067) return 0;
+
+        // Paddle trigger ($C070) — resets all paddle timers
+        if (uaddr === 0xC070) return 0;
+
+        // --- Everything else: read from memory array ---
+        return this.memory[uaddr];
       }
       case 'TAB': return ' '.repeat(Math.max(0, Math.floor(args[0])));
       case 'SPC': return ' '.repeat(Math.max(0, Math.floor(args[0])));

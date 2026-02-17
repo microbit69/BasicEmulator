@@ -258,6 +258,14 @@ class Emulator {
       this.handleKeyDown(e);
     });
 
+    document.addEventListener('keyup', (e) => {
+      if (!this.poweredOn) return;
+      // Release paddle buttons when modifier keys go up
+      this.interpreter._paddleButtons[0] = e.altKey;
+      this.interpreter._paddleButtons[1] = e.metaKey;
+      this.interpreter._paddleButtons[2] = e.shiftKey;
+    });
+
     // Paste support (Ctrl+V / Cmd+V)
     document.addEventListener('paste', (e) => {
       e.preventDefault();
@@ -282,6 +290,12 @@ class Emulator {
 
   handleKeyDown(e) {
     if (!this.poweredOn || this.booting) return;
+
+    // Track paddle buttons from modifier keys
+    // PB0 = Open Apple = Alt/Option, PB1 = Closed Apple = Meta/Cmd, PB2 = Shift
+    this.interpreter._paddleButtons[0] = e.altKey;
+    this.interpreter._paddleButtons[1] = e.metaKey;
+    this.interpreter._paddleButtons[2] = e.shiftKey;
 
     if (e.ctrlKey && e.key === 'c') {
       e.preventDefault();
@@ -984,16 +998,21 @@ class Emulator {
     }
     const name = nameMatch[1].toUpperCase();
     const fname = name.endsWith('.BIN') ? name : name + '.BIN';
-    // Create a placeholder binary file
     const addr = parseInt(nameMatch[2], 16);
     const len = parseInt(nameMatch[3], 16);
-    const content = `; BINARY FILE\n; ADDRESS: $${addr.toString(16).toUpperCase()}\n; LENGTH: $${len.toString(16).toUpperCase()}\n`;
+    // Save actual memory contents as comma-separated hex bytes
+    const bytes = [];
+    for (let i = 0; i < len; i++) {
+      bytes.push(this.interpreter.memory[(addr + i) & 0xFFFF].toString(16).toUpperCase().padStart(2, '0'));
+    }
+    const header = `; BINARY FILE A=$${addr.toString(16).toUpperCase()} L=$${len.toString(16).toUpperCase()}\n`;
+    const content = header + bytes.join(',');
     const err = this.fs.writeFile(fname, content, 'B');
     if (err) this.display.printLine('?' + err);
   }
 
   cmdBload(argStr) {
-    const nameMatch = argStr.match(/^"?([^",]+)"?/i);
+    const nameMatch = argStr.match(/^"?([^",]+)"?\s*(?:,\s*A\$?([0-9A-F]+))?/i);
     if (!nameMatch) {
       this.display.printLine('?SYNTAX ERROR');
       return;
@@ -1005,7 +1024,28 @@ class Emulator {
       this.display.printLine('?' + result.error);
       return;
     }
-    // Binary loading is simulated - file content is acknowledged
+    // Parse header for original address
+    const lines = result.content.split('\n');
+    let loadAddr = nameMatch[2] ? parseInt(nameMatch[2], 16) : 0;
+    let dataLine = '';
+    for (const line of lines) {
+      const hdr = line.match(/;\s*BINARY FILE\s+A=\$([0-9A-F]+)/i);
+      if (hdr && !nameMatch[2]) {
+        loadAddr = parseInt(hdr[1], 16);
+      } else if (!line.startsWith(';')) {
+        dataLine = line.trim();
+      }
+    }
+    // Load hex bytes into memory
+    if (dataLine) {
+      const bytes = dataLine.split(',');
+      for (let i = 0; i < bytes.length; i++) {
+        const val = parseInt(bytes[i], 16);
+        if (!isNaN(val)) {
+          this.interpreter.memory[(loadAddr + i) & 0xFFFF] = val;
+        }
+      }
+    }
   }
 
   // ===== DEL LINES =====
@@ -1212,11 +1252,12 @@ class Emulator {
       'HPLOT TO x,y  Draw line to point',
       'HPLOT x,y TO x2,y2  Draw line',
       '',
-      '--- SHAPE TABLES (STUBS) ---',
-      'DRAW n AT x,y   Draw shape',
+      '--- SHAPE TABLES ---',
+      'DRAW n AT x,y   Draw shape from table',
       'XDRAW n AT x,y  XOR draw shape',
       'ROT= n          Set rotation 0-63',
       'SCALE= n        Set scale factor',
+      'POKE 232,lo:POKE 233,hi  Set table addr',
       '',
       '--- SCREEN PAGES & SOFT SWITCHES ---',
       'POKE 49236,0  Show page 1',
@@ -1232,18 +1273,31 @@ class Emulator {
       'USEFUL CALL ADDRESSES:',
       'CALL -936     Clear to end of screen',
       'CALL -958     HOME (clear screen)',
+      'CALL -912     Scroll up one line',
       'CALL -868     Clear to end of line',
       'CALL -922     Line feed',
       'CALL 62450    Clear hi-res to black',
       'CALL 62454    Clear hi-res to HCOLOR',
       '',
       'USEFUL PEEK/POKE LOCATIONS:',
+      '32     Left margin (WNDLFT)',
+      '33     Window width (WNDWTH)',
+      '34     Top margin (WNDTOP)',
+      '35     Bottom margin (WNDBTM)',
       '36/37  Cursor column/row',
-      '32-35  Text window edges',
-      '49152  Last key pressed',
-      '49200  Speaker click',
+      '50     Inv mode (127=INV, 255=NRM)',
       '222    Last error code (ONERR)',
       '230    Current HCOLOR value',
+      '232/233  Shape table address lo/hi',
+      '',
+      'I/O SOFT SWITCHES:',
+      '-16384 ($C000) Keyboard data',
+      '-16368 ($C010) Keyboard strobe',
+      '-16336 ($C030) Speaker toggle',
+      '-16304-16297  Graphics switches',
+      '-16287 ($C061) PB0/Open Apple (Alt)',
+      '-16286 ($C062) PB1/Solid Apple (Cmd)',
+      '-16285 ($C063) PB2 (Shift)',
       '',
       '--- MATH FUNCTIONS ---',
       'ABS(n) SGN(n) INT(n) SQR(n)',
