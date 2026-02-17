@@ -17,7 +17,7 @@ cat > "$DIR/index.html" << 'EOF_INDEX_HTML'
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Applesoft BASIC Interpreter</title>
-<link rel="stylesheet" href="css/style.css?v=21">
+<link rel="stylesheet" href="css/style.css?v=22">
 </head>
 <body>
 
@@ -60,7 +60,7 @@ cat > "$DIR/index.html" << 'EOF_INDEX_HTML'
 (function() {
   // CRT glass coordinates in source image (1536x1024)
   // Measured from AppleIIBG01.png glass boundaries
-  var GL = 387, GT = 102, GW = 466, GH = 364, IW = 1536, IH = 1024;
+  var GL = 387, GT = 105, GW = 466, GH = 364, IW = 1536, IH = 1024;
   // Drive LED positions as percentage of image (left%, top%)
   var D1LP = 74.5, D1TP = 59.5, D2LP = 74.5, D2TP = 77.5, DLS = 10;
   function pos() {
@@ -137,18 +137,18 @@ cat > "$DIR/index.html" << 'EOF_INDEX_HTML'
 </script>
 
 <!-- Scripts loaded in dependency order (no ES modules for file:// compatibility) -->
-<script src="js/constants.js?v=21"></script>
-<script src="js/audio.js?v=21"></script>
-<script src="js/tokenizer.js?v=21"></script>
-<script src="js/parser.js?v=21"></script>
-<script src="js/filesystem.js?v=21"></script>
-<script src="js/samples.js?v=21"></script>
-<script src="js/tutorial.js?v=21"></script>
-<script src="js/display.js?v=21"></script>
-<script src="js/claude.js?v=21"></script>
-<script src="js/interpreter.js?v=21"></script>
-<script src="js/emulator.js?v=21"></script>
-<script src="js/main.js?v=21"></script>
+<script src="js/constants.js?v=22"></script>
+<script src="js/audio.js?v=22"></script>
+<script src="js/tokenizer.js?v=22"></script>
+<script src="js/parser.js?v=22"></script>
+<script src="js/filesystem.js?v=22"></script>
+<script src="js/samples.js?v=22"></script>
+<script src="js/tutorial.js?v=22"></script>
+<script src="js/display.js?v=22"></script>
+<script src="js/claude.js?v=22"></script>
+<script src="js/interpreter.js?v=22"></script>
+<script src="js/emulator.js?v=22"></script>
+<script src="js/main.js?v=22"></script>
 
 </body>
 </html>
