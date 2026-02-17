@@ -21,7 +21,7 @@ $content = @'
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Applesoft BASIC Interpreter</title>
-<link rel="stylesheet" href="css/style.css?v=101">
+<link rel="stylesheet" href="css/style.css?v=102">
 </head>
 <body>
 
@@ -53,7 +53,7 @@ $content = @'
   <label><input type="number" id="pos-step" value="1" min="1" max="50" style="width:40px"> step</label>
   <span style="color:#666;margin:0 2px">|</span>
   <button id="scale-down">%-</button>
-  <span id="scale-display" style="color:#ff0;font:bold 11px monospace">96%</span>
+  <span id="scale-display" style="color:#ff0;font:bold 11px monospace">95%</span>
   <button id="scale-up">%+</button>
 </div>
 
@@ -96,7 +96,7 @@ $content = @'
   }
 
   // Base values for percentage scaling
-  var baseGW = GW, baseGH = GH, scalePct = 96;
+  var baseGW = GW, baseGH = GH, scalePct = 95;
   function updateScale(delta) {
     scalePct = Math.max(50, Math.min(150, scalePct + delta));
     GW = Math.round(baseGW * scalePct / 100);
@@ -141,18 +141,18 @@ $content = @'
 </script>
 
 <!-- Scripts loaded in dependency order (no ES modules for file:// compatibility) -->
-<script src="js/constants.js?v=101"></script>
-<script src="js/audio.js?v=101"></script>
-<script src="js/tokenizer.js?v=101"></script>
-<script src="js/parser.js?v=101"></script>
-<script src="js/filesystem.js?v=101"></script>
-<script src="js/samples.js?v=101"></script>
-<script src="js/tutorial.js?v=101"></script>
-<script src="js/display.js?v=101"></script>
-<script src="js/claude.js?v=101"></script>
-<script src="js/interpreter.js?v=101"></script>
-<script src="js/emulator.js?v=101"></script>
-<script src="js/main.js?v=101"></script>
+<script src="js/constants.js?v=102"></script>
+<script src="js/audio.js?v=102"></script>
+<script src="js/tokenizer.js?v=102"></script>
+<script src="js/parser.js?v=102"></script>
+<script src="js/filesystem.js?v=102"></script>
+<script src="js/samples.js?v=102"></script>
+<script src="js/tutorial.js?v=102"></script>
+<script src="js/display.js?v=102"></script>
+<script src="js/claude.js?v=102"></script>
+<script src="js/interpreter.js?v=102"></script>
+<script src="js/emulator.js?v=102"></script>
+<script src="js/main.js?v=102"></script>
 
 </body>
 </html>
