@@ -42,7 +42,7 @@ cat > "$DIR/index.html" << 'EOF_INDEX_HTML'
 (function() {
   // CRT glass coordinates in source image (1536x1024)
   // Measured from AppleIIBG01.png glass boundaries
-  var GL = 365, GT = 97, GW = 480, GH = 375, IW = 1536, IH = 1024;
+  var GL = 390, GT = 97, GW = 480, GH = 375, IW = 1536, IH = 1024;
   // Drive LED positions as percentage of image (left%, top%)
   var D1LP = 74.5, D1TP = 59.5, D2LP = 74.5, D2TP = 77.5, DLS = 10;
   function pos() {
