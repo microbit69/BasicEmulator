@@ -21,7 +21,7 @@ $content = @'
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Applesoft BASIC Interpreter</title>
-<link rel="stylesheet" href="css/style.css?v=10">
+<link rel="stylesheet" href="css/style.css?v=11">
 </head>
 <body>
 
@@ -41,7 +41,7 @@ $content = @'
 
 <!-- Screen position controls (dev tool) — fixed overlay -->
 <div id="pos-controls">
-  <span id="pos-display">X:400 Y:97 W:480 H:375</span>
+  <span id="pos-display">X:400 Y:97 W:456 H:356</span>
   <button data-axis="x" data-dir="-1">X-</button>
   <button data-axis="x" data-dir="1">X+</button>
   <button data-axis="y" data-dir="-1">Y-</button>
@@ -60,7 +60,7 @@ $content = @'
 (function() {
   // CRT glass coordinates in source image (1536x1024)
   // Measured from AppleIIBG01.png glass boundaries
-  var GL = 400, GT = 97, GW = 480, GH = 375, IW = 1536, IH = 1024;
+  var GL = 400, GT = 97, GW = 456, GH = 356, IW = 1536, IH = 1024;
   // Drive LED positions as percentage of image (left%, top%)
   var D1LP = 74.5, D1TP = 59.5, D2LP = 74.5, D2TP = 77.5, DLS = 10;
   function pos() {
@@ -124,18 +124,18 @@ $content = @'
 </script>
 
 <!-- Scripts loaded in dependency order (no ES modules for file:// compatibility) -->
-<script src="js/constants.js?v=10"></script>
-<script src="js/audio.js?v=10"></script>
-<script src="js/tokenizer.js?v=10"></script>
-<script src="js/parser.js?v=10"></script>
-<script src="js/filesystem.js?v=10"></script>
-<script src="js/samples.js?v=10"></script>
-<script src="js/tutorial.js?v=10"></script>
-<script src="js/display.js?v=10"></script>
-<script src="js/claude.js?v=10"></script>
-<script src="js/interpreter.js?v=10"></script>
-<script src="js/emulator.js?v=10"></script>
-<script src="js/main.js?v=10"></script>
+<script src="js/constants.js?v=11"></script>
+<script src="js/audio.js?v=11"></script>
+<script src="js/tokenizer.js?v=11"></script>
+<script src="js/parser.js?v=11"></script>
+<script src="js/filesystem.js?v=11"></script>
+<script src="js/samples.js?v=11"></script>
+<script src="js/tutorial.js?v=11"></script>
+<script src="js/display.js?v=11"></script>
+<script src="js/claude.js?v=11"></script>
+<script src="js/interpreter.js?v=11"></script>
+<script src="js/emulator.js?v=11"></script>
+<script src="js/main.js?v=11"></script>
 
 </body>
 </html>
