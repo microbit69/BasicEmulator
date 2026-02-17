@@ -17,7 +17,7 @@ cat > "$DIR/index.html" << 'EOF_INDEX_HTML'
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Applesoft BASIC Interpreter</title>
-<link rel="stylesheet" href="css/style.css?v=12">
+<link rel="stylesheet" href="css/style.css?v=13">
 </head>
 <body>
 
@@ -46,7 +46,7 @@ cat > "$DIR/index.html" << 'EOF_INDEX_HTML'
   <button data-axis="w" data-dir="1">W+</button>
   <button data-axis="h" data-dir="-1">H-</button>
   <button data-axis="h" data-dir="1">H+</button>
-  <label><input type="number" id="pos-step" value="5" min="1" max="50" style="width:40px"> step</label>
+  <label><input type="number" id="pos-step" value="1" min="1" max="50" style="width:40px"> step</label>
   <span style="color:#666;margin:0 2px">|</span>
   <button id="scale-down">%-</button>
   <span id="scale-display" style="color:#ff0;font:bold 11px monospace">100%</span>
@@ -94,7 +94,7 @@ cat > "$DIR/index.html" << 'EOF_INDEX_HTML'
   // Base values for percentage scaling
   var baseGW = GW, baseGH = GH, scalePct = 100;
   function updateScale(delta) {
-    scalePct = Math.max(50, Math.min(150, scalePct + delta));
+    scalePct = Math.max(50, Math.min(150, scalePct + 1 * (delta > 0 ? 1 : -1)));
     GW = Math.round(baseGW * scalePct / 100);
     GH = Math.round(baseGH * scalePct / 100);
     var sd = document.getElementById('scale-display');
@@ -137,18 +137,18 @@ cat > "$DIR/index.html" << 'EOF_INDEX_HTML'
 </script>
 
 <!-- Scripts loaded in dependency order (no ES modules for file:// compatibility) -->
-<script src="js/constants.js?v=12"></script>
-<script src="js/audio.js?v=12"></script>
-<script src="js/tokenizer.js?v=12"></script>
-<script src="js/parser.js?v=12"></script>
-<script src="js/filesystem.js?v=12"></script>
-<script src="js/samples.js?v=12"></script>
-<script src="js/tutorial.js?v=12"></script>
-<script src="js/display.js?v=12"></script>
-<script src="js/claude.js?v=12"></script>
-<script src="js/interpreter.js?v=12"></script>
-<script src="js/emulator.js?v=12"></script>
-<script src="js/main.js?v=12"></script>
+<script src="js/constants.js?v=13"></script>
+<script src="js/audio.js?v=13"></script>
+<script src="js/tokenizer.js?v=13"></script>
+<script src="js/parser.js?v=13"></script>
+<script src="js/filesystem.js?v=13"></script>
+<script src="js/samples.js?v=13"></script>
+<script src="js/tutorial.js?v=13"></script>
+<script src="js/display.js?v=13"></script>
+<script src="js/claude.js?v=13"></script>
+<script src="js/interpreter.js?v=13"></script>
+<script src="js/emulator.js?v=13"></script>
+<script src="js/main.js?v=13"></script>
 
 </body>
 </html>
