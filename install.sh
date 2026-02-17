@@ -17,7 +17,7 @@ cat > "$DIR/index.html" << 'EOF_INDEX_HTML'
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Applesoft BASIC Interpreter</title>
-<link rel="stylesheet" href="css/style.css?v=11">
+<link rel="stylesheet" href="css/style.css?v=12">
 </head>
 <body>
 
@@ -37,7 +37,7 @@ cat > "$DIR/index.html" << 'EOF_INDEX_HTML'
 
 <!-- Screen position controls (dev tool) — fixed overlay -->
 <div id="pos-controls">
-  <span id="pos-display">X:400 Y:97 W:456 H:356</span>
+  <span id="pos-display">X:400 Y:97 W:480 H:375</span>
   <button data-axis="x" data-dir="-1">X-</button>
   <button data-axis="x" data-dir="1">X+</button>
   <button data-axis="y" data-dir="-1">Y-</button>
@@ -47,6 +47,10 @@ cat > "$DIR/index.html" << 'EOF_INDEX_HTML'
   <button data-axis="h" data-dir="-1">H-</button>
   <button data-axis="h" data-dir="1">H+</button>
   <label><input type="number" id="pos-step" value="5" min="1" max="50" style="width:40px"> step</label>
+  <span style="color:#666;margin:0 2px">|</span>
+  <button id="scale-down">%-</button>
+  <span id="scale-display" style="color:#ff0;font:bold 11px monospace">100%</span>
+  <button id="scale-up">%+</button>
 </div>
 
 <input type="file" id="file-upload" accept=".bas,.txt,.BAS,.TXT" multiple>
@@ -56,7 +60,7 @@ cat > "$DIR/index.html" << 'EOF_INDEX_HTML'
 (function() {
   // CRT glass coordinates in source image (1536x1024)
   // Measured from AppleIIBG01.png glass boundaries
-  var GL = 400, GT = 97, GW = 456, GH = 356, IW = 1536, IH = 1024;
+  var GL = 400, GT = 97, GW = 480, GH = 375, IW = 1536, IH = 1024;
   // Drive LED positions as percentage of image (left%, top%)
   var D1LP = 74.5, D1TP = 59.5, D2LP = 74.5, D2TP = 77.5, DLS = 10;
   function pos() {
@@ -87,17 +91,30 @@ cat > "$DIR/index.html" << 'EOF_INDEX_HTML'
     document.title = 'Applesoft BASIC Interpreter';
   }
 
+  // Base values for percentage scaling
+  var baseGW = GW, baseGH = GH, scalePct = 100;
+  function updateScale(delta) {
+    scalePct = Math.max(50, Math.min(150, scalePct + delta));
+    GW = Math.round(baseGW * scalePct / 100);
+    GH = Math.round(baseGH * scalePct / 100);
+    var sd = document.getElementById('scale-display');
+    if (sd) sd.textContent = scalePct + '%';
+    pos();
+  }
+
   // Button handlers
   document.addEventListener('click', function(e) {
     var btn = e.target;
+    if (btn.id === 'scale-down') { updateScale(-5); return; }
+    if (btn.id === 'scale-up')   { updateScale(5);  return; }
     if (btn.tagName !== 'BUTTON' || !btn.dataset.axis) return;
     var step = parseInt(document.getElementById('pos-step').value) || 5;
     var dir = parseInt(btn.dataset.dir);
     switch (btn.dataset.axis) {
       case 'x': GL += step * dir; break;
       case 'y': GT += step * dir; break;
-      case 'w': GW += step * dir; break;
-      case 'h': GH += step * dir; break;
+      case 'w': GW += step * dir; baseGW = GW; break;
+      case 'h': GH += step * dir; baseGH = GH; break;
     }
     pos();
   });
@@ -120,18 +137,18 @@ cat > "$DIR/index.html" << 'EOF_INDEX_HTML'
 </script>
 
 <!-- Scripts loaded in dependency order (no ES modules for file:// compatibility) -->
-<script src="js/constants.js?v=11"></script>
-<script src="js/audio.js?v=11"></script>
-<script src="js/tokenizer.js?v=11"></script>
-<script src="js/parser.js?v=11"></script>
-<script src="js/filesystem.js?v=11"></script>
-<script src="js/samples.js?v=11"></script>
-<script src="js/tutorial.js?v=11"></script>
-<script src="js/display.js?v=11"></script>
-<script src="js/claude.js?v=11"></script>
-<script src="js/interpreter.js?v=11"></script>
-<script src="js/emulator.js?v=11"></script>
-<script src="js/main.js?v=11"></script>
+<script src="js/constants.js?v=12"></script>
+<script src="js/audio.js?v=12"></script>
+<script src="js/tokenizer.js?v=12"></script>
+<script src="js/parser.js?v=12"></script>
+<script src="js/filesystem.js?v=12"></script>
+<script src="js/samples.js?v=12"></script>
+<script src="js/tutorial.js?v=12"></script>
+<script src="js/display.js?v=12"></script>
+<script src="js/claude.js?v=12"></script>
+<script src="js/interpreter.js?v=12"></script>
+<script src="js/emulator.js?v=12"></script>
+<script src="js/main.js?v=12"></script>
 
 </body>
 </html>
