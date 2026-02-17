@@ -275,7 +275,7 @@ class Display {
     this._imgData.data[i] = r;
     this._imgData.data[i+1] = g;
     this._imgData.data[i+2] = b;
-    this._imgData.data[i+3] = (r === 0 && g === 0 && b === 0) ? 0 : 255;
+    this._imgData.data[i+3] = 255;
   }
 
   _fillRect(x, y, w, h, r, g, b) {
@@ -653,17 +653,22 @@ class Display {
     const hires = this.hiResPages[this.activePage];
     hires[y * 280 + x] = colorOn ? 1 : 0;
 
-    // Draw immediately
-    if (colorOn) {
-      this.ctx.fillStyle = this.amberHex;
-    } else {
-      this.ctx.fillStyle = '#000000';
-    }
-    this.ctx.fillRect(x, y, 1, 1);
+    // Draw via imageData for consistent rendering
+    this._setPixel(x, y,
+      colorOn ? this.amberR : 0,
+      colorOn ? this.amberG : 0,
+      colorOn ? this.amberB : 0);
+    this._flush();
   }
 
   drawHiResLine(x1, y1, x2, y2, colorOn) {
-    // Bresenham line algorithm
+    const r = colorOn ? this.amberR : 0;
+    const g = colorOn ? this.amberG : 0;
+    const b = colorOn ? this.amberB : 0;
+    const maxY = (this.screenMode === 'hgr') ? 160 : 192;
+    const hires = this.hiResPages[this.activePage];
+
+    // Bresenham line algorithm — batched via imageData
     let dx = Math.abs(x2 - x1);
     let dy = Math.abs(y2 - y1);
     let sx = x1 < x2 ? 1 : -1;
@@ -671,12 +676,16 @@ class Display {
     let err = dx - dy;
 
     while (true) {
-      this.drawHiResPixel(x1, y1, colorOn);
+      if (x1 >= 0 && x1 < 280 && y1 >= 0 && y1 < maxY) {
+        hires[y1 * 280 + x1] = colorOn ? 1 : 0;
+        this._setPixel(x1, y1, r, g, b);
+      }
       if (x1 === x2 && y1 === y2) break;
       const e2 = 2 * err;
       if (e2 > -dy) { err -= dy; x1 += sx; }
       if (e2 < dx) { err += dx; y1 += sy; }
     }
+    this._flush();
   }
 
   clearHiRes(colorOn) {
