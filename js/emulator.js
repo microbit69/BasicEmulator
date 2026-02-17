@@ -227,6 +227,9 @@ class Emulator {
     this.display.printLine('');
     this.display.printLine('SLOT 6: DRIVE 1 & DRIVE 2');
     this.display.printLine('DISK VOLUME ' + this.fs.volumeNumber);
+    this.display.printLine('280X192 MONOCHROME DISPLAY');
+    this.display.printLine('LO-RES 40X40 / HI-RES 280X160');
+    this.display.printLine('');
     this.display.printLine('TYPE "HELP" FOR COMMANDS');
     this.display.printLine('TYPE "AI HELP" FOR CLAUDE AI');
     this.display.printLine('TYPE "CATALOG" FOR DISK CONTENTS');
@@ -1183,24 +1186,30 @@ class Emulator {
       'TEXT          Return to text mode',
       'SPEED= n      Output speed 0-255',
       '',
-      '--- LOW-RES GRAPHICS (40x48) ---',
-      'GR            Init lo-res graphics',
+      '--- LOW-RES GRAPHICS (40x40+TEXT) ---',
+      'GR            Init lo-res mixed mode',
+      '              (40x40 gfx + 4 text rows)',
       'COLOR= n      Set color 0-15',
+      '              (amber brightness levels)',
       'PLOT x,y      Plot single block',
       'HLIN x1,x2 AT y  Horizontal line',
       'VLIN y1,y2 AT x  Vertical line',
       '',
-      '--- HI-RES GRAPHICS (280x192) ---',
+      '--- HI-RES GRAPHICS (280x160+TEXT) ---',
       'HGR           Init hi-res page 1',
+      '              (280x160 gfx + 4 text rows)',
       'HGR2          Init hi-res page 2',
-      'HCOLOR= n     Set color 0-7',
+      'HCOLOR= n     0,4=off  1-3,5-7=on',
+      '              (monochrome amber)',
       'HPLOT x,y     Plot point',
       'HPLOT TO x,y  Draw line to point',
       'HPLOT x,y TO x2,y2  Draw line',
-      'ROT= n        Shape rotation 0-63',
-      'SCALE= n      Shape scale factor',
-      'DRAW n AT x,y   Draw shape (stub)',
-      'XDRAW n AT x,y  XOR draw shape (stub)',
+      '',
+      '--- SCREEN PAGES ---',
+      'POKE 49236,0  Show page 1',
+      'POKE 49237,0  Show page 2',
+      'POKE 49234,0  Full screen (no text)',
+      'POKE 49235,0  Mixed mode (with text)',
       '',
       '--- PEEK / POKE / CALL ---',
       'PEEK(addr)    Read memory location',
