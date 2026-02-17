@@ -17,7 +17,7 @@ cat > "$DIR/index.html" << 'EOF_INDEX_HTML'
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Applesoft BASIC Interpreter</title>
-<link rel="stylesheet" href="css/style.css?v=105">
+<link rel="stylesheet" href="css/style.css?v=106">
 </head>
 <body>
 
@@ -138,18 +138,18 @@ cat > "$DIR/index.html" << 'EOF_INDEX_HTML'
 </script>
 
 <!-- Scripts loaded in dependency order (no ES modules for file:// compatibility) -->
-<script src="js/constants.js?v=105"></script>
-<script src="js/audio.js?v=105"></script>
-<script src="js/tokenizer.js?v=105"></script>
-<script src="js/parser.js?v=105"></script>
-<script src="js/filesystem.js?v=105"></script>
-<script src="js/samples.js?v=105"></script>
-<script src="js/tutorial.js?v=105"></script>
-<script src="js/display.js?v=105"></script>
-<script src="js/claude.js?v=105"></script>
-<script src="js/interpreter.js?v=105"></script>
-<script src="js/emulator.js?v=105"></script>
-<script src="js/main.js?v=105"></script>
+<script src="js/constants.js?v=106"></script>
+<script src="js/audio.js?v=106"></script>
+<script src="js/tokenizer.js?v=106"></script>
+<script src="js/parser.js?v=106"></script>
+<script src="js/filesystem.js?v=106"></script>
+<script src="js/samples.js?v=106"></script>
+<script src="js/tutorial.js?v=106"></script>
+<script src="js/display.js?v=106"></script>
+<script src="js/claude.js?v=106"></script>
+<script src="js/interpreter.js?v=106"></script>
+<script src="js/emulator.js?v=106"></script>
+<script src="js/main.js?v=106"></script>
 
 </body>
 </html>
@@ -219,7 +219,6 @@ body {
   width: 100%;
   height: 100%;
   z-index: 1;
-  background: #000;
   image-rendering: pixelated;
   image-rendering: crisp-edges;
 }
@@ -2666,22 +2665,25 @@ class Display {
     const hires = this.hiResPages[this.activePage];
     hires[y * 280 + x] = colorOn ? 1 : 0;
 
-    // Draw via imageData for consistent rendering
-    this._setPixel(x, y,
-      colorOn ? this.amberR : 0,
-      colorOn ? this.amberG : 0,
-      colorOn ? this.amberB : 0);
-    this._flush();
+    // Draw only this pixel — no full-canvas putImageData
+    if (colorOn) {
+      this.ctx.fillStyle = this.amberHex;
+      this.ctx.fillRect(x, y, 1, 1);
+    } else {
+      // clearRect makes the pixel transparent (not opaque black)
+      this.ctx.clearRect(x, y, 1, 1);
+    }
   }
 
   drawHiResLine(x1, y1, x2, y2, colorOn) {
-    const r = colorOn ? this.amberR : 0;
-    const g = colorOn ? this.amberG : 0;
-    const b = colorOn ? this.amberB : 0;
+    // Set fill style once for the whole line
+    if (colorOn) {
+      this.ctx.fillStyle = this.amberHex;
+    }
     const maxY = (this.screenMode === 'hgr') ? 160 : 192;
     const hires = this.hiResPages[this.activePage];
 
-    // Bresenham line algorithm — batched via imageData
+    // Bresenham line algorithm
     let dx = Math.abs(x2 - x1);
     let dy = Math.abs(y2 - y1);
     let sx = x1 < x2 ? 1 : -1;
@@ -2691,14 +2693,17 @@ class Display {
     while (true) {
       if (x1 >= 0 && x1 < 280 && y1 >= 0 && y1 < maxY) {
         hires[y1 * 280 + x1] = colorOn ? 1 : 0;
-        this._setPixel(x1, y1, r, g, b);
+        if (colorOn) {
+          this.ctx.fillRect(x1, y1, 1, 1);
+        } else {
+          this.ctx.clearRect(x1, y1, 1, 1);
+        }
       }
       if (x1 === x2 && y1 === y2) break;
       const e2 = 2 * err;
       if (e2 > -dy) { err -= dy; x1 += sx; }
       if (e2 < dx) { err += dx; y1 += sy; }
     }
-    this._flush();
   }
 
   clearHiRes(colorOn) {
