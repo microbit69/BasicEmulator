@@ -17,7 +17,7 @@ cat > "$DIR/index.html" << 'EOF_INDEX_HTML'
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Applesoft BASIC Interpreter</title>
-<link rel="stylesheet" href="css/style.css?v=9">
+<link rel="stylesheet" href="css/style.css?v=10">
 </head>
 <body>
 
@@ -33,19 +33,20 @@ cat > "$DIR/index.html" << 'EOF_INDEX_HTML'
   </div>
   <div id="drive1-led" class="drive-led"></div>
   <div id="drive2-led" class="drive-led"></div>
-  <!-- Screen position controls (dev tool) -->
-  <div id="pos-controls">
-    <span id="pos-display">X:400 Y:97</span>
-    <button data-axis="x" data-dir="-1">X-</button>
-    <button data-axis="x" data-dir="1">X+</button>
-    <button data-axis="y" data-dir="-1">Y-</button>
-    <button data-axis="y" data-dir="1">Y+</button>
-    <button data-axis="w" data-dir="-1">W-</button>
-    <button data-axis="w" data-dir="1">W+</button>
-    <button data-axis="h" data-dir="-1">H-</button>
-    <button data-axis="h" data-dir="1">H+</button>
-    <label><input type="number" id="pos-step" value="5" min="1" max="50" style="width:40px"> step</label>
-  </div>
+</div>
+
+<!-- Screen position controls (dev tool) — fixed overlay -->
+<div id="pos-controls">
+  <span id="pos-display">X:400 Y:97 W:480 H:375</span>
+  <button data-axis="x" data-dir="-1">X-</button>
+  <button data-axis="x" data-dir="1">X+</button>
+  <button data-axis="y" data-dir="-1">Y-</button>
+  <button data-axis="y" data-dir="1">Y+</button>
+  <button data-axis="w" data-dir="-1">W-</button>
+  <button data-axis="w" data-dir="1">W+</button>
+  <button data-axis="h" data-dir="-1">H-</button>
+  <button data-axis="h" data-dir="1">H+</button>
+  <label><input type="number" id="pos-step" value="5" min="1" max="50" style="width:40px"> step</label>
 </div>
 
 <input type="file" id="file-upload" accept=".bas,.txt,.BAS,.TXT" multiple>
@@ -64,7 +65,6 @@ cat > "$DIR/index.html" << 'EOF_INDEX_HTML'
     var sc  = document.getElementById('screen-container');
     var d1  = document.getElementById('drive1-led');
     var d2  = document.getElementById('drive2-led');
-    var pc  = document.getElementById('pos-controls');
     if (!img || !fr || !sc) return;
     var ir = img.getBoundingClientRect();
     if (!ir.width || !ir.height) return;
@@ -81,11 +81,6 @@ cat > "$DIR/index.html" << 'EOF_INDEX_HTML'
     var ds = DLS * sx;
     if (d1) { d1.style.left = D1LP + '%'; d1.style.top = D1TP + '%'; d1.style.width = ds + 'px'; d1.style.height = ds + 'px'; }
     if (d2) { d2.style.left = D2LP + '%'; d2.style.top = D2TP + '%'; d2.style.width = ds + 'px'; d2.style.height = ds + 'px'; }
-    // Position controls below screen
-    if (pc) {
-      pc.style.left = l + 'px';
-      pc.style.top  = (t + h + 4) + 'px';
-    }
     // Update display
     var disp = document.getElementById('pos-display');
     if (disp) disp.textContent = 'X:' + GL + ' Y:' + GT + ' W:' + GW + ' H:' + GH;
@@ -125,18 +120,18 @@ cat > "$DIR/index.html" << 'EOF_INDEX_HTML'
 </script>
 
 <!-- Scripts loaded in dependency order (no ES modules for file:// compatibility) -->
-<script src="js/constants.js?v=9"></script>
-<script src="js/audio.js?v=9"></script>
-<script src="js/tokenizer.js?v=9"></script>
-<script src="js/parser.js?v=9"></script>
-<script src="js/filesystem.js?v=9"></script>
-<script src="js/samples.js?v=9"></script>
-<script src="js/tutorial.js?v=9"></script>
-<script src="js/display.js?v=9"></script>
-<script src="js/claude.js?v=9"></script>
-<script src="js/interpreter.js?v=9"></script>
-<script src="js/emulator.js?v=9"></script>
-<script src="js/main.js?v=9"></script>
+<script src="js/constants.js?v=10"></script>
+<script src="js/audio.js?v=10"></script>
+<script src="js/tokenizer.js?v=10"></script>
+<script src="js/parser.js?v=10"></script>
+<script src="js/filesystem.js?v=10"></script>
+<script src="js/samples.js?v=10"></script>
+<script src="js/tutorial.js?v=10"></script>
+<script src="js/display.js?v=10"></script>
+<script src="js/claude.js?v=10"></script>
+<script src="js/interpreter.js?v=10"></script>
+<script src="js/emulator.js?v=10"></script>
+<script src="js/main.js?v=10"></script>
 
 </body>
 </html>
@@ -286,12 +281,14 @@ body {
 
 /* ===== SCREEN POSITION CONTROLS (dev) ===== */
 #pos-controls {
-  position: absolute;
-  z-index: 100;
+  position: fixed;
+  top: 4px;
+  left: 4px;
+  z-index: 9999;
   display: flex;
   align-items: center;
   gap: 4px;
-  background: rgba(0,0,0,0.75);
+  background: rgba(0,0,0,0.85);
   border: 1px solid #555;
   border-radius: 4px;
   padding: 3px 6px;
