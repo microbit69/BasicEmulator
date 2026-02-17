@@ -21,7 +21,7 @@ $content = @'
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Applesoft BASIC Interpreter</title>
-<link rel="stylesheet" href="css/style.css?v=13">
+<link rel="stylesheet" href="css/style.css?v=14">
 </head>
 <body>
 
@@ -98,7 +98,7 @@ $content = @'
   // Base values for percentage scaling
   var baseGW = GW, baseGH = GH, scalePct = 100;
   function updateScale(delta) {
-    scalePct = Math.max(50, Math.min(150, scalePct + 1 * (delta > 0 ? 1 : -1)));
+    scalePct = Math.max(50, Math.min(150, scalePct + delta));
     GW = Math.round(baseGW * scalePct / 100);
     GH = Math.round(baseGH * scalePct / 100);
     var sd = document.getElementById('scale-display');
@@ -109,10 +109,10 @@ $content = @'
   // Button handlers
   document.addEventListener('click', function(e) {
     var btn = e.target;
-    if (btn.id === 'scale-down') { updateScale(-5); return; }
-    if (btn.id === 'scale-up')   { updateScale(5);  return; }
+    if (btn.id === 'scale-down') { updateScale(-1); return; }
+    if (btn.id === 'scale-up')   { updateScale(1);  return; }
     if (btn.tagName !== 'BUTTON' || !btn.dataset.axis) return;
-    var step = parseInt(document.getElementById('pos-step').value) || 5;
+    var step = parseInt(document.getElementById('pos-step').value) || 1;
     var dir = parseInt(btn.dataset.dir);
     switch (btn.dataset.axis) {
       case 'x': GL += step * dir; break;
@@ -141,18 +141,18 @@ $content = @'
 </script>
 
 <!-- Scripts loaded in dependency order (no ES modules for file:// compatibility) -->
-<script src="js/constants.js?v=13"></script>
-<script src="js/audio.js?v=13"></script>
-<script src="js/tokenizer.js?v=13"></script>
-<script src="js/parser.js?v=13"></script>
-<script src="js/filesystem.js?v=13"></script>
-<script src="js/samples.js?v=13"></script>
-<script src="js/tutorial.js?v=13"></script>
-<script src="js/display.js?v=13"></script>
-<script src="js/claude.js?v=13"></script>
-<script src="js/interpreter.js?v=13"></script>
-<script src="js/emulator.js?v=13"></script>
-<script src="js/main.js?v=13"></script>
+<script src="js/constants.js?v=14"></script>
+<script src="js/audio.js?v=14"></script>
+<script src="js/tokenizer.js?v=14"></script>
+<script src="js/parser.js?v=14"></script>
+<script src="js/filesystem.js?v=14"></script>
+<script src="js/samples.js?v=14"></script>
+<script src="js/tutorial.js?v=14"></script>
+<script src="js/display.js?v=14"></script>
+<script src="js/claude.js?v=14"></script>
+<script src="js/interpreter.js?v=14"></script>
+<script src="js/emulator.js?v=14"></script>
+<script src="js/main.js?v=14"></script>
 
 </body>
 </html>
