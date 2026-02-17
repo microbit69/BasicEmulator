@@ -138,6 +138,48 @@ body {
   box-shadow: 0 0 8px #ffb000, 0 0 18px rgba(255, 176, 0, 0.6), 0 0 30px rgba(255, 140, 0, 0.3);
 }
 
+/* ===== SCREEN POSITION CONTROLS (dev) ===== */
+#pos-controls {
+  position: absolute;
+  z-index: 100;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  background: rgba(0,0,0,0.75);
+  border: 1px solid #555;
+  border-radius: 4px;
+  padding: 3px 6px;
+  white-space: nowrap;
+}
+#pos-controls button {
+  background: #333;
+  color: #0f0;
+  border: 1px solid #666;
+  border-radius: 3px;
+  padding: 2px 7px;
+  font: bold 11px monospace;
+  cursor: pointer;
+}
+#pos-controls button:hover { background: #555; }
+#pos-controls button:active { background: #0a0; color: #000; }
+#pos-display {
+  color: #0f0;
+  font: bold 11px monospace;
+  margin-right: 6px;
+}
+#pos-controls label {
+  color: #aaa;
+  font: 11px monospace;
+}
+#pos-controls input[type=number] {
+  background: #222;
+  color: #0f0;
+  border: 1px solid #555;
+  border-radius: 2px;
+  font: 11px monospace;
+  padding: 1px 3px;
+}
+
 /* ===== CRT POWER ON/OFF ===== */
 #screen-container.off #apple2-canvas {
   visibility: hidden;

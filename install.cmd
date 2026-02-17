@@ -37,6 +37,19 @@ $content = @'
   </div>
   <div id="drive1-led" class="drive-led"></div>
   <div id="drive2-led" class="drive-led"></div>
+  <!-- Screen position controls (dev tool) -->
+  <div id="pos-controls">
+    <span id="pos-display">X:400 Y:97</span>
+    <button data-axis="x" data-dir="-1">X-</button>
+    <button data-axis="x" data-dir="1">X+</button>
+    <button data-axis="y" data-dir="-1">Y-</button>
+    <button data-axis="y" data-dir="1">Y+</button>
+    <button data-axis="w" data-dir="-1">W-</button>
+    <button data-axis="w" data-dir="1">W+</button>
+    <button data-axis="h" data-dir="-1">H-</button>
+    <button data-axis="h" data-dir="1">H+</button>
+    <label><input type="number" id="pos-step" value="5" min="1" max="50" style="width:40px"> step</label>
+  </div>
 </div>
 
 <input type="file" id="file-upload" accept=".bas,.txt,.BAS,.TXT" multiple>
@@ -46,7 +59,7 @@ $content = @'
 (function() {
   // CRT glass coordinates in source image (1536x1024)
   // Measured from AppleIIBG01.png glass boundaries
-  var GL = 420, GT = 97, GW = 480, GH = 375, IW = 1536, IH = 1024;
+  var GL = 400, GT = 97, GW = 480, GH = 375, IW = 1536, IH = 1024;
   // Drive LED positions as percentage of image (left%, top%)
   var D1LP = 74.5, D1TP = 59.5, D2LP = 74.5, D2TP = 77.5, DLS = 10;
   function pos() {
@@ -55,9 +68,10 @@ $content = @'
     var sc  = document.getElementById('screen-container');
     var d1  = document.getElementById('drive1-led');
     var d2  = document.getElementById('drive2-led');
+    var pc  = document.getElementById('pos-controls');
     if (!img || !fr || !sc) return;
     var ir = img.getBoundingClientRect();
-    if (!ir.width || !ir.height) return;  // image not laid out yet
+    if (!ir.width || !ir.height) return;
     var ff = fr.getBoundingClientRect();
     var ox = ir.left - ff.left, oy = ir.top - ff.top;
     var sx = ir.width / IW, sy = ir.height / IH;
@@ -67,12 +81,35 @@ $content = @'
     sc.style.top    = t + 'px';
     sc.style.width  = w + 'px';
     sc.style.height = h + 'px';
-    // Position drive LEDs using percentage of frame
+    // Position drive LEDs
     var ds = DLS * sx;
     if (d1) { d1.style.left = D1LP + '%'; d1.style.top = D1TP + '%'; d1.style.width = ds + 'px'; d1.style.height = ds + 'px'; }
     if (d2) { d2.style.left = D2LP + '%'; d2.style.top = D2TP + '%'; d2.style.width = ds + 'px'; d2.style.height = ds + 'px'; }
+    // Position controls below screen
+    if (pc) {
+      pc.style.left = l + 'px';
+      pc.style.top  = (t + h + 4) + 'px';
+    }
+    // Update display
+    var disp = document.getElementById('pos-display');
+    if (disp) disp.textContent = 'X:' + GL + ' Y:' + GT + ' W:' + GW + ' H:' + GH;
     document.title = 'Applesoft BASIC Interpreter';
   }
+
+  // Button handlers
+  document.addEventListener('click', function(e) {
+    var btn = e.target;
+    if (btn.tagName !== 'BUTTON' || !btn.dataset.axis) return;
+    var step = parseInt(document.getElementById('pos-step').value) || 5;
+    var dir = parseInt(btn.dataset.dir);
+    switch (btn.dataset.axis) {
+      case 'x': GL += step * dir; break;
+      case 'y': GT += step * dir; break;
+      case 'w': GW += step * dir; break;
+      case 'h': GH += step * dir; break;
+    }
+    pos();
+  });
   // Ensure pos() runs after the background image is fully loaded & rendered
   function initPos() {
     var img = document.getElementById('bg-image');
@@ -250,6 +287,48 @@ body {
 .drive-led.active {
   background: #ffb000;
   box-shadow: 0 0 8px #ffb000, 0 0 18px rgba(255, 176, 0, 0.6), 0 0 30px rgba(255, 140, 0, 0.3);
+}
+
+/* ===== SCREEN POSITION CONTROLS (dev) ===== */
+#pos-controls {
+  position: absolute;
+  z-index: 100;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  background: rgba(0,0,0,0.75);
+  border: 1px solid #555;
+  border-radius: 4px;
+  padding: 3px 6px;
+  white-space: nowrap;
+}
+#pos-controls button {
+  background: #333;
+  color: #0f0;
+  border: 1px solid #666;
+  border-radius: 3px;
+  padding: 2px 7px;
+  font: bold 11px monospace;
+  cursor: pointer;
+}
+#pos-controls button:hover { background: #555; }
+#pos-controls button:active { background: #0a0; color: #000; }
+#pos-display {
+  color: #0f0;
+  font: bold 11px monospace;
+  margin-right: 6px;
+}
+#pos-controls label {
+  color: #aaa;
+  font: 11px monospace;
+}
+#pos-controls input[type=number] {
+  background: #222;
+  color: #0f0;
+  border: 1px solid #555;
+  border-radius: 2px;
+  font: 11px monospace;
+  padding: 1px 3px;
 }
 
 /* ===== CRT POWER ON/OFF ===== */
