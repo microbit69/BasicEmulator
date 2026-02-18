@@ -58,6 +58,9 @@ class Interpreter {
     this.inputCallback = null;
     this.getCallback = null;
     this.onErrLine = null;
+    // FOR/NEXT statement tracking for single-line loops
+    this._currentStmtIndex = 0;
+    this._resumeStmtIndex = 0;
     // 6502 CPU emulator — shares memory with interpreter
     this._initCPU();
     this.collectData();
@@ -305,7 +308,10 @@ class Interpreter {
         const statements = this.splitStatements(source);
 
         let jumped = false;
-        for (let si = 0; si < statements.length && this.running && !this.stopped; si++) {
+        const startSi = this._resumeStmtIndex || 0;
+        this._resumeStmtIndex = 0;
+        for (let si = startSi; si < statements.length && this.running && !this.stopped; si++) {
+          this._currentStmtIndex = si;
           const result = await this.executeStatement(statements[si].trim(), this.currentLine);
           if (result === 'JUMP') { jumped = true; break; }
           if (result === 'SKIP_LINE') { break; }
@@ -779,7 +785,7 @@ class Interpreter {
 
     this.variables[varName] = startVal;
     this.forStack = this.forStack.filter(f => f.varName !== varName);
-    this.forStack.push({ varName, endVal, stepVal, lineIndex: this.lineIndex, lineNum: this.currentLine });
+    this.forStack.push({ varName, endVal, stepVal, lineIndex: this.lineIndex, lineNum: this.currentLine, stmtIndex: this._currentStmtIndex || 0 });
   }
 
   executeNext(argStr) {
@@ -812,7 +818,8 @@ class Interpreter {
     if (done) {
       this.forStack.splice(forIdx, 1);
     } else {
-      this.lineIndex = forEntry.lineIndex + 1;
+      this.lineIndex = forEntry.lineIndex;
+      this._resumeStmtIndex = (forEntry.stmtIndex || 0) + 1;
       return 'JUMP';
     }
   }
@@ -854,21 +861,36 @@ class Interpreter {
       }
     }
 
-    const varNames = varsPart.split(',').map(v => v.trim().toUpperCase());
+    const varNames = this.splitByCommaTopLevel(varsPart).map(v => v.trim());
 
-    for (const varName of varNames) {
-      if (!varName) continue;
+    for (const varExpr of varNames) {
+      if (!varExpr) continue;
       this.display.printString(prompt);
       prompt = '? ';
 
       const input = await this.waitForInput();
       if (!this.running) return;
 
-      if (varName.endsWith('$')) {
-        this.variables[varName] = input;
+      // Check if this is an array element reference like A(I) or A(I,J)
+      const arrayMatch = varExpr.match(/^([A-Z][A-Z0-9]*\$?)\s*\((.+)\)$/i);
+      if (arrayMatch) {
+        const arrName = arrayMatch[1].toUpperCase();
+        const indexExprs = this.splitByCommaTopLevel(arrayMatch[2]);
+        const indices = indexExprs.map(e => Math.floor(this.evaluateExpressionFromString(e.trim())));
+        if (arrName.endsWith('$')) {
+          this.setArrayElement(arrName, indices, input);
+        } else {
+          const num = parseFloat(input);
+          this.setArrayElement(arrName, indices, isNaN(num) ? 0 : num);
+        }
       } else {
-        const num = parseFloat(input);
-        this.variables[varName] = isNaN(num) ? 0 : num;
+        const varName = varExpr.toUpperCase();
+        if (varName.endsWith('$')) {
+          this.variables[varName] = input;
+        } else {
+          const num = parseFloat(input);
+          this.variables[varName] = isNaN(num) ? 0 : num;
+        }
       }
     }
   }
