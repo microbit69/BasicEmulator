@@ -1965,7 +1965,10 @@ App.getSamples = function() {
 210 VTAB 22: HTAB PX: PRINT "<*>";
 220 VTAB EY: HTAB EX: PRINT "XOX";
 230 REM === MAIN LOOP ===
-240 GET A$
+232 PAUSE 150
+235 K = PEEK(-16384)
+237 A$ = ""
+238 IF K > 127 THEN A$ = CHR$(K - 128): POKE -16368,0
 250 OX = PX
 260 IF A$ = "A" AND PX > 1 THEN PX = PX - 1
 270 IF A$ = "D" AND PX < 38 THEN PX = PX + 1
@@ -1989,7 +1992,7 @@ App.getSamples = function() {
 450 IF LI < 1 THEN GOTO 650
 470 VTAB EY: HTAB EX: PRINT "XOX";
 480 VTAB 1: HTAB 1: PRINT "SCORE:";SC;"  LIVES:";LI;"     ";
-490 GOTO 240
+490 GOTO 232
 600 REM === QUIT ===
 610 HOME
 620 PRINT "THANKS FOR PLAYING!"
@@ -4836,6 +4839,13 @@ class Interpreter {
     // ===== WAIT (stub) =====
     if (upperStmt.startsWith('WAIT')) return;
 
+    // ===== PAUSE N (delay N milliseconds) =====
+    if (upperStmt.startsWith('PAUSE')) {
+      const ms = Math.floor(this.evaluateExpressionFromString(stmt.substring(5).trim()));
+      if (ms > 0) await new Promise(r => setTimeout(r, ms));
+      return;
+    }
+
     // ===== STORE / RECALL (cassette stubs) =====
     if (upperStmt.startsWith('STORE')) return;
     if (upperStmt.startsWith('RECALL')) return;
@@ -6524,6 +6534,14 @@ class Emulator {
 
     e.preventDefault();
     const ch = e.key.toUpperCase();
+
+    // When a program is running (PEEK-based keyboard polling),
+    // only update lastKeyPressed without echoing to screen or buffering
+    if (this.interpreter.running && !this.interpreter.inputCallback) {
+      this.interpreter.lastKeyPressed = ch.charCodeAt(0);
+      return;
+    }
+
     this.inputBuffer += ch;
     this.interpreter.lastKeyPressed = ch.charCodeAt(0);
     this.display.printChar(ch);

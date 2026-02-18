@@ -580,6 +580,13 @@ class Interpreter {
     // ===== WAIT (stub) =====
     if (upperStmt.startsWith('WAIT')) return;
 
+    // ===== PAUSE N (delay N milliseconds) =====
+    if (upperStmt.startsWith('PAUSE')) {
+      const ms = Math.floor(this.evaluateExpressionFromString(stmt.substring(5).trim()));
+      if (ms > 0) await new Promise(r => setTimeout(r, ms));
+      return;
+    }
+
     // ===== STORE / RECALL (cassette stubs) =====
     if (upperStmt.startsWith('STORE')) return;
     if (upperStmt.startsWith('RECALL')) return;

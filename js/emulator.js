@@ -389,6 +389,14 @@ class Emulator {
 
     e.preventDefault();
     const ch = e.key.toUpperCase();
+
+    // When a program is running (PEEK-based keyboard polling),
+    // only update lastKeyPressed without echoing to screen or buffering
+    if (this.interpreter.running && !this.interpreter.inputCallback) {
+      this.interpreter.lastKeyPressed = ch.charCodeAt(0);
+      return;
+    }
+
     this.inputBuffer += ch;
     this.interpreter.lastKeyPressed = ch.charCodeAt(0);
     this.display.printChar(ch);
