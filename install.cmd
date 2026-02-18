@@ -13,7 +13,7 @@ New-Item -ItemType Directory -Path "$dir\css" -Force | Out-Null
 New-Item -ItemType Directory -Path "$dir\js"  -Force | Out-Null
 New-Item -ItemType Directory -Path "$dir\img" -Force | Out-Null
 
-Write-Host "Writing index.html (1/15)..."
+Write-Host "Writing index.html (1/16)..."
 $content = @'
 <!DOCTYPE html>
 <html lang="en">
@@ -21,7 +21,7 @@ $content = @'
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Applesoft BASIC Interpreter</title>
-<link rel="stylesheet" href="css/style.css?v=108">
+<link rel="stylesheet" href="css/style.css?v=109">
 </head>
 <body>
 
@@ -142,25 +142,26 @@ $content = @'
 </script>
 
 <!-- Scripts loaded in dependency order (no ES modules for file:// compatibility) -->
-<script src="js/constants.js?v=108"></script>
-<script src="js/audio.js?v=108"></script>
-<script src="js/tokenizer.js?v=108"></script>
-<script src="js/parser.js?v=108"></script>
-<script src="js/filesystem.js?v=108"></script>
-<script src="js/samples.js?v=108"></script>
-<script src="js/tutorial.js?v=108"></script>
-<script src="js/display.js?v=108"></script>
-<script src="js/claude.js?v=108"></script>
-<script src="js/interpreter.js?v=108"></script>
-<script src="js/emulator.js?v=108"></script>
-<script src="js/main.js?v=108"></script>
+<script src="js/constants.js?v=109"></script>
+<script src="js/audio.js?v=109"></script>
+<script src="js/tokenizer.js?v=109"></script>
+<script src="js/parser.js?v=109"></script>
+<script src="js/filesystem.js?v=109"></script>
+<script src="js/samples.js?v=109"></script>
+<script src="js/tutorial.js?v=109"></script>
+<script src="js/display.js?v=109"></script>
+<script src="js/claude.js?v=109"></script>
+<script src="js/cpu6502.js?v=109"></script>
+<script src="js/interpreter.js?v=109"></script>
+<script src="js/emulator.js?v=109"></script>
+<script src="js/main.js?v=109"></script>
 
 </body>
 </html>
 '@
 [System.IO.File]::WriteAllText("$dir\index.html", $content, [System.Text.Encoding]::UTF8)
 
-Write-Host "Writing css\style.css (2/15)..."
+Write-Host "Writing css\style.css (2/16)..."
 $content = @'
 /* ===== RESET & BASE ===== */
 * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -407,7 +408,7 @@ body {
 '@
 [System.IO.File]::WriteAllText("$dir\css\style.css", $content, [System.Text.Encoding]::UTF8)
 
-Write-Host "Writing js\constants.js (3/15)..."
+Write-Host "Writing js\constants.js (3/16)..."
 $content = @'
 window.App = window.App || {};
 
@@ -468,7 +469,7 @@ App.HIRES_COLORS = [
 '@
 [System.IO.File]::WriteAllText("$dir\js\constants.js", $content, [System.Text.Encoding]::UTF8)
 
-Write-Host "Writing js\audio.js (4/15)..."
+Write-Host "Writing js\audio.js (4/16)..."
 $content = @'
 window.App = window.App || {};
 
@@ -754,7 +755,7 @@ App.crtOff = function() {
 '@
 [System.IO.File]::WriteAllText("$dir\js\audio.js", $content, [System.Text.Encoding]::UTF8)
 
-Write-Host "Writing js\tokenizer.js (5/15)..."
+Write-Host "Writing js\tokenizer.js (5/16)..."
 $content = @'
 window.App = window.App || {};
 
@@ -903,7 +904,7 @@ App.Tokenizer = Tokenizer;
 '@
 [System.IO.File]::WriteAllText("$dir\js\tokenizer.js", $content, [System.Text.Encoding]::UTF8)
 
-Write-Host "Writing js\parser.js (6/15)..."
+Write-Host "Writing js\parser.js (6/16)..."
 $content = @'
 window.App = window.App || {};
 
@@ -1122,7 +1123,7 @@ App.Parser = Parser;
 '@
 [System.IO.File]::WriteAllText("$dir\js\parser.js", $content, [System.Text.Encoding]::UTF8)
 
-Write-Host "Writing js\filesystem.js (7/15)..."
+Write-Host "Writing js\filesystem.js (7/16)..."
 $content = @'
 window.App = window.App || {};
 
@@ -1437,7 +1438,7 @@ App.VirtualFileSystem = VirtualFileSystem;
 '@
 [System.IO.File]::WriteAllText("$dir\js\filesystem.js", $content, [System.Text.Encoding]::UTF8)
 
-Write-Host "Writing js\samples.js (8/15)..."
+Write-Host "Writing js\samples.js (8/16)..."
 $content = @'
 window.App = window.App || {};
 
@@ -1761,6 +1762,180 @@ App.getSamples = function() {
 170 TEXT
 180 END`,
 
+    ml_hello: `
+10 REM 6502 MACHINE LANGUAGE DEMO
+20 REM WRITES "HELLO 6502!" TO SCREEN
+30 REM VIA POKE AND CALL
+40 HOME
+50 PRINT "LOADING MACHINE LANGUAGE..."
+60 PRINT
+70 REM STORE ML ROUTINE AT $0300 (768)
+80 REM LDX #$00       ; X = string index
+90 POKE 768,162 : POKE 769,0
+100 REM LDA $0320,X   ; load char from string
+110 POKE 770,189 : POKE 771,32 : POKE 772,3
+120 REM BEQ done      ; if zero, we're done
+130 POKE 773,240 : POKE 774,8
+140 REM STA $0400,X   ; store to screen memory
+150 POKE 775,157 : POKE 776,0 : POKE 777,4
+160 REM INX            ; next character
+170 POKE 778,232
+180 REM BNE loop      ; branch to LDA
+190 POKE 779,208 : POKE 780,245
+200 REM RTS            ; return to BASIC
+210 POKE 781,96
+220 REM STORE STRING "HELLO 6502!" AT $0320
+230 FOR I = 0 TO 10
+240 READ C
+250 POKE 800 + I, C
+260 NEXT I
+270 POKE 811, 0 : REM NULL TERMINATOR
+280 DATA 72,69,76,76,79,32,54,53,48,50,33
+290 PRINT "EXECUTING ML AT $0300..."
+300 CALL 768
+310 PRINT
+320 PRINT "DONE! CHECK $0400-$040A:"
+330 FOR I = 1024 TO 1034
+340 PRINT CHR$(PEEK(I));
+350 NEXT I
+360 PRINT
+370 PRINT
+380 PRINT "6502 ML EXECUTION COMPLETE!"
+390 END`,
+
+    ml_multiply: `
+10 REM 6502 MULTIPLY ROUTINE
+20 REM MULTIPLIES TWO 8-BIT NUMBERS
+30 REM INPUT: $F0=MULTIPLICAND $F1=MULTIPLIER
+40 REM OUTPUT: $F2=RESULT LOW $F3=RESULT HIGH
+50 HOME
+60 PRINT "6502 MULTIPLY ROUTINE"
+70 PRINT "====================="
+80 PRINT
+90 REM STORE ML AT $0300
+100 REM LDA #$00     ; clear result
+110 POKE 768,169 : POKE 769,0
+120 REM STA $F2
+130 POKE 770,133 : POKE 771,242
+140 REM STA $F3
+150 POKE 772,133 : POKE 773,243
+160 REM LDX $F1      ; multiplier to X
+170 POKE 774,166 : POKE 775,241
+180 REM BEQ done     ; if zero, done
+190 POKE 776,240 : POKE 777,12
+200 REM CLC          ; loop: add multiplicand
+210 POKE 778,24
+220 REM LDA $F2
+230 POKE 779,165 : POKE 780,242
+240 REM ADC $F0      ; add multiplicand
+250 POKE 781,101 : POKE 782,240
+260 REM STA $F2
+270 POKE 783,133 : POKE 784,242
+280 REM LDA $F3
+290 POKE 785,165 : POKE 786,243
+300 REM ADC #$00
+310 POKE 787,105 : POKE 788,0
+320 REM STA $F3
+330 POKE 789,133 : POKE 790,243
+340 REM DEX
+350 POKE 791,202
+360 REM BNE loop
+370 POKE 792,208 : POKE 793,242
+380 REM RTS
+390 POKE 794,96
+400 PRINT
+410 INPUT "FIRST NUMBER (0-255)? ";A
+420 INPUT "SECOND NUMBER (0-255)? ";B
+430 POKE 240,A : POKE 241,B
+440 CALL 768
+450 R = PEEK(242) + PEEK(243) * 256
+460 PRINT
+470 PRINT A;" X ";B;" = ";R
+480 PRINT
+490 PRINT "(RESULT LOW=$";
+495 H$ = "" : V = PEEK(242) : GOSUB 900
+500 PRINT H$;
+510 PRINT " HIGH=$";
+520 V = PEEK(243) : GOSUB 900
+530 PRINT H$;")"
+540 PRINT
+550 INPUT "ANOTHER (Y/N)? ";Q$
+560 IF Q$ = "Y" THEN GOTO 400
+570 END
+900 REM HEX CONVERSION
+910 H$ = ""
+920 D = INT(V / 16) : GOSUB 950
+930 D = V - INT(V / 16) * 16 : GOSUB 950
+940 RETURN
+950 IF D < 10 THEN H$ = H$ + CHR$(48 + D) : RETURN
+960 H$ = H$ + CHR$(55 + D) : RETURN`,
+
+    ml_sort: `
+10 REM 6502 BUBBLE SORT IN MACHINE LANGUAGE
+20 REM SORTS 16 BYTES AT $0400 IN PLACE
+30 HOME
+40 PRINT "6502 MACHINE LANGUAGE SORT"
+50 PRINT "=========================="
+60 PRINT
+70 REM GENERATE 16 RANDOM BYTES
+80 PRINT "UNSORTED DATA AT $0400:"
+90 FOR I = 0 TO 15
+100 V = INT(RND(1) * 256)
+110 POKE 1024 + I, V
+120 NEXT I
+130 GOSUB 500
+140 PRINT
+150 REM ML BUBBLE SORT AT $0300
+160 REM OUTER: LDX #$0F   ; 15 passes
+170 POKE 768,162 : POKE 769,15
+180 REM INNER: LDY #$00
+190 POKE 770,160 : POKE 771,0
+200 REM LDA $0400,Y       ; load A[Y]
+210 POKE 772,185 : POKE 773,0 : POKE 774,4
+220 REM CMP $0401,Y       ; compare A[Y+1]
+230 POKE 775,217 : POKE 776,1 : POKE 777,4
+240 REM BCC noswap        ; if A<=B skip
+250 POKE 778,144 : POKE 779,9
+260 REM BEQ noswap
+270 POKE 780,240 : POKE 781,7
+280 REM PHA               ; save A on stack
+290 POKE 782,72
+300 REM LDA $0401,Y       ; load B
+310 POKE 783,185 : POKE 784,1 : POKE 785,4
+320 REM STA $0400,Y       ; store B in A's pos
+330 POKE 786,153 : POKE 787,0 : POKE 788,4
+340 REM PLA               ; get A from stack
+350 POKE 789,104
+360 REM STA $0401,Y       ; store A in B's pos
+370 POKE 790,153 : POKE 791,1 : POKE 792,4
+380 REM INY  (noswap:)
+390 POKE 793,200
+400 REM CPY #$0F
+410 POKE 794,192 : POKE 795,15
+420 REM BNE inner
+430 POKE 796,208 : POKE 797,232
+440 REM DEX
+450 POKE 798,202
+460 REM BNE outer+2 (inner)
+470 POKE 799,208 : POKE 800,228
+480 REM RTS
+490 POKE 801,96
+495 PRINT "SORTING WITH 6502 ML..."
+496 CALL 768
+497 PRINT "SORTED DATA:"
+498 GOSUB 500
+499 END
+500 REM PRINT DATA AT $0400
+510 FOR I = 0 TO 15
+520 V = PEEK(1024 + I)
+530 IF V < 10 THEN PRINT "  ";
+535 IF V >= 10 AND V < 100 THEN PRINT " ";
+540 PRINT V;" ";
+550 IF I = 7 THEN PRINT
+560 NEXT I
+570 PRINT
+580 RETURN`,
+
     lores_rainbow: `
 10 REM LO-RES RAINBOW
 15 REM ANIMATED COLOR WAVE
@@ -1781,7 +1956,7 @@ App.getSamples = function() {
 '@
 [System.IO.File]::WriteAllText("$dir\js\samples.js", $content, [System.Text.Encoding]::UTF8)
 
-Write-Host "Writing js\tutorial.js (9/15)..."
+Write-Host "Writing js\tutorial.js (9/16)..."
 $content = @'
 window.App = window.App || {};
 
@@ -2078,7 +2253,34 @@ App.getTutorialPages = function() {
       '  LOAD "LORES_RAINBOW" : RUN',
       '  LOAD "GUESSING" : RUN',
     ],
-    // Page 16: Claude AI
+    // Page 16: Machine Language
+    [
+      '--- 6502 MACHINE LANGUAGE ---',
+      '',
+      'FULL 6502 CPU EMULATION!',
+      'WRITE ML WITH POKE:',
+      '  POKE 768,169:POKE 769,42',
+      '  POKE 770,96',
+      '  (=LDA #$2A / RTS)',
+      '',
+      'EXECUTE WITH CALL:',
+      '  CALL 768',
+      '',
+      'OR USE USR() TO GET A REG:',
+      '  PRINT USR(768)  (=42)',
+      '',
+      'SYSTEM MONITOR (CALL -151):',
+      '  300:A9 2A 60  WRITE BYTES',
+      '  300L           DISASSEMBLE',
+      '  300G           EXECUTE',
+      '  R              CPU REGISTERS',
+      '',
+      'SAMPLES: CD "SAMPLES"',
+      '  LOAD "ML_HELLO" : RUN',
+      '  LOAD "ML_MULTIPLY" : RUN',
+      '  LOAD "ML_SORT" : RUN',
+    ],
+    // Page 17: Claude AI
     [
       '--- CLAUDE AI ---',
       '',
@@ -2104,7 +2306,7 @@ App.getTutorialPages = function() {
 '@
 [System.IO.File]::WriteAllText("$dir\js\tutorial.js", $content, [System.Text.Encoding]::UTF8)
 
-Write-Host "Writing js\display.js (10/15)..."
+Write-Host "Writing js\display.js (10/16)..."
 $content = @'
 window.App = window.App || {};
 
@@ -2185,7 +2387,13 @@ class Display {
       this._createHiResPage()
     ];
 
-    // --- Scroll ---
+    // --- Text window (POKE 32-35) ---
+    this.wndLeft = 0;      // POKE 32 — left margin
+    this.wndWidth = 40;    // POKE 33 — window width
+    this.wndTop = 0;       // POKE 34 — top row
+    this.wndBottom = 24;   // POKE 35 — bottom row
+
+    // Legacy aliases
     this.scrollTop = 0;
     this.scrollBottom = 24;
     this.textWidth = 40;
@@ -2548,18 +2756,25 @@ class Display {
   }
 
   printChar(ch) {
+    // Effective window bounds
+    const wLeft = this.wndLeft || 0;
+    const wWidth = this.wndWidth || 40;
+    const wRight = Math.min(wLeft + wWidth, 40);
+    const wTop = this._effectiveTop();
+    const wBottom = this._effectiveBottom();
+
     if (ch === '\n') {
-      this.cursorX = 0;
+      this.cursorX = wLeft;
       this.cursorY++;
-      if (this.cursorY >= this.height) {
+      if (this.cursorY >= wBottom) {
         this.scrollUp();
-        this.cursorY = this.height - 1;
+        this.cursorY = wBottom - 1;
       }
       return;
     }
 
     if (ch === '\r') {
-      this.cursorX = 0;
+      this.cursorX = wLeft;
       return;
     }
 
@@ -2569,7 +2784,7 @@ class Display {
     }
 
     if (ch === '\x08') { // Backspace
-      if (this.cursorX > 0) {
+      if (this.cursorX > wLeft) {
         this.cursorX--;
         this._tp.chars[this.cursorY][this.cursorX] = ' ';
         this._tp.attrs[this.cursorY][this.cursorX] = 0;
@@ -2577,18 +2792,29 @@ class Display {
       return;
     }
 
-    if (this.cursorX >= this.width) {
-      this.cursorX = 0;
+    if (this.cursorX >= wRight) {
+      this.cursorX = wLeft;
       this.cursorY++;
-      if (this.cursorY >= this.height) {
+      if (this.cursorY >= wBottom) {
         this.scrollUp();
-        this.cursorY = this.height - 1;
+        this.cursorY = wBottom - 1;
       }
     }
 
     this._tp.chars[this.cursorY][this.cursorX] = ch;
     this._tp.attrs[this.cursorY][this.cursorX] = this.displayMode;
     this.cursorX++;
+  }
+
+  // Get effective top row for scrolling/window
+  _effectiveTop() {
+    const isMixed = (this.screenMode === 'gr' || this.screenMode === 'hgr');
+    return isMixed ? Math.max(20, this.wndTop || 0) : (this.wndTop || 0);
+  }
+
+  // Get effective bottom row for scrolling/window
+  _effectiveBottom() {
+    return this.wndBottom || 24;
   }
 
   printString(str) {
@@ -2604,32 +2830,58 @@ class Display {
 
   scrollUp() {
     const tp = this._tp;
-    // In mixed mode (GR/HGR), only scroll the text window (rows 20-23)
-    const isMixed = (this.screenMode === 'gr' || this.screenMode === 'hgr');
-    const top = isMixed ? 20 : 0;
-    const bottom = this.height;
-    tp.chars.splice(top, 1);
-    tp.chars.splice(bottom - 1, 0, new Array(40).fill(' '));
-    tp.attrs.splice(top, 1);
-    tp.attrs.splice(bottom - 1, 0, new Array(40).fill(0));
+    const wLeft = this.wndLeft || 0;
+    const wWidth = this.wndWidth || 40;
+    const wRight = Math.min(wLeft + wWidth, 40);
+    const top = this._effectiveTop();
+    const bottom = this._effectiveBottom();
+
+    if (wLeft === 0 && wRight === 40) {
+      // Full-width window: splice entire rows (fast path)
+      tp.chars.splice(top, 1);
+      tp.chars.splice(bottom - 1, 0, new Array(40).fill(' '));
+      tp.attrs.splice(top, 1);
+      tp.attrs.splice(bottom - 1, 0, new Array(40).fill(0));
+    } else {
+      // Partial-width window: shift only within window columns
+      for (let y = top; y < bottom - 1; y++) {
+        for (let x = wLeft; x < wRight; x++) {
+          tp.chars[y][x] = tp.chars[y + 1][x];
+          tp.attrs[y][x] = tp.attrs[y + 1][x];
+        }
+      }
+      // Clear bottom row within window
+      for (let x = wLeft; x < wRight; x++) {
+        tp.chars[bottom - 1][x] = ' ';
+        tp.attrs[bottom - 1][x] = 0;
+      }
+    }
   }
 
   clearToEnd() {
     const tp = this._tp;
-    for (let x = this.cursorX; x < this.width; x++) {
+    const wLeft = this.wndLeft || 0;
+    const wRight = Math.min((this.wndLeft || 0) + (this.wndWidth || 40), 40);
+    const wBottom = this._effectiveBottom();
+    // Clear from cursor to end of current line within window
+    for (let x = this.cursorX; x < wRight; x++) {
       tp.chars[this.cursorY][x] = ' ';
       tp.attrs[this.cursorY][x] = 0;
     }
-    for (let y = this.cursorY + 1; y < this.height; y++) {
-      tp.chars[y].fill(' ');
-      tp.attrs[y].fill(0);
+    // Clear remaining rows within window
+    for (let y = this.cursorY + 1; y < wBottom; y++) {
+      for (let x = wLeft; x < wRight; x++) {
+        tp.chars[y][x] = ' ';
+        tp.attrs[y][x] = 0;
+      }
     }
     this.render();
   }
 
   clearToEndOfLine() {
     const tp = this._tp;
-    for (let x = this.cursorX; x < this.width; x++) {
+    const wRight = Math.min((this.wndLeft || 0) + (this.wndWidth || 40), 40);
+    for (let x = this.cursorX; x < wRight; x++) {
       tp.chars[this.cursorY][x] = ' ';
       tp.attrs[this.cursorY][x] = 0;
     }
@@ -2720,6 +2972,11 @@ class Display {
     this.mixedMode = false;
     this.activePage = 0;
     this.displayPage = 0;
+    // Reset text window to full screen
+    this.wndLeft = 0;
+    this.wndWidth = 40;
+    this.wndTop = 0;
+    this.wndBottom = 24;
     this.clear();
   }
 
@@ -2810,6 +3067,26 @@ class Display {
     this.ctx.globalAlpha = 1.0;
   }
 
+  xorHiResPixel(x, y) {
+    if (x < 0 || x >= 280) return;
+    const maxY = (this.screenMode === 'hgr') ? 160 : 192;
+    if (y < 0 || y >= maxY) return;
+    const hires = this.hiResPages[this.activePage];
+    const idx = y * 280 + x;
+    const current = hires[idx];
+    hires[idx] = current ? 0 : 1; // toggle
+    // Draw the toggled pixel
+    if (hires[idx]) {
+      this.ctx.clearRect(x, y, 1, 1);
+      this.ctx.globalAlpha = 0.35;
+      this.ctx.fillStyle = this.amberHex;
+      this.ctx.fillRect(x, y, 1, 1);
+      this.ctx.globalAlpha = 1.0;
+    } else {
+      this.ctx.clearRect(x, y, 1, 1);
+    }
+  }
+
   clearHiRes(colorOn) {
     const hires = this.hiResPages[this.activePage];
     const maxY = (this.screenMode === 'hgr') ? 160 : 192;
@@ -2836,7 +3113,7 @@ App.Display = Display;
 '@
 [System.IO.File]::WriteAllText("$dir\js\display.js", $content, [System.Text.Encoding]::UTF8)
 
-Write-Host "Writing js\claude.js (11/15)..."
+Write-Host "Writing js\claude.js (11/16)..."
 $content = @'
 window.App = window.App || {};
 
@@ -3071,7 +3348,861 @@ App.ClaudeAI = ClaudeAI;
 '@
 [System.IO.File]::WriteAllText("$dir\js\claude.js", $content, [System.Text.Encoding]::UTF8)
 
-Write-Host "Writing js\interpreter.js (12/15)..."
+Write-Host "Writing js\cpu6502.js (12/16)..."
+$content = @'
+window.App = window.App || {};
+
+/**
+ * MOS 6502 CPU Emulator
+ *
+ * Implements the full official 6502 instruction set (56 instructions, 151 opcodes)
+ * with all 13 addressing modes. Used by the Apple II emulator for:
+ *   - CALL addr (execute machine language from BASIC)
+ *   - USR(addr) (execute ML and return accumulator value)
+ *   - BRUN (load and execute binary files)
+ *   - System Monitor G command (go/execute)
+ *
+ * The CPU shares the 64KB memory array with the BASIC interpreter,
+ * and I/O accesses ($C000-$C0FF) trigger the same soft switch behavior.
+ */
+class CPU6502 {
+  constructor(memory, readHook, writeHook) {
+    // CPU registers
+    this.A = 0;     // Accumulator (8-bit)
+    this.X = 0;     // X index register (8-bit)
+    this.Y = 0;     // Y index register (8-bit)
+    this.SP = 0xFD; // Stack pointer (8-bit, points into $0100-$01FF)
+    this.PC = 0;    // Program counter (16-bit)
+
+    // Status flags (P register bits)
+    this.C = 0;  // Carry
+    this.Z = 0;  // Zero
+    this.I = 1;  // Interrupt disable (set on reset)
+    this.D = 0;  // Decimal mode
+    this.B = 0;  // Break command
+    this.V = 0;  // Overflow
+    this.N = 0;  // Negative
+
+    // Memory: shared 64KB Uint8Array from the interpreter
+    this.memory = memory;
+
+    // Optional hooks for I/O (soft switches, etc.)
+    // readHook(addr) -> value or null (null = use memory directly)
+    // writeHook(addr, value) -> true if handled, false = write to memory
+    this.readHook = readHook || null;
+    this.writeHook = writeHook || null;
+
+    // Execution state
+    this.halted = false;    // Set by BRK or when execution should stop
+    this.cycles = 0;        // Cycle counter
+    this.maxCycles = 0;     // Max cycles before forced halt (0 = unlimited)
+
+    // Build the opcode dispatch table
+    this._buildOpcodeTable();
+  }
+
+  // === Memory Access ===
+
+  read(addr) {
+    addr &= 0xFFFF;
+    if (this.readHook) {
+      const val = this.readHook(addr);
+      if (val !== null && val !== undefined) return val & 0xFF;
+    }
+    return this.memory[addr];
+  }
+
+  write(addr, val) {
+    addr &= 0xFFFF;
+    val &= 0xFF;
+    if (this.writeHook) {
+      if (this.writeHook(addr, val)) return;
+    }
+    this.memory[addr] = val;
+  }
+
+  // Read 16-bit value (little-endian)
+  read16(addr) {
+    return this.read(addr) | (this.read(addr + 1) << 8);
+  }
+
+  // Read 16-bit with zero page wrapping (for indirect addressing)
+  read16zp(addr) {
+    return this.read(addr & 0xFF) | (this.read((addr + 1) & 0xFF) << 8);
+  }
+
+  // === Stack Operations ===
+
+  push(val) {
+    this.memory[0x100 + this.SP] = val & 0xFF;
+    this.SP = (this.SP - 1) & 0xFF;
+  }
+
+  push16(val) {
+    this.push((val >> 8) & 0xFF);
+    this.push(val & 0xFF);
+  }
+
+  pull() {
+    this.SP = (this.SP + 1) & 0xFF;
+    return this.memory[0x100 + this.SP];
+  }
+
+  pull16() {
+    const lo = this.pull();
+    const hi = this.pull();
+    return (hi << 8) | lo;
+  }
+
+  // === Status Register ===
+
+  getP() {
+    return (this.C ? 0x01 : 0) |
+           (this.Z ? 0x02 : 0) |
+           (this.I ? 0x04 : 0) |
+           (this.D ? 0x08 : 0) |
+           (this.B ? 0x10 : 0) |
+           0x20 |  // Unused bit, always 1
+           (this.V ? 0x40 : 0) |
+           (this.N ? 0x80 : 0);
+  }
+
+  setP(val) {
+    this.C = (val & 0x01) ? 1 : 0;
+    this.Z = (val & 0x02) ? 1 : 0;
+    this.I = (val & 0x04) ? 1 : 0;
+    this.D = (val & 0x08) ? 1 : 0;
+    this.B = (val & 0x10) ? 1 : 0;
+    this.V = (val & 0x40) ? 1 : 0;
+    this.N = (val & 0x80) ? 1 : 0;
+  }
+
+  // Update N and Z flags from a value
+  setNZ(val) {
+    this.N = (val & 0x80) ? 1 : 0;
+    this.Z = (val & 0xFF) === 0 ? 1 : 0;
+  }
+
+  // === Addressing Modes (return effective address) ===
+
+  // Immediate: operand is the byte itself (returns address of operand)
+  addrImm() {
+    return this.PC++;
+  }
+
+  // Zero Page: $nn
+  addrZP() {
+    return this.read(this.PC++) & 0xFF;
+  }
+
+  // Zero Page,X: ($nn + X) & 0xFF
+  addrZPX() {
+    return (this.read(this.PC++) + this.X) & 0xFF;
+  }
+
+  // Zero Page,Y: ($nn + Y) & 0xFF
+  addrZPY() {
+    return (this.read(this.PC++) + this.Y) & 0xFF;
+  }
+
+  // Absolute: $nnnn
+  addrAbs() {
+    const lo = this.read(this.PC++);
+    const hi = this.read(this.PC++);
+    return (hi << 8) | lo;
+  }
+
+  // Absolute,X: $nnnn + X
+  addrAbsX() {
+    const base = this.addrAbs();
+    const addr = (base + this.X) & 0xFFFF;
+    // Extra cycle if page boundary crossed
+    if ((base & 0xFF00) !== (addr & 0xFF00)) this.cycles++;
+    return addr;
+  }
+
+  // Absolute,X (no extra cycle for page cross - for write instructions)
+  addrAbsXW() {
+    const base = this.addrAbs();
+    return (base + this.X) & 0xFFFF;
+  }
+
+  // Absolute,Y: $nnnn + Y
+  addrAbsY() {
+    const base = this.addrAbs();
+    const addr = (base + this.Y) & 0xFFFF;
+    if ((base & 0xFF00) !== (addr & 0xFF00)) this.cycles++;
+    return addr;
+  }
+
+  // Absolute,Y (no extra cycle for write)
+  addrAbsYW() {
+    const base = this.addrAbs();
+    return (base + this.Y) & 0xFFFF;
+  }
+
+  // Indirect: ($nnnn) - only used by JMP
+  addrInd() {
+    const ptrLo = this.read(this.PC++);
+    const ptrHi = this.read(this.PC++);
+    const ptr = (ptrHi << 8) | ptrLo;
+    // 6502 bug: if pointer is at $xxFF, high byte wraps within page
+    const lo = this.read(ptr);
+    const hi = this.read((ptr & 0xFF00) | ((ptr + 1) & 0xFF));
+    return (hi << 8) | lo;
+  }
+
+  // (Indirect,X): (($nn + X) & 0xFF) - indexed indirect
+  addrIndX() {
+    const zp = (this.read(this.PC++) + this.X) & 0xFF;
+    return this.read16zp(zp);
+  }
+
+  // (Indirect),Y: ($nn) + Y - indirect indexed
+  addrIndY() {
+    const zp = this.read(this.PC++);
+    const base = this.read16zp(zp);
+    const addr = (base + this.Y) & 0xFFFF;
+    if ((base & 0xFF00) !== (addr & 0xFF00)) this.cycles++;
+    return addr;
+  }
+
+  // (Indirect),Y (no extra cycle for write)
+  addrIndYW() {
+    const zp = this.read(this.PC++);
+    const base = this.read16zp(zp);
+    return (base + this.Y) & 0xFFFF;
+  }
+
+  // Relative: signed 8-bit offset (for branch instructions)
+  addrRel() {
+    let offset = this.read(this.PC++);
+    if (offset & 0x80) offset -= 256; // sign extend
+    return (this.PC + offset) & 0xFFFF;
+  }
+
+  // === ALU Operations ===
+
+  // Add with carry (handles decimal mode)
+  opADC(val) {
+    if (this.D) {
+      // BCD mode
+      let lo = (this.A & 0x0F) + (val & 0x0F) + this.C;
+      let hi = (this.A >> 4) + (val >> 4);
+      if (lo > 9) { lo -= 10; hi++; }
+      // Overflow is set based on binary arithmetic
+      const binResult = this.A + val + this.C;
+      this.V = (~(this.A ^ val) & (this.A ^ binResult) & 0x80) ? 1 : 0;
+      if (hi > 9) { hi -= 10; this.C = 1; } else { this.C = 0; }
+      this.A = ((hi << 4) | (lo & 0x0F)) & 0xFF;
+      this.setNZ(this.A);
+    } else {
+      const result = this.A + val + this.C;
+      this.V = (~(this.A ^ val) & (this.A ^ result) & 0x80) ? 1 : 0;
+      this.C = result > 0xFF ? 1 : 0;
+      this.A = result & 0xFF;
+      this.setNZ(this.A);
+    }
+  }
+
+  // Subtract with carry (handles decimal mode)
+  opSBC(val) {
+    if (this.D) {
+      // BCD mode
+      let lo = (this.A & 0x0F) - (val & 0x0F) - (1 - this.C);
+      let hi = (this.A >> 4) - (val >> 4);
+      if (lo < 0) { lo += 10; hi--; }
+      // Overflow and carry based on binary arithmetic
+      const binResult = this.A - val - (1 - this.C);
+      this.V = ((this.A ^ val) & (this.A ^ binResult) & 0x80) ? 1 : 0;
+      this.C = binResult >= 0 ? 1 : 0;
+      if (hi < 0) { hi += 10; }
+      this.A = ((hi << 4) | (lo & 0x0F)) & 0xFF;
+      this.setNZ(this.A);
+    } else {
+      const result = this.A - val - (1 - this.C);
+      this.V = ((this.A ^ val) & (this.A ^ result) & 0x80) ? 1 : 0;
+      this.C = result >= 0 ? 1 : 0;
+      this.A = result & 0xFF;
+      this.setNZ(this.A);
+    }
+  }
+
+  // Compare (sets flags based on register - memory)
+  opCMP(reg, val) {
+    const result = reg - val;
+    this.C = reg >= val ? 1 : 0;
+    this.setNZ(result & 0xFF);
+  }
+
+  // Arithmetic shift left
+  opASL(addr) {
+    let val;
+    if (addr === -1) {
+      // Accumulator mode
+      this.C = (this.A >> 7) & 1;
+      this.A = (this.A << 1) & 0xFF;
+      this.setNZ(this.A);
+    } else {
+      val = this.read(addr);
+      this.C = (val >> 7) & 1;
+      val = (val << 1) & 0xFF;
+      this.write(addr, val);
+      this.setNZ(val);
+    }
+  }
+
+  // Logical shift right
+  opLSR(addr) {
+    if (addr === -1) {
+      this.C = this.A & 1;
+      this.A = this.A >> 1;
+      this.setNZ(this.A);
+    } else {
+      let val = this.read(addr);
+      this.C = val & 1;
+      val = val >> 1;
+      this.write(addr, val);
+      this.setNZ(val);
+    }
+  }
+
+  // Rotate left
+  opROL(addr) {
+    const oldC = this.C;
+    if (addr === -1) {
+      this.C = (this.A >> 7) & 1;
+      this.A = ((this.A << 1) | oldC) & 0xFF;
+      this.setNZ(this.A);
+    } else {
+      let val = this.read(addr);
+      this.C = (val >> 7) & 1;
+      val = ((val << 1) | oldC) & 0xFF;
+      this.write(addr, val);
+      this.setNZ(val);
+    }
+  }
+
+  // Rotate right
+  opROR(addr) {
+    const oldC = this.C;
+    if (addr === -1) {
+      this.C = this.A & 1;
+      this.A = (this.A >> 1) | (oldC << 7);
+      this.setNZ(this.A);
+    } else {
+      let val = this.read(addr);
+      this.C = val & 1;
+      val = (val >> 1) | (oldC << 7);
+      this.write(addr, val);
+      this.setNZ(val);
+    }
+  }
+
+  // Branch if condition is true
+  branch(condition) {
+    const target = this.addrRel();
+    if (condition) {
+      // Extra cycle for branch taken
+      this.cycles++;
+      // Extra cycle if page boundary crossed
+      if ((this.PC & 0xFF00) !== (target & 0xFF00)) this.cycles++;
+      this.PC = target;
+    }
+  }
+
+  // === Execution ===
+
+  /**
+   * Execute instructions starting at the current PC.
+   * Stops when:
+   *   - BRK is encountered (halted = true)
+   *   - RTS is executed with SP at or above the initial SP (returned to caller)
+   *   - maxCycles is reached (if > 0)
+   *   - halted flag is set externally
+   *
+   * @param {number} startAddr - Starting address (sets PC)
+   * @param {object} options - { maxCycles, stopOnRTS }
+   * @returns {number} - Number of cycles executed
+   */
+  run(startAddr, options) {
+    options = options || {};
+    this.PC = startAddr & 0xFFFF;
+    this.halted = false;
+    this.cycles = 0;
+    this.maxCycles = options.maxCycles || 1000000; // Safety limit: ~1 second at 1MHz
+    const stopOnRTS = options.stopOnRTS !== false; // default true
+    const initialSP = this.SP;
+
+    while (!this.halted) {
+      this.step();
+
+      // Check cycle limit
+      if (this.maxCycles > 0 && this.cycles >= this.maxCycles) {
+        this.halted = true;
+      }
+    }
+
+    return this.cycles;
+  }
+
+  /**
+   * Execute a single instruction.
+   */
+  step() {
+    const opcode = this.read(this.PC++);
+    const handler = this.opcodes[opcode];
+
+    if (handler) {
+      handler.call(this);
+    } else {
+      // Illegal opcode - treat as NOP (1 byte, 2 cycles)
+      this.cycles += 2;
+    }
+  }
+
+  // === Reset ===
+
+  reset() {
+    this.A = 0;
+    this.X = 0;
+    this.Y = 0;
+    this.SP = 0xFD;
+    this.C = 0;
+    this.Z = 0;
+    this.I = 1;
+    this.D = 0;
+    this.B = 0;
+    this.V = 0;
+    this.N = 0;
+    this.halted = false;
+    this.cycles = 0;
+    // Load PC from reset vector ($FFFC/$FFFD)
+    this.PC = this.read16(0xFFFC);
+  }
+
+  // === Opcode Dispatch Table ===
+
+  _buildOpcodeTable() {
+    this.opcodes = new Array(256).fill(null);
+    const o = this.opcodes;
+    const self = this;
+
+    // === BRK ===
+    o[0x00] = function() { // BRK
+      self.PC++;
+      self.push16(self.PC);
+      self.push(self.getP() | 0x10); // B flag set in pushed value
+      self.I = 1;
+      self.PC = self.read16(0xFFFE);
+      self.halted = true; // Stop execution on BRK
+      self.cycles += 7;
+    };
+
+    // === NOP ===
+    o[0xEA] = function() { self.cycles += 2; }; // NOP
+
+    // === LDA ===
+    o[0xA9] = function() { self.A = self.read(self.addrImm()); self.setNZ(self.A); self.cycles += 2; };
+    o[0xA5] = function() { self.A = self.read(self.addrZP()); self.setNZ(self.A); self.cycles += 3; };
+    o[0xB5] = function() { self.A = self.read(self.addrZPX()); self.setNZ(self.A); self.cycles += 4; };
+    o[0xAD] = function() { self.A = self.read(self.addrAbs()); self.setNZ(self.A); self.cycles += 4; };
+    o[0xBD] = function() { self.A = self.read(self.addrAbsX()); self.setNZ(self.A); self.cycles += 4; };
+    o[0xB9] = function() { self.A = self.read(self.addrAbsY()); self.setNZ(self.A); self.cycles += 4; };
+    o[0xA1] = function() { self.A = self.read(self.addrIndX()); self.setNZ(self.A); self.cycles += 6; };
+    o[0xB1] = function() { self.A = self.read(self.addrIndY()); self.setNZ(self.A); self.cycles += 5; };
+
+    // === LDX ===
+    o[0xA2] = function() { self.X = self.read(self.addrImm()); self.setNZ(self.X); self.cycles += 2; };
+    o[0xA6] = function() { self.X = self.read(self.addrZP()); self.setNZ(self.X); self.cycles += 3; };
+    o[0xB6] = function() { self.X = self.read(self.addrZPY()); self.setNZ(self.X); self.cycles += 4; };
+    o[0xAE] = function() { self.X = self.read(self.addrAbs()); self.setNZ(self.X); self.cycles += 4; };
+    o[0xBE] = function() { self.X = self.read(self.addrAbsY()); self.setNZ(self.X); self.cycles += 4; };
+
+    // === LDY ===
+    o[0xA0] = function() { self.Y = self.read(self.addrImm()); self.setNZ(self.Y); self.cycles += 2; };
+    o[0xA4] = function() { self.Y = self.read(self.addrZP()); self.setNZ(self.Y); self.cycles += 3; };
+    o[0xB4] = function() { self.Y = self.read(self.addrZPX()); self.setNZ(self.Y); self.cycles += 4; };
+    o[0xAC] = function() { self.Y = self.read(self.addrAbs()); self.setNZ(self.Y); self.cycles += 4; };
+    o[0xBC] = function() { self.Y = self.read(self.addrAbsX()); self.setNZ(self.Y); self.cycles += 4; };
+
+    // === STA ===
+    o[0x85] = function() { self.write(self.addrZP(), self.A); self.cycles += 3; };
+    o[0x95] = function() { self.write(self.addrZPX(), self.A); self.cycles += 4; };
+    o[0x8D] = function() { self.write(self.addrAbs(), self.A); self.cycles += 4; };
+    o[0x9D] = function() { self.write(self.addrAbsXW(), self.A); self.cycles += 5; };
+    o[0x99] = function() { self.write(self.addrAbsYW(), self.A); self.cycles += 5; };
+    o[0x81] = function() { self.write(self.addrIndX(), self.A); self.cycles += 6; };
+    o[0x91] = function() { self.write(self.addrIndYW(), self.A); self.cycles += 6; };
+
+    // === STX ===
+    o[0x86] = function() { self.write(self.addrZP(), self.X); self.cycles += 3; };
+    o[0x96] = function() { self.write(self.addrZPY(), self.X); self.cycles += 4; };
+    o[0x8E] = function() { self.write(self.addrAbs(), self.X); self.cycles += 4; };
+
+    // === STY ===
+    o[0x84] = function() { self.write(self.addrZP(), self.Y); self.cycles += 3; };
+    o[0x94] = function() { self.write(self.addrZPX(), self.Y); self.cycles += 4; };
+    o[0x8C] = function() { self.write(self.addrAbs(), self.Y); self.cycles += 4; };
+
+    // === Transfer ===
+    o[0xAA] = function() { self.X = self.A; self.setNZ(self.X); self.cycles += 2; }; // TAX
+    o[0xA8] = function() { self.Y = self.A; self.setNZ(self.Y); self.cycles += 2; }; // TAY
+    o[0x8A] = function() { self.A = self.X; self.setNZ(self.A); self.cycles += 2; }; // TXA
+    o[0x98] = function() { self.A = self.Y; self.setNZ(self.A); self.cycles += 2; }; // TYA
+    o[0xBA] = function() { self.X = self.SP; self.setNZ(self.X); self.cycles += 2; }; // TSX
+    o[0x9A] = function() { self.SP = self.X; self.cycles += 2; }; // TXS
+
+    // === Stack ===
+    o[0x48] = function() { self.push(self.A); self.cycles += 3; }; // PHA
+    o[0x08] = function() { self.push(self.getP() | 0x10); self.cycles += 3; }; // PHP
+    o[0x68] = function() { self.A = self.pull(); self.setNZ(self.A); self.cycles += 4; }; // PLA
+    o[0x28] = function() { self.setP(self.pull()); self.cycles += 4; }; // PLP
+
+    // === ADC ===
+    o[0x69] = function() { self.opADC(self.read(self.addrImm())); self.cycles += 2; };
+    o[0x65] = function() { self.opADC(self.read(self.addrZP())); self.cycles += 3; };
+    o[0x75] = function() { self.opADC(self.read(self.addrZPX())); self.cycles += 4; };
+    o[0x6D] = function() { self.opADC(self.read(self.addrAbs())); self.cycles += 4; };
+    o[0x7D] = function() { self.opADC(self.read(self.addrAbsX())); self.cycles += 4; };
+    o[0x79] = function() { self.opADC(self.read(self.addrAbsY())); self.cycles += 4; };
+    o[0x61] = function() { self.opADC(self.read(self.addrIndX())); self.cycles += 6; };
+    o[0x71] = function() { self.opADC(self.read(self.addrIndY())); self.cycles += 5; };
+
+    // === SBC ===
+    o[0xE9] = function() { self.opSBC(self.read(self.addrImm())); self.cycles += 2; };
+    o[0xE5] = function() { self.opSBC(self.read(self.addrZP())); self.cycles += 3; };
+    o[0xF5] = function() { self.opSBC(self.read(self.addrZPX())); self.cycles += 4; };
+    o[0xED] = function() { self.opSBC(self.read(self.addrAbs())); self.cycles += 4; };
+    o[0xFD] = function() { self.opSBC(self.read(self.addrAbsX())); self.cycles += 4; };
+    o[0xF9] = function() { self.opSBC(self.read(self.addrAbsY())); self.cycles += 4; };
+    o[0xE1] = function() { self.opSBC(self.read(self.addrIndX())); self.cycles += 6; };
+    o[0xF1] = function() { self.opSBC(self.read(self.addrIndY())); self.cycles += 5; };
+
+    // === AND ===
+    o[0x29] = function() { self.A &= self.read(self.addrImm()); self.setNZ(self.A); self.cycles += 2; };
+    o[0x25] = function() { self.A &= self.read(self.addrZP()); self.setNZ(self.A); self.cycles += 3; };
+    o[0x35] = function() { self.A &= self.read(self.addrZPX()); self.setNZ(self.A); self.cycles += 4; };
+    o[0x2D] = function() { self.A &= self.read(self.addrAbs()); self.setNZ(self.A); self.cycles += 4; };
+    o[0x3D] = function() { self.A &= self.read(self.addrAbsX()); self.setNZ(self.A); self.cycles += 4; };
+    o[0x39] = function() { self.A &= self.read(self.addrAbsY()); self.setNZ(self.A); self.cycles += 4; };
+    o[0x21] = function() { self.A &= self.read(self.addrIndX()); self.setNZ(self.A); self.cycles += 6; };
+    o[0x31] = function() { self.A &= self.read(self.addrIndY()); self.setNZ(self.A); self.cycles += 5; };
+
+    // === ORA ===
+    o[0x09] = function() { self.A |= self.read(self.addrImm()); self.setNZ(self.A); self.cycles += 2; };
+    o[0x05] = function() { self.A |= self.read(self.addrZP()); self.setNZ(self.A); self.cycles += 3; };
+    o[0x15] = function() { self.A |= self.read(self.addrZPX()); self.setNZ(self.A); self.cycles += 4; };
+    o[0x0D] = function() { self.A |= self.read(self.addrAbs()); self.setNZ(self.A); self.cycles += 4; };
+    o[0x1D] = function() { self.A |= self.read(self.addrAbsX()); self.setNZ(self.A); self.cycles += 4; };
+    o[0x19] = function() { self.A |= self.read(self.addrAbsY()); self.setNZ(self.A); self.cycles += 4; };
+    o[0x01] = function() { self.A |= self.read(self.addrIndX()); self.setNZ(self.A); self.cycles += 6; };
+    o[0x11] = function() { self.A |= self.read(self.addrIndY()); self.setNZ(self.A); self.cycles += 5; };
+
+    // === EOR ===
+    o[0x49] = function() { self.A ^= self.read(self.addrImm()); self.setNZ(self.A); self.cycles += 2; };
+    o[0x45] = function() { self.A ^= self.read(self.addrZP()); self.setNZ(self.A); self.cycles += 3; };
+    o[0x55] = function() { self.A ^= self.read(self.addrZPX()); self.setNZ(self.A); self.cycles += 4; };
+    o[0x4D] = function() { self.A ^= self.read(self.addrAbs()); self.setNZ(self.A); self.cycles += 4; };
+    o[0x5D] = function() { self.A ^= self.read(self.addrAbsX()); self.setNZ(self.A); self.cycles += 4; };
+    o[0x59] = function() { self.A ^= self.read(self.addrAbsY()); self.setNZ(self.A); self.cycles += 4; };
+    o[0x41] = function() { self.A ^= self.read(self.addrIndX()); self.setNZ(self.A); self.cycles += 6; };
+    o[0x51] = function() { self.A ^= self.read(self.addrIndY()); self.setNZ(self.A); self.cycles += 5; };
+
+    // === CMP ===
+    o[0xC9] = function() { self.opCMP(self.A, self.read(self.addrImm())); self.cycles += 2; };
+    o[0xC5] = function() { self.opCMP(self.A, self.read(self.addrZP())); self.cycles += 3; };
+    o[0xD5] = function() { self.opCMP(self.A, self.read(self.addrZPX())); self.cycles += 4; };
+    o[0xCD] = function() { self.opCMP(self.A, self.read(self.addrAbs())); self.cycles += 4; };
+    o[0xDD] = function() { self.opCMP(self.A, self.read(self.addrAbsX())); self.cycles += 4; };
+    o[0xD9] = function() { self.opCMP(self.A, self.read(self.addrAbsY())); self.cycles += 4; };
+    o[0xC1] = function() { self.opCMP(self.A, self.read(self.addrIndX())); self.cycles += 6; };
+    o[0xD1] = function() { self.opCMP(self.A, self.read(self.addrIndY())); self.cycles += 5; };
+
+    // === CPX ===
+    o[0xE0] = function() { self.opCMP(self.X, self.read(self.addrImm())); self.cycles += 2; };
+    o[0xE4] = function() { self.opCMP(self.X, self.read(self.addrZP())); self.cycles += 3; };
+    o[0xEC] = function() { self.opCMP(self.X, self.read(self.addrAbs())); self.cycles += 4; };
+
+    // === CPY ===
+    o[0xC0] = function() { self.opCMP(self.Y, self.read(self.addrImm())); self.cycles += 2; };
+    o[0xC4] = function() { self.opCMP(self.Y, self.read(self.addrZP())); self.cycles += 3; };
+    o[0xCC] = function() { self.opCMP(self.Y, self.read(self.addrAbs())); self.cycles += 4; };
+
+    // === BIT ===
+    o[0x24] = function() { // BIT zp
+      const val = self.read(self.addrZP());
+      self.Z = (self.A & val) === 0 ? 1 : 0;
+      self.N = (val >> 7) & 1;
+      self.V = (val >> 6) & 1;
+      self.cycles += 3;
+    };
+    o[0x2C] = function() { // BIT abs
+      const val = self.read(self.addrAbs());
+      self.Z = (self.A & val) === 0 ? 1 : 0;
+      self.N = (val >> 7) & 1;
+      self.V = (val >> 6) & 1;
+      self.cycles += 4;
+    };
+
+    // === ASL ===
+    o[0x0A] = function() { self.opASL(-1); self.cycles += 2; };          // ASL A
+    o[0x06] = function() { self.opASL(self.addrZP()); self.cycles += 5; };
+    o[0x16] = function() { self.opASL(self.addrZPX()); self.cycles += 6; };
+    o[0x0E] = function() { self.opASL(self.addrAbs()); self.cycles += 6; };
+    o[0x1E] = function() { self.opASL(self.addrAbsXW()); self.cycles += 7; };
+
+    // === LSR ===
+    o[0x4A] = function() { self.opLSR(-1); self.cycles += 2; };          // LSR A
+    o[0x46] = function() { self.opLSR(self.addrZP()); self.cycles += 5; };
+    o[0x56] = function() { self.opLSR(self.addrZPX()); self.cycles += 6; };
+    o[0x4E] = function() { self.opLSR(self.addrAbs()); self.cycles += 6; };
+    o[0x5E] = function() { self.opLSR(self.addrAbsXW()); self.cycles += 7; };
+
+    // === ROL ===
+    o[0x2A] = function() { self.opROL(-1); self.cycles += 2; };          // ROL A
+    o[0x26] = function() { self.opROL(self.addrZP()); self.cycles += 5; };
+    o[0x36] = function() { self.opROL(self.addrZPX()); self.cycles += 6; };
+    o[0x2E] = function() { self.opROL(self.addrAbs()); self.cycles += 6; };
+    o[0x3E] = function() { self.opROL(self.addrAbsXW()); self.cycles += 7; };
+
+    // === ROR ===
+    o[0x6A] = function() { self.opROR(-1); self.cycles += 2; };          // ROR A
+    o[0x66] = function() { self.opROR(self.addrZP()); self.cycles += 5; };
+    o[0x76] = function() { self.opROR(self.addrZPX()); self.cycles += 6; };
+    o[0x6E] = function() { self.opROR(self.addrAbs()); self.cycles += 6; };
+    o[0x7E] = function() { self.opROR(self.addrAbsXW()); self.cycles += 7; };
+
+    // === INC ===
+    o[0xE6] = function() { const a = self.addrZP(); const v = (self.read(a) + 1) & 0xFF; self.write(a, v); self.setNZ(v); self.cycles += 5; };
+    o[0xF6] = function() { const a = self.addrZPX(); const v = (self.read(a) + 1) & 0xFF; self.write(a, v); self.setNZ(v); self.cycles += 6; };
+    o[0xEE] = function() { const a = self.addrAbs(); const v = (self.read(a) + 1) & 0xFF; self.write(a, v); self.setNZ(v); self.cycles += 6; };
+    o[0xFE] = function() { const a = self.addrAbsXW(); const v = (self.read(a) + 1) & 0xFF; self.write(a, v); self.setNZ(v); self.cycles += 7; };
+
+    // === DEC ===
+    o[0xC6] = function() { const a = self.addrZP(); const v = (self.read(a) - 1) & 0xFF; self.write(a, v); self.setNZ(v); self.cycles += 5; };
+    o[0xD6] = function() { const a = self.addrZPX(); const v = (self.read(a) - 1) & 0xFF; self.write(a, v); self.setNZ(v); self.cycles += 6; };
+    o[0xCE] = function() { const a = self.addrAbs(); const v = (self.read(a) - 1) & 0xFF; self.write(a, v); self.setNZ(v); self.cycles += 6; };
+    o[0xDE] = function() { const a = self.addrAbsXW(); const v = (self.read(a) - 1) & 0xFF; self.write(a, v); self.setNZ(v); self.cycles += 7; };
+
+    // === INX, INY, DEX, DEY ===
+    o[0xE8] = function() { self.X = (self.X + 1) & 0xFF; self.setNZ(self.X); self.cycles += 2; }; // INX
+    o[0xC8] = function() { self.Y = (self.Y + 1) & 0xFF; self.setNZ(self.Y); self.cycles += 2; }; // INY
+    o[0xCA] = function() { self.X = (self.X - 1) & 0xFF; self.setNZ(self.X); self.cycles += 2; }; // DEX
+    o[0x88] = function() { self.Y = (self.Y - 1) & 0xFF; self.setNZ(self.Y); self.cycles += 2; }; // DEY
+
+    // === Branch Instructions ===
+    o[0x10] = function() { self.branch(!self.N); self.cycles += 2; }; // BPL
+    o[0x30] = function() { self.branch(!!self.N); self.cycles += 2; }; // BMI
+    o[0x50] = function() { self.branch(!self.V); self.cycles += 2; }; // BVC
+    o[0x70] = function() { self.branch(!!self.V); self.cycles += 2; }; // BVS
+    o[0x90] = function() { self.branch(!self.C); self.cycles += 2; }; // BCC
+    o[0xB0] = function() { self.branch(!!self.C); self.cycles += 2; }; // BCS
+    o[0xD0] = function() { self.branch(!self.Z); self.cycles += 2; }; // BNE
+    o[0xF0] = function() { self.branch(!!self.Z); self.cycles += 2; }; // BEQ
+
+    // === JMP ===
+    o[0x4C] = function() { self.PC = self.addrAbs(); self.cycles += 3; }; // JMP abs
+    o[0x6C] = function() { self.PC = self.addrInd(); self.cycles += 5; }; // JMP (ind)
+
+    // === JSR / RTS / RTI ===
+    o[0x20] = function() { // JSR
+      const target = self.addrAbs();
+      self.push16(self.PC - 1); // Push return address - 1
+      self.PC = target;
+      self.cycles += 6;
+    };
+
+    o[0x60] = function() { // RTS
+      self.PC = (self.pull16() + 1) & 0xFFFF;
+      // Check if we've returned past the initial call level
+      // If SP is at $FD or higher (initial value), we've returned from the top-level call
+      if (self.SP >= 0xFD) {
+        self.halted = true;
+      }
+      self.cycles += 6;
+    };
+
+    o[0x40] = function() { // RTI
+      self.setP(self.pull());
+      self.PC = self.pull16();
+      self.cycles += 6;
+    };
+
+    // === Flag Instructions ===
+    o[0x18] = function() { self.C = 0; self.cycles += 2; }; // CLC
+    o[0x38] = function() { self.C = 1; self.cycles += 2; }; // SEC
+    o[0x58] = function() { self.I = 0; self.cycles += 2; }; // CLI
+    o[0x78] = function() { self.I = 1; self.cycles += 2; }; // SEI
+    o[0xD8] = function() { self.D = 0; self.cycles += 2; }; // CLD
+    o[0xF8] = function() { self.D = 1; self.cycles += 2; }; // SED
+    o[0xB8] = function() { self.V = 0; self.cycles += 2; }; // CLV
+  }
+
+  // === Disassembler ===
+
+  /**
+   * Disassemble instructions starting at addr.
+   * @param {number} addr - Start address
+   * @param {number} count - Number of instructions to disassemble
+   * @returns {Array<{addr, bytes, mnemonic, operand, text}>}
+   */
+  disassemble(addr, count) {
+    const result = [];
+    let pc = addr & 0xFFFF;
+
+    for (let i = 0; i < count && pc <= 0xFFFF; i++) {
+      const startPC = pc;
+      const opcode = this.memory[pc++];
+      const info = CPU6502.OPCODE_INFO[opcode];
+
+      if (!info) {
+        result.push({
+          addr: startPC,
+          bytes: [opcode],
+          mnemonic: '???',
+          operand: '',
+          text: this._fmtAddr(startPC) + '-  ' + this._fmtByte(opcode) +
+                '         ???'
+        });
+        continue;
+      }
+
+      const [mnemonic, mode, bytes] = info;
+      const byteArr = [opcode];
+      for (let b = 1; b < bytes; b++) {
+        byteArr.push(this.memory[pc++] || 0);
+      }
+
+      let operand = '';
+      switch (mode) {
+        case 'imp': break;
+        case 'acc': operand = 'A'; break;
+        case 'imm': operand = '#$' + this._fmtByte(byteArr[1]); break;
+        case 'zp':  operand = '$' + this._fmtByte(byteArr[1]); break;
+        case 'zpx': operand = '$' + this._fmtByte(byteArr[1]) + ',X'; break;
+        case 'zpy': operand = '$' + this._fmtByte(byteArr[1]) + ',Y'; break;
+        case 'abs': operand = '$' + this._fmtAddr((byteArr[2] << 8) | byteArr[1]); break;
+        case 'abx': operand = '$' + this._fmtAddr((byteArr[2] << 8) | byteArr[1]) + ',X'; break;
+        case 'aby': operand = '$' + this._fmtAddr((byteArr[2] << 8) | byteArr[1]) + ',Y'; break;
+        case 'ind': operand = '($' + this._fmtAddr((byteArr[2] << 8) | byteArr[1]) + ')'; break;
+        case 'izx': operand = '($' + this._fmtByte(byteArr[1]) + ',X)'; break;
+        case 'izy': operand = '($' + this._fmtByte(byteArr[1]) + '),Y'; break;
+        case 'rel': {
+          let offset = byteArr[1];
+          if (offset & 0x80) offset -= 256;
+          operand = '$' + this._fmtAddr((pc + offset) & 0xFFFF);
+          break;
+        }
+      }
+
+      const bytesStr = byteArr.map(b => this._fmtByte(b)).join(' ');
+      const text = this._fmtAddr(startPC) + '-  ' + bytesStr.padEnd(9) +
+                   mnemonic + ' ' + operand;
+
+      result.push({
+        addr: startPC,
+        bytes: byteArr,
+        mnemonic,
+        operand,
+        text
+      });
+    }
+
+    return result;
+  }
+
+  _fmtByte(b) {
+    return (b & 0xFF).toString(16).toUpperCase().padStart(2, '0');
+  }
+
+  _fmtAddr(a) {
+    return (a & 0xFFFF).toString(16).toUpperCase().padStart(4, '0');
+  }
+
+  // Get CPU state as a formatted string (for monitor display)
+  getStateString() {
+    return 'A=' + this._fmtByte(this.A) +
+           ' X=' + this._fmtByte(this.X) +
+           ' Y=' + this._fmtByte(this.Y) +
+           ' SP=' + this._fmtByte(this.SP) +
+           ' PC=' + this._fmtAddr(this.PC) +
+           ' ' + (this.N ? 'N' : '-') +
+           (this.V ? 'V' : '-') +
+           '-' +
+           (this.B ? 'B' : '-') +
+           (this.D ? 'D' : '-') +
+           (this.I ? 'I' : '-') +
+           (this.Z ? 'Z' : '-') +
+           (this.C ? 'C' : '-');
+  }
+}
+
+// === Static Opcode Information Table (for disassembler) ===
+// Format: [mnemonic, addressing_mode, byte_count]
+CPU6502.OPCODE_INFO = {
+  0x00: ['BRK', 'imp', 1], 0x01: ['ORA', 'izx', 2], 0x05: ['ORA', 'zp', 2],
+  0x06: ['ASL', 'zp', 2], 0x08: ['PHP', 'imp', 1], 0x09: ['ORA', 'imm', 2],
+  0x0A: ['ASL', 'acc', 1], 0x0D: ['ORA', 'abs', 3], 0x0E: ['ASL', 'abs', 3],
+  0x10: ['BPL', 'rel', 2], 0x11: ['ORA', 'izy', 2], 0x15: ['ORA', 'zpx', 2],
+  0x16: ['ASL', 'zpx', 2], 0x18: ['CLC', 'imp', 1], 0x19: ['ORA', 'aby', 3],
+  0x1D: ['ORA', 'abx', 3], 0x1E: ['ASL', 'abx', 3],
+  0x20: ['JSR', 'abs', 3], 0x21: ['AND', 'izx', 2], 0x24: ['BIT', 'zp', 2],
+  0x25: ['AND', 'zp', 2], 0x26: ['ROL', 'zp', 2], 0x28: ['PLP', 'imp', 1],
+  0x29: ['AND', 'imm', 2], 0x2A: ['ROL', 'acc', 1], 0x2C: ['BIT', 'abs', 3],
+  0x2D: ['AND', 'abs', 3], 0x2E: ['ROL', 'abs', 3],
+  0x30: ['BMI', 'rel', 2], 0x31: ['AND', 'izy', 2], 0x35: ['AND', 'zpx', 2],
+  0x36: ['ROL', 'zpx', 2], 0x38: ['SEC', 'imp', 1], 0x39: ['AND', 'aby', 3],
+  0x3D: ['AND', 'abx', 3], 0x3E: ['ROL', 'abx', 3],
+  0x40: ['RTI', 'imp', 1], 0x41: ['EOR', 'izx', 2], 0x45: ['EOR', 'zp', 2],
+  0x46: ['LSR', 'zp', 2], 0x48: ['PHA', 'imp', 1], 0x49: ['EOR', 'imm', 2],
+  0x4A: ['LSR', 'acc', 1], 0x4C: ['JMP', 'abs', 3], 0x4D: ['EOR', 'abs', 3],
+  0x4E: ['LSR', 'abs', 3],
+  0x50: ['BVC', 'rel', 2], 0x51: ['EOR', 'izy', 2], 0x55: ['EOR', 'zpx', 2],
+  0x56: ['LSR', 'zpx', 2], 0x58: ['CLI', 'imp', 1], 0x59: ['EOR', 'aby', 3],
+  0x5D: ['EOR', 'abx', 3], 0x5E: ['LSR', 'abx', 3],
+  0x60: ['RTS', 'imp', 1], 0x61: ['ADC', 'izx', 2], 0x65: ['ADC', 'zp', 2],
+  0x66: ['ROR', 'zp', 2], 0x68: ['PLA', 'imp', 1], 0x69: ['ADC', 'imm', 2],
+  0x6A: ['ROR', 'acc', 1], 0x6C: ['JMP', 'ind', 3], 0x6D: ['ADC', 'abs', 3],
+  0x6E: ['ROR', 'abs', 3],
+  0x70: ['BVS', 'rel', 2], 0x71: ['ADC', 'izy', 2], 0x75: ['ADC', 'zpx', 2],
+  0x76: ['ROR', 'zpx', 2], 0x78: ['SEI', 'imp', 1], 0x79: ['ADC', 'aby', 3],
+  0x7D: ['ADC', 'abx', 3], 0x7E: ['ROR', 'abx', 3],
+  0x81: ['STA', 'izx', 2], 0x84: ['STY', 'zp', 2], 0x85: ['STA', 'zp', 2],
+  0x86: ['STX', 'zp', 2], 0x88: ['DEY', 'imp', 1], 0x8A: ['TXA', 'imp', 1],
+  0x8C: ['STY', 'abs', 3], 0x8D: ['STA', 'abs', 3], 0x8E: ['STX', 'abs', 3],
+  0x90: ['BCC', 'rel', 2], 0x91: ['STA', 'izy', 2], 0x94: ['STY', 'zpx', 2],
+  0x95: ['STA', 'zpx', 2], 0x96: ['STX', 'zpy', 2], 0x98: ['TYA', 'imp', 1],
+  0x99: ['STA', 'aby', 3], 0x9A: ['TXS', 'imp', 1], 0x9D: ['STA', 'abx', 3],
+  0xA0: ['LDY', 'imm', 2], 0xA1: ['LDA', 'izx', 2], 0xA2: ['LDX', 'imm', 2],
+  0xA4: ['LDY', 'zp', 2], 0xA5: ['LDA', 'zp', 2], 0xA6: ['LDX', 'zp', 2],
+  0xA8: ['TAY', 'imp', 1], 0xA9: ['LDA', 'imm', 2], 0xAA: ['TAX', 'imp', 1],
+  0xAC: ['LDY', 'abs', 3], 0xAD: ['LDA', 'abs', 3], 0xAE: ['LDX', 'abs', 3],
+  0xB0: ['BCS', 'rel', 2], 0xB1: ['LDA', 'izy', 2], 0xB4: ['LDY', 'zpx', 2],
+  0xB5: ['LDA', 'zpx', 2], 0xB6: ['LDX', 'zpy', 2], 0xB8: ['CLV', 'imp', 1],
+  0xB9: ['LDA', 'aby', 3], 0xBA: ['TSX', 'imp', 1], 0xBC: ['LDY', 'abx', 3],
+  0xBD: ['LDA', 'abx', 3], 0xBE: ['LDX', 'aby', 3],
+  0xC0: ['CPY', 'imm', 2], 0xC1: ['CMP', 'izx', 2], 0xC4: ['CPY', 'zp', 2],
+  0xC5: ['CMP', 'zp', 2], 0xC6: ['DEC', 'zp', 2], 0xC8: ['INY', 'imp', 1],
+  0xC9: ['CMP', 'imm', 2], 0xCA: ['DEX', 'imp', 1], 0xCC: ['CPY', 'abs', 3],
+  0xCD: ['CMP', 'abs', 3], 0xCE: ['DEC', 'abs', 3],
+  0xD0: ['BNE', 'rel', 2], 0xD1: ['CMP', 'izy', 2], 0xD5: ['CMP', 'zpx', 2],
+  0xD6: ['DEC', 'zpx', 2], 0xD8: ['CLD', 'imp', 1], 0xD9: ['CMP', 'aby', 3],
+  0xDD: ['CMP', 'abx', 3], 0xDE: ['DEC', 'abx', 3],
+  0xE0: ['CPX', 'imm', 2], 0xE1: ['SBC', 'izx', 2], 0xE4: ['CPX', 'zp', 2],
+  0xE5: ['SBC', 'zp', 2], 0xE6: ['INC', 'zp', 2], 0xE8: ['INX', 'imp', 1],
+  0xE9: ['SBC', 'imm', 2], 0xEA: ['NOP', 'imp', 1], 0xEC: ['CPX', 'abs', 3],
+  0xED: ['SBC', 'abs', 3], 0xEE: ['INC', 'abs', 3],
+  0xF0: ['BEQ', 'rel', 2], 0xF1: ['SBC', 'izy', 2], 0xF5: ['SBC', 'zpx', 2],
+  0xF6: ['INC', 'zpx', 2], 0xF8: ['SED', 'imp', 1], 0xF9: ['SBC', 'aby', 3],
+  0xFD: ['SBC', 'abx', 3], 0xFE: ['INC', 'abx', 3]
+};
+
+App.CPU6502 = CPU6502;
+'@
+[System.IO.File]::WriteAllText("$dir\js\cpu6502.js", $content, [System.Text.Encoding]::UTF8)
+
+Write-Host "Writing js\interpreter.js (13/16)..."
 $content = @'
 window.App = window.App || {};
 
@@ -3111,11 +4242,30 @@ class Interpreter {
     this.stoppedForStack = null;
     this.lastKeyPressed = 0;
     this.lastError = 0;
-    this.memory = {};
+    this.memory = new Uint8Array(65536);
+    this._initMemoryMap();
     this.userFunctions = {};
+    // Speaker toggle state for tone generation
+    this._speakerState = false;
+    this._speakerToggleCount = 0;
+    this._speakerToggleTime = 0;
+    this._speakerLastInterval = 0;
+    this._speakerToneOsc = null;
+    this._speakerToneGain = null;
+    this._speakerToneTimeout = null;
+    // Game I/O annunciator outputs (AN0-AN3)
+    this._annunciators = [false, false, false, false];
+    // Paddle button states (updated from keyboard)
+    this._paddleButtons = [false, false, false];
+    // Paddle analog values (0-255), tracked from mouse position
+    this._paddleValues = [128, 128, 128, 128];
+    // Shape table pointer (address in memory where shape table lives)
+    this._shapeTableAddr = 0;
     this.inputCallback = null;
     this.getCallback = null;
     this.onErrLine = null;
+    // 6502 CPU emulator — shares memory with interpreter
+    this._initCPU();
     this.collectData();
   }
 
@@ -3135,6 +4285,114 @@ class Interpreter {
     this.shapeRotation = 0;
     this.shapeScale = 1;
     this.collectData();
+  }
+
+  // Initialize the 64KB memory map with Apple II ROM/hardware defaults
+  _initMemoryMap() {
+    // Zero page defaults
+    this.memory[0] = 0x4C;    // JMP instruction (Apple II ROM signature)
+    this.memory[1] = 0x00;
+    this.memory[2] = 0xE0;    // Jump target $E000 (Applesoft entry)
+
+    // Text window defaults
+    this.memory[32] = 0;      // WNDLFT - left edge
+    this.memory[33] = 40;     // WNDWTH - window width
+    this.memory[34] = 0;      // WNDTOP - top edge
+    this.memory[35] = 24;     // WNDBTM - bottom edge
+    this.memory[36] = 0;      // CH - cursor horizontal
+    this.memory[37] = 0;      // CV - cursor vertical
+
+    // BASIC pointers
+    this.memory[103] = 0x01;  // TXTTAB low - start of program
+    this.memory[104] = 0x08;  // TXTTAB high ($0801)
+    this.memory[115] = 0x01;  // MEMSIZ low
+    this.memory[116] = 0xC0;  // MEMSIZ high ($C001 = 48K)
+
+    // HIMEM
+    this.memory[0x73] = 0x00;
+    this.memory[0x74] = 0x96; // $9600
+
+    // ROM identification
+    this.memory[0xFBB3] = 0x06;  // Apple II+ identifier
+    this.memory[0xFFF8] = 0x00;  // Machine ID byte
+  }
+
+  // Initialize the 6502 CPU with I/O hooks for soft switch emulation
+  _initCPU() {
+    if (typeof App.CPU6502 === 'undefined') {
+      this.cpu = null;
+      return;
+    }
+    const self = this;
+
+    // Read hook: intercept I/O addresses ($C000-$C0FF)
+    const readHook = function(addr) {
+      if (addr >= 0xC000 && addr <= 0xC0FF) {
+        // Keyboard
+        if (addr === 0xC000) return self.lastKeyPressed ? (self.lastKeyPressed | 128) : 0;
+        if (addr === 0xC010) { self.lastKeyPressed = 0; return 0; }
+        // Speaker
+        if (addr === 0xC030) { self._toggleSpeaker(); return 0; }
+        // Graphics soft switches
+        if (addr >= 0xC050 && addr <= 0xC057) return 0;
+        // Annunciators
+        if (addr >= 0xC058 && addr <= 0xC05F) {
+          const annIdx = Math.floor((addr - 0xC058) / 2);
+          self._annunciators[annIdx] = (addr & 1) === 1;
+          return 0;
+        }
+        // Paddle buttons
+        if (addr === 0xC061) return self._paddleButtons[0] ? 128 : 0;
+        if (addr === 0xC062) return self._paddleButtons[1] ? 128 : 0;
+        if (addr === 0xC063) return self._paddleButtons[2] ? 128 : 0;
+        // Paddle analog
+        if (addr >= 0xC064 && addr <= 0xC067) {
+          return self._paddleValues[addr - 0xC064] > 128 ? 128 : 0;
+        }
+        if (addr === 0xC070) return 0;
+      }
+      return null; // Use memory directly
+    };
+
+    // Write hook: intercept I/O addresses
+    const writeHook = function(addr, val) {
+      if (addr >= 0xC000 && addr <= 0xC0FF) {
+        if (addr === 0xC010) { self.lastKeyPressed = 0; return true; }
+        if (addr === 0xC030) { self._toggleSpeaker(); return true; }
+        if (addr >= 0xC050 && addr <= 0xC057) {
+          // Trigger soft switch side effects
+          self.memory[addr] = val;
+          if (addr === 0xC051) { self.textMode = true; self.display.showTextMode(); }
+          return true;
+        }
+        if (addr >= 0xC058 && addr <= 0xC05F) {
+          const annIdx = Math.floor((addr - 0xC058) / 2);
+          self._annunciators[annIdx] = (addr & 1) === 1;
+          return true;
+        }
+        return true; // Absorb other I/O writes
+      }
+      // Zero page special locations
+      if (addr === 36) { self.display.cursorX = val; }
+      if (addr === 37) { self.display.cursorY = val; }
+      return false; // Write to memory normally
+    };
+
+    this.cpu = new App.CPU6502(this.memory, readHook, writeHook);
+  }
+
+  // Execute 6502 machine language at the given address
+  // Returns: { A, X, Y, cycles } after execution completes
+  executeMachineLanguage(addr, options) {
+    if (!this.cpu) return null;
+    // Reset CPU state for a clean call
+    this.cpu.SP = 0xFD;
+    this.cpu.halted = false;
+    // Place a sentinel return address on the stack
+    // Push $FFFF-1=$FFFE so RTS will jump to $FFFF and halt
+    this.cpu.push16(0xFFFE);
+    const cycles = this.cpu.run(addr, options || {});
+    return { A: this.cpu.A, X: this.cpu.X, Y: this.cpu.Y, cycles: cycles };
   }
 
   // Collect all DATA statements
@@ -3503,13 +4761,13 @@ class Interpreter {
       return;
     }
 
-    // ===== DRAW / XDRAW (shape table stubs) =====
+    // ===== DRAW / XDRAW (shape table) =====
     if (upperStmt.startsWith('DRAW')) {
-      // Shape table drawing - stub: requires AT x,y
+      this.executeDrawShape(stmt.substring(4).trim(), false);
       return;
     }
     if (upperStmt.startsWith('XDRAW')) {
-      // XOR shape table drawing - stub
+      this.executeDrawShape(stmt.substring(5).trim(), true);
       return;
     }
 
@@ -3986,41 +5244,178 @@ class Interpreter {
     // Normalize negative addresses to unsigned 16-bit
     const uaddr = addr < 0 ? addr + 65536 : addr;
 
-    // Text window control
-    if (uaddr === 32) { /* left edge - ignored */ return; }
-    if (uaddr === 33) { this.display.textWidth = val; return; }
-    if (uaddr === 34) { this.display.scrollTop = val; return; }
-    if (uaddr === 35) { this.display.scrollBottom = val; return; }
+    // Always store value in memory map
+    this.memory[uaddr] = val;
+
+    // Text window control — sync to display
+    if (uaddr === 32) { this.display.wndLeft = val; return; }
+    if (uaddr === 33) { this.display.wndWidth = val; return; }
+    if (uaddr === 34) { this.display.wndTop = val; return; }
+    if (uaddr === 35) { this.display.wndBottom = val; return; }
     if (uaddr === 36) { this.display.cursorX = val; return; }
     if (uaddr === 37) { this.display.cursorY = val; return; }
 
-    // Keyboard strobe clear
-    if (uaddr === 49168) { this.lastKeyPressed = 0; return; }
+    // Inverse/Normal flag ($32 = 50)
+    if (uaddr === 50) {
+      if (val === 127) { this.inverseMode = true; this.flashMode = false; this.display.displayMode = 1; }
+      else if (val === 255) { this.inverseMode = false; this.flashMode = false; this.display.displayMode = 0; }
+      return;
+    }
 
-    // Graphics soft switches
-    if (uaddr === 49232) { /* TEXT mode */ this.textMode = true; this.display.showTextMode(); return; }
-    if (uaddr === 49233) { /* GRAPHICS mode - activate current graphics mode */ return; }
-    if (uaddr === 49234) { /* full screen */
+    // Keyboard strobe clear ($C010)
+    if (uaddr === 0xC010) { this.lastKeyPressed = 0; return; }
+
+    // Cassette output toggle ($C020) - ignored but acknowledged
+    if (uaddr === 0xC020) { return; }
+
+    // Speaker toggle ($C030)
+    if (uaddr === 0xC030) {
+      this._toggleSpeaker();
+      return;
+    }
+
+    // Graphics soft switches ($C050-$C057)
+    if (uaddr === 0xC050) { /* GR/HGR mode on */ return; }
+    if (uaddr === 0xC051) { /* TEXT mode */ this.textMode = true; this.display.showTextMode(); return; }
+    if (uaddr === 0xC052) { /* full screen (no mixed) */
       if (this.display.screenMode === 'gr') { this.display.screenMode = 'gr_full'; this.display.render(); }
       else if (this.display.screenMode === 'hgr') { this.display.screenMode = 'hgr_full'; this.display.render(); }
       return;
     }
-    if (uaddr === 49235) { /* mixed mode */
+    if (uaddr === 0xC053) { /* mixed mode */
       if (this.display.screenMode === 'gr_full') { this.display.screenMode = 'gr'; this.display.render(); }
       else if (this.display.screenMode === 'hgr_full') { this.display.screenMode = 'hgr'; this.display.render(); }
       return;
     }
-    if (uaddr === 49236) { /* page 1 */ this.display.setDisplayPage(1); return; }
-    if (uaddr === 49237) { /* page 2 */ this.display.setDisplayPage(2); return; }
-    if (uaddr === 49238) { /* lo-res */ return; }
-    if (uaddr === 49239) { /* hi-res */ return; }
+    if (uaddr === 0xC054) { /* page 1 */ this.display.setDisplayPage(1); return; }
+    if (uaddr === 0xC055) { /* page 2 */ this.display.setDisplayPage(2); return; }
+    if (uaddr === 0xC056) { /* lo-res mode */ return; }
+    if (uaddr === 0xC057) { /* hi-res mode */ return; }
 
-    // Speaker click (toggle speaker for sound)
-    if (uaddr === 49200) { App.beep(10, 440); return; }
+    // Game I/O annunciator outputs ($C058-$C05F)
+    if (uaddr >= 0xC058 && uaddr <= 0xC05F) {
+      const annIdx = Math.floor((uaddr - 0xC058) / 2);
+      this._annunciators[annIdx] = (uaddr & 1) === 1; // odd = on, even = off
+      return;
+    }
 
-    // Store in virtual memory for PEEK to read back
-    if (!this.memory) this.memory = {};
-    this.memory[uaddr] = val;
+    // Paddle trigger ($C070) — resets paddle capacitor timers
+    if (uaddr === 0xC070) { return; }
+
+    // Shape table pointer (conventionally at $E8/$E9)
+    if (uaddr === 0xE8 || uaddr === 0xE9) {
+      this._shapeTableAddr = this.memory[0xE8] | (this.memory[0xE9] << 8);
+      return;
+    }
+  }
+
+  // Speaker toggle — detect periodic toggling and generate continuous tones.
+  // The Apple II speaker is toggled by accessing $C030; rapid toggling produces
+  // a square wave whose frequency depends on the toggle interval.
+  _toggleSpeaker() {
+    this._speakerState = !this._speakerState;
+    const now = performance.now();
+    const interval = now - this._speakerToggleTime;
+
+    if (interval < 100 && interval > 0.01) {
+      // Two toggles = one full cycle, so frequency = 1000 / (2 * interval_ms)
+      const freq = 1000 / (2 * interval);
+      this._speakerToggleCount++;
+
+      if (this._speakerToggleCount >= 4 && freq >= 20 && freq <= 8000) {
+        // Sustained toggling detected — start or update a continuous tone
+        this._startSpeakerTone(freq);
+      }
+    } else {
+      // Gap too large — stop any playing tone after a timeout
+      this._speakerToggleCount = 0;
+      if (interval > 100) {
+        // Single toggle = click
+        this._speakerClick();
+      }
+    }
+    this._speakerToggleTime = now;
+
+    // Auto-stop: if no toggle within 80ms, fade out the tone
+    clearTimeout(this._speakerToneTimeout);
+    this._speakerToneTimeout = setTimeout(() => {
+      this._stopSpeakerTone();
+      this._speakerToggleCount = 0;
+    }, 80);
+  }
+
+  // Start or update a continuous speaker tone
+  _startSpeakerTone(freq) {
+    try {
+      const ctx = (window.audioCtx || (window.audioCtx = new (window.AudioContext || window.webkitAudioContext)()));
+
+      if (this._speakerToneOsc) {
+        // Update frequency of existing oscillator (smooth transition)
+        this._speakerToneOsc.frequency.setTargetAtTime(freq, ctx.currentTime, 0.01);
+        return;
+      }
+
+      // Create new oscillator for the tone
+      const osc = ctx.createOscillator();
+      osc.type = 'square';
+      osc.frequency.value = freq;
+
+      // Hard-clip waveshaper for authentic 1-bit speaker sound
+      const shaper = ctx.createWaveShaper();
+      const curve = new Float32Array(256);
+      for (let i = 0; i < 256; i++) {
+        const x = (i * 2) / 256 - 1;
+        curve[i] = x > 0 ? 1 : -1;
+      }
+      shaper.curve = curve;
+
+      const gain = ctx.createGain();
+      gain.gain.setValueAtTime(0, ctx.currentTime);
+      gain.gain.linearRampToValueAtTime(0.08, ctx.currentTime + 0.02);
+
+      osc.connect(shaper);
+      shaper.connect(gain);
+      gain.connect(ctx.destination);
+      osc.start();
+
+      this._speakerToneOsc = osc;
+      this._speakerToneGain = gain;
+    } catch (e) { /* Audio not available */ }
+  }
+
+  // Stop the continuous speaker tone with a short fade
+  _stopSpeakerTone() {
+    if (this._speakerToneOsc) {
+      try {
+        const ctx = (window.audioCtx || (window.audioCtx = new (window.AudioContext || window.webkitAudioContext)()));
+        this._speakerToneGain.gain.linearRampToValueAtTime(0.001, ctx.currentTime + 0.03);
+        const osc = this._speakerToneOsc;
+        setTimeout(() => { try { osc.stop(); } catch(e) {} }, 50);
+      } catch (e) {}
+      this._speakerToneOsc = null;
+      this._speakerToneGain = null;
+    }
+  }
+
+  // Single speaker click (for isolated toggles)
+  _speakerClick() {
+    try {
+      const ctx = (window.audioCtx || (window.audioCtx = new (window.AudioContext || window.webkitAudioContext)()));
+      const t = ctx.currentTime;
+      const bufferSize = Math.floor(ctx.sampleRate * 0.003);
+      const buffer = ctx.createBuffer(1, bufferSize, ctx.sampleRate);
+      const data = buffer.getChannelData(0);
+      for (let i = 0; i < bufferSize; i++) {
+        data[i] = (i < bufferSize / 2) ? 0.3 : -0.3;
+      }
+      const source = ctx.createBufferSource();
+      source.buffer = buffer;
+      const gain = ctx.createGain();
+      gain.gain.value = 0.1;
+      source.connect(gain);
+      gain.connect(ctx.destination);
+      source.start(t);
+    } catch (e) { /* Audio not available */ }
   }
 
   // ===== CALL =====
@@ -4028,32 +5423,109 @@ class Interpreter {
     const addr = Math.floor(this.evaluateExpressionFromString(argStr));
     const uaddr = addr < 0 ? addr + 65536 : addr;
 
-    // CALL -936 / CALL 64600: Clear from cursor to end of screen
+    // CALL -151 / $FF69: Enter System Monitor
+    if (uaddr === 65385) {
+      if (this._emulator) this._emulator.enterMonitor();
+      return;
+    }
+
+    // CALL -936 / $FC58 / CALL 64600: Clear from cursor to end of screen (CLREOP)
     if (uaddr === 64600) {
       this.display.clearToEnd();
       return;
     }
 
-    // CALL -958 / CALL 64578: HOME (clear screen)
+    // CALL -998 / $FC1A: CLREOP — same as CALL -936 (alternate entry)
+    if (uaddr === 64538) {
+      this.display.clearToEnd();
+      return;
+    }
+
+    // CALL -958 / $FC42 / CALL 64578: HOME (clear screen)
     if (uaddr === 64578) {
       this.display.clear();
       return;
     }
 
-    // CALL -868 / CALL 64668: Clear to end of line
+    // CALL -868 / $FC9C / CALL 64668: Clear to end of line (CLREOL)
     if (uaddr === 64668) {
       this.display.clearToEndOfLine();
       return;
     }
 
-    // CALL -922 / CALL 64614: Line feed
+    // CALL -922 / $FC66 / CALL 64614: Line feed (CROUT)
     if (uaddr === 64614) {
       this.display.printChar('\n');
       this.display.render();
       return;
     }
 
-    // CALL 62450: Clear hi-res screen to black
+    // CALL -1008 / $FC10: Carriage return (CROUT1 — alternate entry)
+    if (uaddr === 64528) {
+      this.display.printChar('\n');
+      this.display.render();
+      return;
+    }
+
+    // CALL -912 / $FC70 / CALL 64624: Scroll up one line (SCROLL)
+    if (uaddr === 64624) {
+      this.display.scrollUp();
+      this.display.render();
+      return;
+    }
+
+    // CALL -198 / $FF3A: BELL (beep)
+    if (uaddr === 65338) {
+      if (typeof App.beep === 'function') App.beep(200, 1000);
+      return;
+    }
+
+    // CALL -1052 / $FBE4: RDKEY (wait for keypress) — handled as GET
+    if (uaddr === 64484) {
+      // This is a ROM routine that waits for a key; in our emulator
+      // it stores the key code in $C000. Programs rarely CALL this directly.
+      return;
+    }
+
+    // CALL -1036 / $FBF4: SETWND — reset text window to defaults
+    if (uaddr === 64500) {
+      this.display.wndLeft = 0;
+      this.display.wndWidth = 40;
+      this.display.wndTop = 0;
+      this.display.wndBottom = 24;
+      this.memory[32] = 0;
+      this.memory[33] = 40;
+      this.memory[34] = 0;
+      this.memory[35] = 24;
+      return;
+    }
+
+    // CALL -380 / $FE84: SETINV — set inverse text mode
+    if (uaddr === 65156) {
+      this.inverseMode = true;
+      this.flashMode = false;
+      this.display.displayMode = 1;
+      this.memory[50] = 127;
+      return;
+    }
+
+    // CALL -384 / $FE80: SETNORM — set normal text mode
+    if (uaddr === 65152) {
+      this.inverseMode = false;
+      this.flashMode = false;
+      this.display.displayMode = 0;
+      this.memory[50] = 255;
+      return;
+    }
+
+    // CALL -756 / $FD0C: COUT1 — output character in accumulator
+    // On real Apple II this outputs the char in the A register.
+    // We output a space since we can't access the 6502 accumulator.
+    if (uaddr === 64780) {
+      return;
+    }
+
+    // CALL 62450 / $F3F2: Clear hi-res screen to black (HCLR)
     if (uaddr === 62450) {
       if (this.hiResMode) {
         this.display.clearHiRes(false);
@@ -4061,7 +5533,7 @@ class Interpreter {
       return;
     }
 
-    // CALL 62454: Clear hi-res screen to current HCOLOR
+    // CALL 62454 / $F3F6: Clear hi-res screen to current HCOLOR
     if (uaddr === 62454) {
       if (this.hiResMode) {
         this.display.clearHiRes(this._hcolorIsOn());
@@ -4069,7 +5541,26 @@ class Interpreter {
       return;
     }
 
-    // Unknown CALL - silently ignore
+    // CALL 768 / $0300: Common user ML routine address — silently ignore
+    if (uaddr === 768) return;
+
+    // CALL -3288 / $F328: HGR init (alternate entry)
+    if (uaddr === 62248) {
+      this.textMode = false;
+      this.hiResMode = true;
+      this.hiResColor = 3;
+      this.display.initHiRes(1);
+      return;
+    }
+
+    // CALL -3082 / $F3F2: Same as 62450 (HGR clear to black)
+    // Already handled above
+
+    // Unknown CALL address — try executing as 6502 machine language
+    if (this.cpu) {
+      this.executeMachineLanguage(uaddr);
+    }
+    // If no CPU, silently ignore (original behavior)
   }
 
   // ===== HPLOT =====
@@ -4124,6 +5615,153 @@ class Interpreter {
         this.hiResLastY = y;
       }
     }
+  }
+
+  // ===== SHAPE TABLE DRAWING =====
+
+  /**
+   * Execute DRAW n AT x,y or XDRAW n AT x,y
+   * Apple II shape table format:
+   *  - Shape table starts at address pointed to by $E8/$E9
+   *  - First 2 bytes: number of shapes (low byte) + unused
+   *  - Then pairs of (offset_low, offset_high) for each shape
+   *  - Shape vectors: each byte contains up to 3 plot vectors
+   *    Bits 2-0: vector A (move up/down/left/right + plot)
+   *    Bits 5-3: vector B
+   *    Bits 7-6: vector C (only 2 bits: direction only)
+   *  - Encoding per 3 bits: bit2=plot, bit1-0=direction
+   *    Direction: 0=up, 1=right, 2=down, 3=left
+   *  - Byte value 0x00 = end of shape
+   */
+  executeDrawShape(argStr, xorMode) {
+    if (!argStr || argStr.trim().length === 0) return;
+
+    // Parse: n AT x,y
+    const atPos = this.findKeywordInString(argStr, 'AT');
+    let shapeNum, x, y;
+
+    if (atPos !== -1) {
+      shapeNum = Math.floor(this.evaluateExpressionFromString(argStr.substring(0, atPos).trim()));
+      const coordStr = argStr.substring(atPos + 2).trim();
+      const commaPos = this.findComma(coordStr);
+      if (commaPos === -1) throw new Error('?SYNTAX ERROR');
+      x = Math.floor(this.evaluateExpressionFromString(coordStr.substring(0, commaPos).trim()));
+      y = Math.floor(this.evaluateExpressionFromString(coordStr.substring(commaPos + 1).trim()));
+    } else {
+      // DRAW n — draw at last HPLOT position
+      shapeNum = Math.floor(this.evaluateExpressionFromString(argStr.trim()));
+      x = this.hiResLastX;
+      y = this.hiResLastY;
+    }
+
+    if (shapeNum < 1) throw new Error('?ILLEGAL QUANTITY ERROR');
+
+    const tableAddr = this._shapeTableAddr || (this.memory[0xE8] | (this.memory[0xE9] << 8));
+    if (tableAddr === 0) {
+      // No shape table loaded — silently ignore (common in programs that haven't POKE'd the table)
+      return;
+    }
+
+    // Read shape table header
+    const numShapes = this.memory[tableAddr];
+    if (shapeNum > numShapes) throw new Error('?ILLEGAL QUANTITY ERROR');
+
+    // Get offset for this shape (1-indexed)
+    const offsetAddr = tableAddr + 2 + (shapeNum - 1) * 2;
+    const shapeOffset = this.memory[offsetAddr] | (this.memory[offsetAddr + 1] << 8);
+    const shapeAddr = tableAddr + shapeOffset;
+
+    // Decode and draw shape vectors
+    this._drawShapeVectors(shapeAddr, x, y, this.shapeRotation, this.shapeScale, xorMode);
+  }
+
+  _drawShapeVectors(shapeAddr, startX, startY, rotation, scale, xorMode) {
+    const colorOn = this._hcolorIsOn();
+    let cx = startX;
+    let cy = startY;
+    const rot = (rotation & 63); // 0-63
+    const scl = Math.max(1, scale);
+
+    // Rotation: 0-63 maps to 0-360 degrees (each step ~5.625°)
+    const angle = (rot * Math.PI * 2) / 64;
+    const cosA = Math.cos(angle);
+    const sinA = Math.sin(angle);
+
+    let addr = shapeAddr;
+    let safety = 0;
+
+    while (safety < 10000) {
+      const byte = this.memory[addr];
+      if (byte === 0) break; // End of shape
+      addr++;
+      safety++;
+
+      // Each byte encodes up to 3 vectors:
+      // Vector A: bits 2-0 (always processed)
+      // Vector B: bits 5-3 (processed if bits 5-3 are not all zero)
+      // Vector C: bits 7-6 (processed if bits 7-6 are not zero)
+
+      // Process vector A (bits 2-0): bit2=plot, bits 1-0=direction
+      const vecA = byte & 0x07;
+      if (vecA !== 0) {
+        const result = this._processShapeVector(vecA & 0x03, (vecA & 0x04) !== 0, cx, cy, cosA, sinA, scl, xorMode, colorOn);
+        cx = result.x;
+        cy = result.y;
+      }
+
+      // Process vector B (bits 5-3): bit5=plot, bits 4-3=direction
+      const vecB = (byte >> 3) & 0x07;
+      if (vecB !== 0) {
+        const result = this._processShapeVector(vecB & 0x03, (vecB & 0x04) !== 0, cx, cy, cosA, sinA, scl, xorMode, colorOn);
+        cx = result.x;
+        cy = result.y;
+      }
+
+      // Process vector C (bits 7-6): bit7=plot, bit6=direction (0=up, 1=right)
+      const vecC = (byte >> 6) & 0x03;
+      if (vecC !== 0) {
+        // Only 2 bits: bit1=plot, bit0=direction
+        const result = this._processShapeVector(vecC & 0x01, (vecC & 0x02) !== 0, cx, cy, cosA, sinA, scl, xorMode, colorOn);
+        cx = result.x;
+        cy = result.y;
+      }
+    }
+
+    // Update last position
+    this.hiResLastX = Math.round(cx);
+    this.hiResLastY = Math.round(cy);
+  }
+
+  _processShapeVector(direction, plot, cx, cy, cosA, sinA, scale, xorMode, colorOn) {
+    // Direction: 0=up, 1=right, 2=down, 3=left
+    let dx = 0, dy = 0;
+    switch (direction) {
+      case 0: dy = -1; break; // up
+      case 1: dx = 1; break;  // right
+      case 2: dy = 1; break;  // down
+      case 3: dx = -1; break; // left
+    }
+
+    // Apply rotation
+    const rdx = dx * cosA - dy * sinA;
+    const rdy = dx * sinA + dy * cosA;
+
+    // Apply scale
+    const nx = cx + rdx * scale;
+    const ny = cy + rdy * scale;
+
+    // Plot if flag is set
+    if (plot) {
+      const px = Math.round(nx);
+      const py = Math.round(ny);
+      if (xorMode) {
+        this.display.xorHiResPixel(px, py);
+      } else {
+        this.display.drawHiResPixel(px, py, colorOn);
+      }
+    }
+
+    return { x: nx, y: ny };
   }
 
   // ===== ASSIGNMENT =====
@@ -4303,40 +5941,92 @@ class Interpreter {
         const y = Math.floor(args[1]);
         return this.display.getLoResPixel(x, y);
       }
-      case 'PDL': return Math.floor(Math.random() * 256);
+      case 'PDL': {
+        const paddle = Math.floor(args[0]) & 3;
+        return this._paddleValues[paddle];
+      }
       case 'FRE': return 38911;
       case 'PEEK': {
         const addr = Math.floor(args[0]);
         const uaddr = addr < 0 ? addr + 65536 : addr;
+
+        // --- Zero page live values (synced from emulator state) ---
+        // Text window
+        if (uaddr === 32) return this.display.wndLeft || 0;
+        if (uaddr === 33) return this.display.wndWidth || 40;
+        if (uaddr === 34) return this.display.wndTop || 0;
+        if (uaddr === 35) return this.display.wndBottom || 24;
         // Cursor position
         if (uaddr === 36) return this.display.cursorX;
         if (uaddr === 37) return this.display.cursorY;
-        // Text window
-        if (uaddr === 32) return 0; // left edge
-        if (uaddr === 33) return this.display.textWidth || 40; // text width
-        if (uaddr === 34) return this.display.scrollTop || 0;
-        if (uaddr === 35) return this.display.scrollBottom || 24;
-        // Keyboard
-        if (uaddr === 49152) return this.lastKeyPressed ? (this.lastKeyPressed | 128) : 0;
-        if (uaddr === 49168) return 0; // keyboard strobe
+        // Random seed area — always dynamic
+        if (uaddr >= 78 && uaddr <= 82) return Math.floor(Math.random() * 256);
         // Current line number (low/high bytes)
         if (uaddr === 218) return this.currentLine & 255;
         if (uaddr === 219) return (this.currentLine >> 8) & 255;
         // Error code (ONERR)
         if (uaddr === 222) return this.lastError || 0;
-        // Graphics mode
+        // Graphics mode / HCOLOR
         if (uaddr === 230) return this.hiResColor;
-        // Random seed area
-        if (uaddr >= 78 && uaddr <= 82) return Math.floor(Math.random() * 256);
-        // Version info
-        if (uaddr === 0) return 76; // JMP instruction (Apple II ROM)
-        // Check virtual memory
-        if (this.memory && this.memory[uaddr] !== undefined) return this.memory[uaddr];
-        return 0;
+
+        // --- I/O Soft Switches ($C000-$C0FF) ---
+        // Keyboard data ($C000)
+        if (uaddr === 0xC000) return this.lastKeyPressed ? (this.lastKeyPressed | 128) : 0;
+        // Keyboard strobe clear ($C010) — clears high bit on read
+        if (uaddr === 0xC010) { this.lastKeyPressed = 0; return 0; }
+        // Cassette output toggle ($C020)
+        if (uaddr === 0xC020) return 0;
+        // Speaker toggle ($C030) — toggles speaker on read too
+        if (uaddr === 0xC030) { this._toggleSpeaker(); return 0; }
+
+        // Graphics soft switches ($C050-$C057) — reading also triggers them
+        if (uaddr === 0xC050) { /* graphics on */ return 0; }
+        if (uaddr === 0xC051) { /* text on */ return 0; }
+        if (uaddr === 0xC052) { /* full screen */ return 0; }
+        if (uaddr === 0xC053) { /* mixed mode */ return 0; }
+        if (uaddr === 0xC054) { /* page 1 */ return 0; }
+        if (uaddr === 0xC055) { /* page 2 */ return 0; }
+        if (uaddr === 0xC056) { /* lo-res */ return 0; }
+        if (uaddr === 0xC057) { /* hi-res */ return 0; }
+
+        // Game I/O annunciator outputs ($C058-$C05F)
+        if (uaddr >= 0xC058 && uaddr <= 0xC05F) {
+          const annIdx = Math.floor((uaddr - 0xC058) / 2);
+          this._annunciators[annIdx] = (uaddr & 1) === 1;
+          return 0;
+        }
+
+        // Paddle buttons ($C061-$C063) — high bit set = pressed
+        if (uaddr === 0xC061) return this._paddleButtons[0] ? 128 : 0;
+        if (uaddr === 0xC062) return this._paddleButtons[1] ? 128 : 0;
+        if (uaddr === 0xC063) return this._paddleButtons[2] ? 128 : 0;
+
+        // Paddle analog values ($C064-$C067)
+        // High bit set = timer not expired (value > threshold)
+        // Real Apple II uses analog RC timer; we simulate with paddle values
+        if (uaddr >= 0xC064 && uaddr <= 0xC067) {
+          const pIdx = uaddr - 0xC064;
+          // Return high bit set if paddle value is above ~128 (approximate)
+          return this._paddleValues[pIdx] > 128 ? 128 : 0;
+        }
+
+        // Paddle trigger ($C070) — resets all paddle timers
+        if (uaddr === 0xC070) return 0;
+
+        // --- Everything else: read from memory array ---
+        return this.memory[uaddr];
       }
       case 'TAB': return ' '.repeat(Math.max(0, Math.floor(args[0])));
       case 'SPC': return ' '.repeat(Math.max(0, Math.floor(args[0])));
-      case 'USR': return 0; // stub - no machine language support
+      case 'USR': {
+        const usrAddr = Math.floor(args[0]);
+        const uAddr = usrAddr < 0 ? usrAddr + 65536 : usrAddr;
+        if (this.cpu) {
+          const result = this.executeMachineLanguage(uAddr);
+          return result ? result.A : 0;
+        }
+        return 0;
+      }
       default: throw new Error('?ILLEGAL QUANTITY ERROR');
     }
   }
@@ -4399,7 +6089,7 @@ App.Interpreter = Interpreter;
 '@
 [System.IO.File]::WriteAllText("$dir\js\interpreter.js", $content, [System.Text.Encoding]::UTF8)
 
-Write-Host "Writing js\emulator.js (13/15)..."
+Write-Host "Writing js\emulator.js (14/16)..."
 $content = @'
 window.App = window.App || {};
 
@@ -4414,6 +6104,7 @@ class Emulator {
     this.fileUpload = document.getElementById('file-upload');
     this.display = new App.Display(this.canvasElement);
     this.interpreter = new App.Interpreter(this.display);
+    this.interpreter._emulator = this;
     this.drives = [new App.VirtualFileSystem(), new App.VirtualFileSystem()];
     this.drives[1].volumeName = 'BACKUP';
     this.drives[1].volumeNumber = 253;
@@ -4423,6 +6114,7 @@ class Emulator {
     this.ai = new App.ClaudeAI();
     this.inputBuffer = '';
     this.commandMode = true;
+    this.monitorMode = false;   // System Monitor ($FF69) mode
     this.poweredOn = false;
     this.booting = false;
     this.setupInput();
@@ -4647,7 +6339,11 @@ class Emulator {
   }
 
   showPrompt() {
-    this.display.printString(']');
+    if (this.monitorMode) {
+      this.display.printString('*');
+    } else {
+      this.display.printString(']');
+    }
     this.inputBuffer = '';
     this.commandMode = true;
   }
@@ -4659,6 +6355,40 @@ class Emulator {
       const tag = e.target.tagName;
       if (tag === 'SELECT' || tag === 'BUTTON') return;
       this.handleKeyDown(e);
+    });
+
+    document.addEventListener('keyup', (e) => {
+      if (!this.poweredOn) return;
+      // Release paddle buttons when modifier keys go up
+      this.interpreter._paddleButtons[0] = e.altKey;
+      this.interpreter._paddleButtons[1] = e.metaKey;
+      this.interpreter._paddleButtons[2] = e.shiftKey;
+    });
+
+    // Mouse tracking for paddle input (PDL 0 = X, PDL 1 = Y)
+    this.canvasElement.addEventListener('mousemove', (e) => {
+      if (!this.poweredOn) return;
+      const rect = this.canvasElement.getBoundingClientRect();
+      const x = (e.clientX - rect.left) / rect.width;
+      const y = (e.clientY - rect.top) / rect.height;
+      this.interpreter._paddleValues[0] = Math.max(0, Math.min(255, Math.floor(x * 255)));
+      this.interpreter._paddleValues[1] = Math.max(0, Math.min(255, Math.floor(y * 255)));
+    });
+
+    // Mouse buttons for paddle buttons (left = PB0, right = PB1)
+    this.canvasElement.addEventListener('mousedown', (e) => {
+      if (!this.poweredOn) return;
+      if (e.button === 0) this.interpreter._paddleButtons[0] = true;
+      if (e.button === 2) this.interpreter._paddleButtons[1] = true;
+    });
+    this.canvasElement.addEventListener('mouseup', (e) => {
+      if (!this.poweredOn) return;
+      if (e.button === 0) this.interpreter._paddleButtons[0] = false;
+      if (e.button === 2) this.interpreter._paddleButtons[1] = false;
+    });
+    // Prevent context menu on right-click over canvas
+    this.canvasElement.addEventListener('contextmenu', (e) => {
+      e.preventDefault();
     });
 
     // Paste support (Ctrl+V / Cmd+V)
@@ -4685,6 +6415,12 @@ class Emulator {
 
   handleKeyDown(e) {
     if (!this.poweredOn || this.booting) return;
+
+    // Track paddle buttons from modifier keys
+    // PB0 = Open Apple = Alt/Option, PB1 = Closed Apple = Meta/Cmd, PB2 = Shift
+    this.interpreter._paddleButtons[0] = e.altKey;
+    this.interpreter._paddleButtons[1] = e.metaKey;
+    this.interpreter._paddleButtons[2] = e.shiftKey;
 
     if (e.ctrlKey && e.key === 'c') {
       e.preventDefault();
@@ -4798,6 +6534,12 @@ class Emulator {
 
   async processLine(line) {
     const upper = line.toUpperCase().trim();
+
+    // System Monitor mode — handle monitor commands
+    if (this.monitorMode) {
+      this.processMonitorLine(upper);
+      return;
+    }
 
     // Line number -> store program line
     const lineNumMatch = upper.match(/^(\d+)\s*(.*)/);
@@ -5105,9 +6847,10 @@ class Emulator {
       return true;
     }
 
-    // BRUN (binary run stub)
+    // BRUN (binary run — load and execute)
     if (upper.startsWith('BRUN ')) {
-      this.display.printLine('?BINARY NOT SUPPORTED');
+      this.diskActivity();
+      this.cmdBrun(upper.substring(5).trim());
       this.showPrompt();
       return true;
     }
@@ -5387,16 +7130,21 @@ class Emulator {
     }
     const name = nameMatch[1].toUpperCase();
     const fname = name.endsWith('.BIN') ? name : name + '.BIN';
-    // Create a placeholder binary file
     const addr = parseInt(nameMatch[2], 16);
     const len = parseInt(nameMatch[3], 16);
-    const content = `; BINARY FILE\n; ADDRESS: $${addr.toString(16).toUpperCase()}\n; LENGTH: $${len.toString(16).toUpperCase()}\n`;
+    // Save actual memory contents as comma-separated hex bytes
+    const bytes = [];
+    for (let i = 0; i < len; i++) {
+      bytes.push(this.interpreter.memory[(addr + i) & 0xFFFF].toString(16).toUpperCase().padStart(2, '0'));
+    }
+    const header = `; BINARY FILE A=$${addr.toString(16).toUpperCase()} L=$${len.toString(16).toUpperCase()}\n`;
+    const content = header + bytes.join(',');
     const err = this.fs.writeFile(fname, content, 'B');
     if (err) this.display.printLine('?' + err);
   }
 
   cmdBload(argStr) {
-    const nameMatch = argStr.match(/^"?([^",]+)"?/i);
+    const nameMatch = argStr.match(/^"?([^",]+)"?\s*(?:,\s*A\$?([0-9A-F]+))?/i);
     if (!nameMatch) {
       this.display.printLine('?SYNTAX ERROR');
       return;
@@ -5408,7 +7156,60 @@ class Emulator {
       this.display.printLine('?' + result.error);
       return;
     }
-    // Binary loading is simulated - file content is acknowledged
+    // Parse header for original address
+    const lines = result.content.split('\n');
+    let loadAddr = nameMatch[2] ? parseInt(nameMatch[2], 16) : 0;
+    let dataLine = '';
+    for (const line of lines) {
+      const hdr = line.match(/;\s*BINARY FILE\s+A=\$([0-9A-F]+)/i);
+      if (hdr && !nameMatch[2]) {
+        loadAddr = parseInt(hdr[1], 16);
+      } else if (!line.startsWith(';')) {
+        dataLine = line.trim();
+      }
+    }
+    // Load hex bytes into memory
+    if (dataLine) {
+      const bytes = dataLine.split(',');
+      for (let i = 0; i < bytes.length; i++) {
+        const val = parseInt(bytes[i], 16);
+        if (!isNaN(val)) {
+          this.interpreter.memory[(loadAddr + i) & 0xFFFF] = val;
+        }
+      }
+    }
+  }
+
+  cmdBrun(argStr) {
+    const nameMatch = argStr.match(/^"?([^",]+)"?\s*(?:,\s*A\$?([0-9A-F]+))?/i);
+    if (!nameMatch) {
+      this.display.printLine('?SYNTAX ERROR');
+      return;
+    }
+    // First BLOAD the file
+    this.cmdBload(argStr);
+    // Determine the load address from the file header
+    const name = nameMatch[1].toUpperCase();
+    const fpath = this.resolveWithExt(name);
+    const result = this.fs.readFile(fpath);
+    if (result.error) return; // Error already printed by cmdBload
+    let loadAddr = nameMatch[2] ? parseInt(nameMatch[2], 16) : 0;
+    if (!nameMatch[2]) {
+      const lines = result.content.split('\n');
+      for (const line of lines) {
+        const hdr = line.match(/;\s*BINARY FILE\s+A=\$([0-9A-F]+)/i);
+        if (hdr) { loadAddr = parseInt(hdr[1], 16); break; }
+      }
+    }
+    // Execute via 6502 CPU
+    if (this.interpreter.cpu) {
+      const execResult = this.interpreter.executeMachineLanguage(loadAddr);
+      if (execResult) {
+        this.display.printLine(this.interpreter.cpu.getStateString());
+      }
+    } else {
+      this.display.printLine('?NO CPU AVAILABLE');
+    }
   }
 
   // ===== DEL LINES =====
@@ -5488,6 +7289,11 @@ class Emulator {
   }
 
   ctrlC() {
+    // Ctrl+C in monitor mode returns to BASIC
+    if (this.monitorMode) {
+      this.exitMonitor();
+      return;
+    }
     if (this.interpreter.running) {
       this.interpreter.running = false;
       this.interpreter.stopped = true;
@@ -5535,6 +7341,157 @@ class Emulator {
         this.display.printLine('');
         lineCount = 0;
       }
+    }
+  }
+
+  // ===== SYSTEM MONITOR =====
+
+  enterMonitor() {
+    this.monitorMode = true;
+    this.display.printLine('');
+    this.showPrompt();
+  }
+
+  exitMonitor() {
+    this.monitorMode = false;
+    this.display.printLine('');
+    this.showPrompt();
+  }
+
+  processMonitorLine(line) {
+    // Empty line — just show prompt
+    if (!line) {
+      this.showPrompt();
+      return;
+    }
+
+    // Ctrl+C or 3D0G — return to BASIC
+    if (line === '3D0G' || line === 'CTRL+C') {
+      this.exitMonitor();
+      return;
+    }
+
+    // R — display CPU registers
+    if (line === 'R') {
+      if (this.interpreter.cpu) {
+        this.display.printLine(this.interpreter.cpu.getStateString());
+      } else {
+        this.display.printLine('?NO CPU');
+      }
+      this.showPrompt();
+      return;
+    }
+
+    // addrG — execute (Go) from address
+    const goMatch = line.match(/^([0-9A-F]{1,4})G$/);
+    if (goMatch) {
+      const addr = parseInt(goMatch[1], 16);
+      if (this.interpreter.cpu) {
+        this.display.printLine('');
+        const result = this.interpreter.executeMachineLanguage(addr);
+        if (result) {
+          this.display.printLine(this.interpreter.cpu.getStateString());
+          this.display.printLine(result.cycles + ' CYCLES');
+        }
+      } else {
+        this.display.printLine('?NO CPU');
+      }
+      this.showPrompt();
+      return;
+    }
+
+    // addrL — disassemble (List) from address
+    const listMatch = line.match(/^([0-9A-F]{1,4})L$/);
+    if (listMatch) {
+      const addr = parseInt(listMatch[1], 16);
+      if (this.interpreter.cpu) {
+        const lines = this.interpreter.cpu.disassemble(addr, 20);
+        for (const l of lines) {
+          this.display.printLine(l.text);
+        }
+      } else {
+        this.display.printLine('?NO CPU');
+      }
+      this.showPrompt();
+      return;
+    }
+
+    // addr.addrL — disassemble range
+    const listRangeMatch = line.match(/^([0-9A-F]{1,4})\.([0-9A-F]{1,4})L$/);
+    if (listRangeMatch) {
+      const start = parseInt(listRangeMatch[1], 16);
+      const end = parseInt(listRangeMatch[2], 16);
+      if (this.interpreter.cpu) {
+        const maxInstr = Math.min(200, end - start + 1);
+        const lines = this.interpreter.cpu.disassemble(start, maxInstr);
+        for (const l of lines) {
+          if (l.addr > end) break;
+          this.display.printLine(l.text);
+        }
+      } else {
+        this.display.printLine('?NO CPU');
+      }
+      this.showPrompt();
+      return;
+    }
+
+    // addr:byte byte byte — write bytes to memory
+    const writeMatch = line.match(/^([0-9A-F]{1,4})\s*:\s*(.+)/);
+    if (writeMatch) {
+      const startAddr = parseInt(writeMatch[1], 16);
+      const bytesStr = writeMatch[2].trim().split(/\s+/);
+      let addr = startAddr;
+      for (const byteStr of bytesStr) {
+        const val = parseInt(byteStr, 16);
+        if (isNaN(val) || val < 0 || val > 255) {
+          this.display.printLine('?ERR');
+          this.showPrompt();
+          return;
+        }
+        this.interpreter.memory[addr & 0xFFFF] = val;
+        addr++;
+      }
+      this.showPrompt();
+      return;
+    }
+
+    // addr.addr — display range
+    const rangeMatch = line.match(/^([0-9A-F]{1,4})\.([0-9A-F]{1,4})$/);
+    if (rangeMatch) {
+      const start = parseInt(rangeMatch[1], 16);
+      const end = parseInt(rangeMatch[2], 16);
+      this._monitorDump(start, end);
+      this.showPrompt();
+      return;
+    }
+
+    // Single hex address — display 8 bytes
+    const addrMatch = line.match(/^([0-9A-F]{1,4})$/);
+    if (addrMatch) {
+      const addr = parseInt(addrMatch[1], 16);
+      this._monitorDump(addr, addr + 7);
+      this.showPrompt();
+      return;
+    }
+
+    // Anything else
+    this.display.printLine('?ERR');
+    this.showPrompt();
+  }
+
+  _monitorDump(start, end) {
+    // Display memory in rows of 8 bytes
+    let addr = start & 0xFFFF;
+    const endAddr = end & 0xFFFF;
+    while (addr <= endAddr) {
+      const rowAddr = addr;
+      let line = rowAddr.toString(16).toUpperCase().padStart(4, '0') + '-';
+      const rowEnd = Math.min(rowAddr + 7, endAddr);
+      for (let a = rowAddr; a <= rowEnd; a++) {
+        line += ' ' + this.interpreter.memory[a & 0xFFFF].toString(16).toUpperCase().padStart(2, '0');
+      }
+      this.display.printLine(line);
+      addr = rowAddr + 8;
     }
   }
 
@@ -5615,11 +7572,12 @@ class Emulator {
       'HPLOT TO x,y  Draw line to point',
       'HPLOT x,y TO x2,y2  Draw line',
       '',
-      '--- SHAPE TABLES (STUBS) ---',
-      'DRAW n AT x,y   Draw shape',
+      '--- SHAPE TABLES ---',
+      'DRAW n AT x,y   Draw shape from table',
       'XDRAW n AT x,y  XOR draw shape',
       'ROT= n          Set rotation 0-63',
       'SCALE= n        Set scale factor',
+      'POKE 232,lo:POKE 233,hi  Set table addr',
       '',
       '--- SCREEN PAGES & SOFT SWITCHES ---',
       'POKE 49236,0  Show page 1',
@@ -5633,20 +7591,46 @@ class Emulator {
       'CALL addr     Call machine language',
       '',
       'USEFUL CALL ADDRESSES:',
+      'CALL -151     Enter System Monitor',
       'CALL -936     Clear to end of screen',
       'CALL -958     HOME (clear screen)',
+      'CALL -912     Scroll up one line',
       'CALL -868     Clear to end of line',
       'CALL -922     Line feed',
+      'CALL -198     BELL (beep)',
+      'CALL -1008    Carriage return (CROUT)',
+      'CALL -1036    Reset text window',
+      'CALL -380     Set INVERSE mode',
+      'CALL -384     Set NORMAL mode',
       'CALL 62450    Clear hi-res to black',
       'CALL 62454    Clear hi-res to HCOLOR',
       '',
       'USEFUL PEEK/POKE LOCATIONS:',
+      '32     Left margin (WNDLFT)',
+      '33     Window width (WNDWTH)',
+      '34     Top margin (WNDTOP)',
+      '35     Bottom margin (WNDBTM)',
       '36/37  Cursor column/row',
-      '32-35  Text window edges',
-      '49152  Last key pressed',
-      '49200  Speaker click',
+      '50     Inv mode (127=INV, 255=NRM)',
       '222    Last error code (ONERR)',
       '230    Current HCOLOR value',
+      '232/233  Shape table address lo/hi',
+      '',
+      'I/O SOFT SWITCHES:',
+      '-16384 ($C000) Keyboard data',
+      '-16368 ($C010) Keyboard strobe',
+      '-16336 ($C030) Speaker toggle',
+      '-16304-16297  Graphics switches',
+      '-16287 ($C061) PB0 (Alt / Mouse L)',
+      '-16286 ($C062) PB1 (Cmd / Mouse R)',
+      '-16285 ($C063) PB2 (Shift)',
+      '',
+      'PADDLE INPUT (PDL):',
+      'PDL(0)   Mouse X position (0-255)',
+      'PDL(1)   Mouse Y position (0-255)',
+      'PB0      Alt key or left mouse button',
+      'PB1      Cmd key or right mouse button',
+      'PB2      Shift key',
       '',
       '--- MATH FUNCTIONS ---',
       'ABS(n) SGN(n) INT(n) SQR(n)',
@@ -5669,8 +7653,8 @@ class Emulator {
       'SPC(n)        Print n spaces',
       'TAB(n)        Tab to column n',
       'SCRN(x,y)     Lo-res color at x,y',
-      'PDL(n)        Paddle value 0-255 (rnd)',
-      'USR(n)        User function (stub)',
+      'PDL(n)        Paddle value 0-255 (mouse)',
+      'USR(addr)     Execute 6502 ML, return A',
       '',
       '--- DOS 3.3 DISK COMMANDS ---',
       'CATALOG [path]  List disk directory',
@@ -5730,6 +7714,38 @@ class Emulator {
       'AI MODEL [name]  Set/show model',
       'AI NEW           Clear AI conversation',
       'AI HELP          Show AI help',
+      '',
+      '--- 6502 MACHINE LANGUAGE ---',
+      'Full 6502 CPU emulation (56 instr.)',
+      '',
+      'WRITING ML CODE:',
+      'POKE addr,opcode  Write bytes to memory',
+      'CALL addr         Execute ML at address',
+      'USR(addr)         Execute ML, return A reg',
+      'BSAVE n,Ahh,Lhh  Save ML to disk',
+      'BLOAD n[,Ahh]     Load ML from disk',
+      'BRUN n[,Ahh]      Load and execute ML',
+      '',
+      'COMMON ML LOCATIONS:',
+      '$0300 (768)    Standard ML routine area',
+      '$0400 (1024)   General data area',
+      '$F0-$FF        Zero page work area',
+      '',
+      'EXAMPLE (BASIC):',
+      'POKE 768,169:POKE 769,42  LDA #$2A',
+      'POKE 770,96               RTS',
+      'PRINT USR(768)            Prints 42',
+      '',
+      '--- SYSTEM MONITOR ---',
+      'CALL -151     Enter monitor (* prompt)',
+      '  addr        View 8 bytes at address',
+      '  addr.addr   View memory range',
+      '  addr:bb bb  Write bytes to memory',
+      '  addrL       Disassemble 20 instr.',
+      '  addr.addrL  Disassemble range',
+      '  addrG       Execute ML at address',
+      '  R           Show CPU registers',
+      '  Ctrl+C      Return to BASIC',
       '',
       '--- SYSTEM ---',
       'HELP          This command reference',
@@ -6216,7 +8232,7 @@ App.Emulator = Emulator;
 '@
 [System.IO.File]::WriteAllText("$dir\js\emulator.js", $content, [System.Text.Encoding]::UTF8)
 
-Write-Host "Writing js\main.js (14/15)..."
+Write-Host "Writing js\main.js (15/16)..."
 $content = @'
 window.App = window.App || {};
 
@@ -6227,7 +8243,7 @@ window.addEventListener('DOMContentLoaded', function() {
 '@
 [System.IO.File]::WriteAllText("$dir\js\main.js", $content, [System.Text.Encoding]::UTF8)
 
-Write-Host "Writing img\AppleIIBG01.png (15/15)..."
+Write-Host "Writing img\AppleIIBG01.png (16/16)..."
 $b64 = @'
 iVBORw0KGgoAAAANSUhEUgAABgAAAAQACAIAAACoEwUVAADKR2NhQlgAAMpHanVtYgAAAB5qdW1k
 YzJwYQARABCAAACqADibcQNjMnBhAAAANvRqdW1iAAAAR2p1bWRjMm1hABEAEIAAAKoAOJtxA3Vy
