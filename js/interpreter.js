@@ -195,13 +195,9 @@ class Interpreter {
     const lines = Object.keys(this.program).map(Number).sort((a, b) => a - b);
     for (const lineNum of lines) {
       const src = this.program[lineNum];
-      const dataMatch = src.match(/^\s*DATA\s+(.*)/i);
-      if (dataMatch) {
-        this.parseDataValues(dataMatch[1]);
-      }
-      const parts = src.split(':');
-      for (let i = 1; i < parts.length; i++) {
-        const dm = parts[i].match(/^\s*DATA\s+(.*)/i);
+      const statements = this.splitStatements(src);
+      for (const stmt of statements) {
+        const dm = stmt.trim().match(/^DATA\s+(.*)/i);
         if (dm) this.parseDataValues(dm[1]);
       }
     }
@@ -1334,9 +1330,6 @@ class Interpreter {
       }
       return;
     }
-
-    // CALL 768 / $0300: Common user ML routine address — silently ignore
-    if (uaddr === 768) return;
 
     // CALL -3288 / $F328: HGR init (alternate entry)
     if (uaddr === 62248) {
