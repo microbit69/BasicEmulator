@@ -11,6 +11,7 @@ class Emulator {
     this.fileUpload = document.getElementById('file-upload');
     this.display = new App.Display(this.canvasElement);
     this.interpreter = new App.Interpreter(this.display);
+    this.interpreter._emulator = this;
     this.drives = [new App.VirtualFileSystem(), new App.VirtualFileSystem()];
     this.drives[1].volumeName = 'BACKUP';
     this.drives[1].volumeNumber = 253;
@@ -20,6 +21,7 @@ class Emulator {
     this.ai = new App.ClaudeAI();
     this.inputBuffer = '';
     this.commandMode = true;
+    this.monitorMode = false;   // System Monitor ($FF69) mode
     this.poweredOn = false;
     this.booting = false;
     this.setupInput();
@@ -244,7 +246,11 @@ class Emulator {
   }
 
   showPrompt() {
-    this.display.printString(']');
+    if (this.monitorMode) {
+      this.display.printString('*');
+    } else {
+      this.display.printString(']');
+    }
     this.inputBuffer = '';
     this.commandMode = true;
   }
@@ -264,6 +270,32 @@ class Emulator {
       this.interpreter._paddleButtons[0] = e.altKey;
       this.interpreter._paddleButtons[1] = e.metaKey;
       this.interpreter._paddleButtons[2] = e.shiftKey;
+    });
+
+    // Mouse tracking for paddle input (PDL 0 = X, PDL 1 = Y)
+    this.canvasElement.addEventListener('mousemove', (e) => {
+      if (!this.poweredOn) return;
+      const rect = this.canvasElement.getBoundingClientRect();
+      const x = (e.clientX - rect.left) / rect.width;
+      const y = (e.clientY - rect.top) / rect.height;
+      this.interpreter._paddleValues[0] = Math.max(0, Math.min(255, Math.floor(x * 255)));
+      this.interpreter._paddleValues[1] = Math.max(0, Math.min(255, Math.floor(y * 255)));
+    });
+
+    // Mouse buttons for paddle buttons (left = PB0, right = PB1)
+    this.canvasElement.addEventListener('mousedown', (e) => {
+      if (!this.poweredOn) return;
+      if (e.button === 0) this.interpreter._paddleButtons[0] = true;
+      if (e.button === 2) this.interpreter._paddleButtons[1] = true;
+    });
+    this.canvasElement.addEventListener('mouseup', (e) => {
+      if (!this.poweredOn) return;
+      if (e.button === 0) this.interpreter._paddleButtons[0] = false;
+      if (e.button === 2) this.interpreter._paddleButtons[1] = false;
+    });
+    // Prevent context menu on right-click over canvas
+    this.canvasElement.addEventListener('contextmenu', (e) => {
+      e.preventDefault();
     });
 
     // Paste support (Ctrl+V / Cmd+V)
@@ -409,6 +441,12 @@ class Emulator {
 
   async processLine(line) {
     const upper = line.toUpperCase().trim();
+
+    // System Monitor mode — handle monitor commands
+    if (this.monitorMode) {
+      this.processMonitorLine(upper);
+      return;
+    }
 
     // Line number -> store program line
     const lineNumMatch = upper.match(/^(\d+)\s*(.*)/);
@@ -1125,6 +1163,11 @@ class Emulator {
   }
 
   ctrlC() {
+    // Ctrl+C in monitor mode returns to BASIC
+    if (this.monitorMode) {
+      this.exitMonitor();
+      return;
+    }
     if (this.interpreter.running) {
       this.interpreter.running = false;
       this.interpreter.stopped = true;
@@ -1172,6 +1215,93 @@ class Emulator {
         this.display.printLine('');
         lineCount = 0;
       }
+    }
+  }
+
+  // ===== SYSTEM MONITOR =====
+
+  enterMonitor() {
+    this.monitorMode = true;
+    this.display.printLine('');
+    this.showPrompt();
+  }
+
+  exitMonitor() {
+    this.monitorMode = false;
+    this.display.printLine('');
+    this.showPrompt();
+  }
+
+  processMonitorLine(line) {
+    // Empty line — just show prompt
+    if (!line) {
+      this.showPrompt();
+      return;
+    }
+
+    // Ctrl+C or 3D0G — return to BASIC
+    if (line === '3D0G' || line === 'CTRL+C') {
+      this.exitMonitor();
+      return;
+    }
+
+    // addr:byte byte byte — write bytes to memory
+    const writeMatch = line.match(/^([0-9A-F]{1,4})\s*:\s*(.+)/);
+    if (writeMatch) {
+      const startAddr = parseInt(writeMatch[1], 16);
+      const bytesStr = writeMatch[2].trim().split(/\s+/);
+      let addr = startAddr;
+      for (const byteStr of bytesStr) {
+        const val = parseInt(byteStr, 16);
+        if (isNaN(val) || val < 0 || val > 255) {
+          this.display.printLine('?ERR');
+          this.showPrompt();
+          return;
+        }
+        this.interpreter.memory[addr & 0xFFFF] = val;
+        addr++;
+      }
+      this.showPrompt();
+      return;
+    }
+
+    // addr.addr — display range
+    const rangeMatch = line.match(/^([0-9A-F]{1,4})\.([0-9A-F]{1,4})$/);
+    if (rangeMatch) {
+      const start = parseInt(rangeMatch[1], 16);
+      const end = parseInt(rangeMatch[2], 16);
+      this._monitorDump(start, end);
+      this.showPrompt();
+      return;
+    }
+
+    // Single hex address — display 8 bytes
+    const addrMatch = line.match(/^([0-9A-F]{1,4})$/);
+    if (addrMatch) {
+      const addr = parseInt(addrMatch[1], 16);
+      this._monitorDump(addr, addr + 7);
+      this.showPrompt();
+      return;
+    }
+
+    // Anything else
+    this.display.printLine('?ERR');
+    this.showPrompt();
+  }
+
+  _monitorDump(start, end) {
+    // Display memory in rows of 8 bytes
+    let addr = start & 0xFFFF;
+    const endAddr = end & 0xFFFF;
+    while (addr <= endAddr) {
+      const rowAddr = addr;
+      let line = rowAddr.toString(16).toUpperCase().padStart(4, '0') + '-';
+      const rowEnd = Math.min(rowAddr + 7, endAddr);
+      for (let a = rowAddr; a <= rowEnd; a++) {
+        line += ' ' + this.interpreter.memory[a & 0xFFFF].toString(16).toUpperCase().padStart(2, '0');
+      }
+      this.display.printLine(line);
+      addr = rowAddr + 8;
     }
   }
 
@@ -1271,11 +1401,17 @@ class Emulator {
       'CALL addr     Call machine language',
       '',
       'USEFUL CALL ADDRESSES:',
+      'CALL -151     Enter System Monitor',
       'CALL -936     Clear to end of screen',
       'CALL -958     HOME (clear screen)',
       'CALL -912     Scroll up one line',
       'CALL -868     Clear to end of line',
       'CALL -922     Line feed',
+      'CALL -198     BELL (beep)',
+      'CALL -1008    Carriage return (CROUT)',
+      'CALL -1036    Reset text window',
+      'CALL -380     Set INVERSE mode',
+      'CALL -384     Set NORMAL mode',
       'CALL 62450    Clear hi-res to black',
       'CALL 62454    Clear hi-res to HCOLOR',
       '',
@@ -1295,9 +1431,16 @@ class Emulator {
       '-16368 ($C010) Keyboard strobe',
       '-16336 ($C030) Speaker toggle',
       '-16304-16297  Graphics switches',
-      '-16287 ($C061) PB0/Open Apple (Alt)',
-      '-16286 ($C062) PB1/Solid Apple (Cmd)',
+      '-16287 ($C061) PB0 (Alt / Mouse L)',
+      '-16286 ($C062) PB1 (Cmd / Mouse R)',
       '-16285 ($C063) PB2 (Shift)',
+      '',
+      'PADDLE INPUT (PDL):',
+      'PDL(0)   Mouse X position (0-255)',
+      'PDL(1)   Mouse Y position (0-255)',
+      'PB0      Alt key or left mouse button',
+      'PB1      Cmd key or right mouse button',
+      'PB2      Shift key',
       '',
       '--- MATH FUNCTIONS ---',
       'ABS(n) SGN(n) INT(n) SQR(n)',
@@ -1320,7 +1463,7 @@ class Emulator {
       'SPC(n)        Print n spaces',
       'TAB(n)        Tab to column n',
       'SCRN(x,y)     Lo-res color at x,y',
-      'PDL(n)        Paddle value 0-255 (rnd)',
+      'PDL(n)        Paddle value 0-255 (mouse)',
       'USR(n)        User function (stub)',
       '',
       '--- DOS 3.3 DISK COMMANDS ---',
@@ -1381,6 +1524,13 @@ class Emulator {
       'AI MODEL [name]  Set/show model',
       'AI NEW           Clear AI conversation',
       'AI HELP          Show AI help',
+      '',
+      '--- SYSTEM MONITOR ---',
+      'CALL -151     Enter monitor (* prompt)',
+      '  addr        View 8 bytes at address',
+      '  addr.addr   View memory range',
+      '  addr:bb bb  Write bytes to memory',
+      '  Ctrl+C      Return to BASIC',
       '',
       '--- SYSTEM ---',
       'HELP          This command reference',

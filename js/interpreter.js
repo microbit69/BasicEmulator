@@ -43,10 +43,16 @@ class Interpreter {
     this._speakerState = false;
     this._speakerToggleCount = 0;
     this._speakerToggleTime = 0;
+    this._speakerLastInterval = 0;
+    this._speakerToneOsc = null;
+    this._speakerToneGain = null;
+    this._speakerToneTimeout = null;
     // Game I/O annunciator outputs (AN0-AN3)
     this._annunciators = [false, false, false, false];
     // Paddle button states (updated from keyboard)
     this._paddleButtons = [false, false, false];
+    // Paddle analog values (0-255), tracked from mouse position
+    this._paddleValues = [128, 128, 128, 128];
     // Shape table pointer (address in memory where shape table lives)
     this._shapeTableAddr = 0;
     this.inputCallback = null;
@@ -1017,21 +1023,113 @@ class Interpreter {
     }
   }
 
-  // Speaker toggle — detect periodic toggling for tone generation
+  // Speaker toggle — detect periodic toggling and generate continuous tones.
+  // The Apple II speaker is toggled by accessing $C030; rapid toggling produces
+  // a square wave whose frequency depends on the toggle interval.
   _toggleSpeaker() {
     this._speakerState = !this._speakerState;
     const now = performance.now();
-    if (now - this._speakerToggleTime < 50) {
+    const interval = now - this._speakerToggleTime;
+
+    if (interval < 100 && interval > 0.01) {
+      // Two toggles = one full cycle, so frequency = 1000 / (2 * interval_ms)
+      const freq = 1000 / (2 * interval);
       this._speakerToggleCount++;
-      if (this._speakerToggleCount === 2) {
-        // Periodic toggling detected — emit a short click/tone
-        App.beep(10, 440);
-        this._speakerToggleCount = 0;
+
+      if (this._speakerToggleCount >= 4 && freq >= 20 && freq <= 8000) {
+        // Sustained toggling detected — start or update a continuous tone
+        this._startSpeakerTone(freq);
       }
     } else {
-      this._speakerToggleCount = 1;
+      // Gap too large — stop any playing tone after a timeout
+      this._speakerToggleCount = 0;
+      if (interval > 100) {
+        // Single toggle = click
+        this._speakerClick();
+      }
     }
     this._speakerToggleTime = now;
+
+    // Auto-stop: if no toggle within 80ms, fade out the tone
+    clearTimeout(this._speakerToneTimeout);
+    this._speakerToneTimeout = setTimeout(() => {
+      this._stopSpeakerTone();
+      this._speakerToggleCount = 0;
+    }, 80);
+  }
+
+  // Start or update a continuous speaker tone
+  _startSpeakerTone(freq) {
+    try {
+      const ctx = (window.audioCtx || (window.audioCtx = new (window.AudioContext || window.webkitAudioContext)()));
+
+      if (this._speakerToneOsc) {
+        // Update frequency of existing oscillator (smooth transition)
+        this._speakerToneOsc.frequency.setTargetAtTime(freq, ctx.currentTime, 0.01);
+        return;
+      }
+
+      // Create new oscillator for the tone
+      const osc = ctx.createOscillator();
+      osc.type = 'square';
+      osc.frequency.value = freq;
+
+      // Hard-clip waveshaper for authentic 1-bit speaker sound
+      const shaper = ctx.createWaveShaper();
+      const curve = new Float32Array(256);
+      for (let i = 0; i < 256; i++) {
+        const x = (i * 2) / 256 - 1;
+        curve[i] = x > 0 ? 1 : -1;
+      }
+      shaper.curve = curve;
+
+      const gain = ctx.createGain();
+      gain.gain.setValueAtTime(0, ctx.currentTime);
+      gain.gain.linearRampToValueAtTime(0.08, ctx.currentTime + 0.02);
+
+      osc.connect(shaper);
+      shaper.connect(gain);
+      gain.connect(ctx.destination);
+      osc.start();
+
+      this._speakerToneOsc = osc;
+      this._speakerToneGain = gain;
+    } catch (e) { /* Audio not available */ }
+  }
+
+  // Stop the continuous speaker tone with a short fade
+  _stopSpeakerTone() {
+    if (this._speakerToneOsc) {
+      try {
+        const ctx = (window.audioCtx || (window.audioCtx = new (window.AudioContext || window.webkitAudioContext)()));
+        this._speakerToneGain.gain.linearRampToValueAtTime(0.001, ctx.currentTime + 0.03);
+        const osc = this._speakerToneOsc;
+        setTimeout(() => { try { osc.stop(); } catch(e) {} }, 50);
+      } catch (e) {}
+      this._speakerToneOsc = null;
+      this._speakerToneGain = null;
+    }
+  }
+
+  // Single speaker click (for isolated toggles)
+  _speakerClick() {
+    try {
+      const ctx = (window.audioCtx || (window.audioCtx = new (window.AudioContext || window.webkitAudioContext)()));
+      const t = ctx.currentTime;
+      const bufferSize = Math.floor(ctx.sampleRate * 0.003);
+      const buffer = ctx.createBuffer(1, bufferSize, ctx.sampleRate);
+      const data = buffer.getChannelData(0);
+      for (let i = 0; i < bufferSize; i++) {
+        data[i] = (i < bufferSize / 2) ? 0.3 : -0.3;
+      }
+      const source = ctx.createBufferSource();
+      source.buffer = buffer;
+      const gain = ctx.createGain();
+      gain.gain.value = 0.1;
+      source.connect(gain);
+      gain.connect(ctx.destination);
+      source.start(t);
+    } catch (e) { /* Audio not available */ }
   }
 
   // ===== CALL =====
@@ -1039,39 +1137,109 @@ class Interpreter {
     const addr = Math.floor(this.evaluateExpressionFromString(argStr));
     const uaddr = addr < 0 ? addr + 65536 : addr;
 
-    // CALL -936 / CALL 64600: Clear from cursor to end of screen
+    // CALL -151 / $FF69: Enter System Monitor
+    if (uaddr === 65385) {
+      if (this._emulator) this._emulator.enterMonitor();
+      return;
+    }
+
+    // CALL -936 / $FC58 / CALL 64600: Clear from cursor to end of screen (CLREOP)
     if (uaddr === 64600) {
       this.display.clearToEnd();
       return;
     }
 
-    // CALL -958 / CALL 64578: HOME (clear screen)
+    // CALL -998 / $FC1A: CLREOP — same as CALL -936 (alternate entry)
+    if (uaddr === 64538) {
+      this.display.clearToEnd();
+      return;
+    }
+
+    // CALL -958 / $FC42 / CALL 64578: HOME (clear screen)
     if (uaddr === 64578) {
       this.display.clear();
       return;
     }
 
-    // CALL -868 / CALL 64668: Clear to end of line
+    // CALL -868 / $FC9C / CALL 64668: Clear to end of line (CLREOL)
     if (uaddr === 64668) {
       this.display.clearToEndOfLine();
       return;
     }
 
-    // CALL -922 / CALL 64614: Line feed
+    // CALL -922 / $FC66 / CALL 64614: Line feed (CROUT)
     if (uaddr === 64614) {
       this.display.printChar('\n');
       this.display.render();
       return;
     }
 
-    // CALL -912 / CALL 64624: Scroll up one line
+    // CALL -1008 / $FC10: Carriage return (CROUT1 — alternate entry)
+    if (uaddr === 64528) {
+      this.display.printChar('\n');
+      this.display.render();
+      return;
+    }
+
+    // CALL -912 / $FC70 / CALL 64624: Scroll up one line (SCROLL)
     if (uaddr === 64624) {
       this.display.scrollUp();
       this.display.render();
       return;
     }
 
-    // CALL 62450: Clear hi-res screen to black
+    // CALL -198 / $FF3A: BELL (beep)
+    if (uaddr === 65338) {
+      if (typeof App.beep === 'function') App.beep(200, 1000);
+      return;
+    }
+
+    // CALL -1052 / $FBE4: RDKEY (wait for keypress) — handled as GET
+    if (uaddr === 64484) {
+      // This is a ROM routine that waits for a key; in our emulator
+      // it stores the key code in $C000. Programs rarely CALL this directly.
+      return;
+    }
+
+    // CALL -1036 / $FBF4: SETWND — reset text window to defaults
+    if (uaddr === 64500) {
+      this.display.wndLeft = 0;
+      this.display.wndWidth = 40;
+      this.display.wndTop = 0;
+      this.display.wndBottom = 24;
+      this.memory[32] = 0;
+      this.memory[33] = 40;
+      this.memory[34] = 0;
+      this.memory[35] = 24;
+      return;
+    }
+
+    // CALL -380 / $FE84: SETINV — set inverse text mode
+    if (uaddr === 65156) {
+      this.inverseMode = true;
+      this.flashMode = false;
+      this.display.displayMode = 1;
+      this.memory[50] = 127;
+      return;
+    }
+
+    // CALL -384 / $FE80: SETNORM — set normal text mode
+    if (uaddr === 65152) {
+      this.inverseMode = false;
+      this.flashMode = false;
+      this.display.displayMode = 0;
+      this.memory[50] = 255;
+      return;
+    }
+
+    // CALL -756 / $FD0C: COUT1 — output character in accumulator
+    // On real Apple II this outputs the char in the A register.
+    // We output a space since we can't access the 6502 accumulator.
+    if (uaddr === 64780) {
+      return;
+    }
+
+    // CALL 62450 / $F3F2: Clear hi-res screen to black (HCLR)
     if (uaddr === 62450) {
       if (this.hiResMode) {
         this.display.clearHiRes(false);
@@ -1079,13 +1247,28 @@ class Interpreter {
       return;
     }
 
-    // CALL 62454: Clear hi-res screen to current HCOLOR
+    // CALL 62454 / $F3F6: Clear hi-res screen to current HCOLOR
     if (uaddr === 62454) {
       if (this.hiResMode) {
         this.display.clearHiRes(this._hcolorIsOn());
       }
       return;
     }
+
+    // CALL 768 / $0300: Common user ML routine address — silently ignore
+    if (uaddr === 768) return;
+
+    // CALL -3288 / $F328: HGR init (alternate entry)
+    if (uaddr === 62248) {
+      this.textMode = false;
+      this.hiResMode = true;
+      this.hiResColor = 3;
+      this.display.initHiRes(1);
+      return;
+    }
+
+    // CALL -3082 / $F3F2: Same as 62450 (HGR clear to black)
+    // Already handled above
 
     // Unknown CALL - silently ignore
   }
@@ -1468,7 +1651,10 @@ class Interpreter {
         const y = Math.floor(args[1]);
         return this.display.getLoResPixel(x, y);
       }
-      case 'PDL': return Math.floor(Math.random() * 256);
+      case 'PDL': {
+        const paddle = Math.floor(args[0]) & 3;
+        return this._paddleValues[paddle];
+      }
       case 'FRE': return 38911;
       case 'PEEK': {
         const addr = Math.floor(args[0]);
@@ -1526,8 +1712,13 @@ class Interpreter {
         if (uaddr === 0xC063) return this._paddleButtons[2] ? 128 : 0;
 
         // Paddle analog values ($C064-$C067)
-        // Return 0 = timer expired (paddle centered value simulation)
-        if (uaddr >= 0xC064 && uaddr <= 0xC067) return 0;
+        // High bit set = timer not expired (value > threshold)
+        // Real Apple II uses analog RC timer; we simulate with paddle values
+        if (uaddr >= 0xC064 && uaddr <= 0xC067) {
+          const pIdx = uaddr - 0xC064;
+          // Return high bit set if paddle value is above ~128 (approximate)
+          return this._paddleValues[pIdx] > 128 ? 128 : 0;
+        }
 
         // Paddle trigger ($C070) — resets all paddle timers
         if (uaddr === 0xC070) return 0;
