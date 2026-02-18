@@ -1950,7 +1950,36 @@ App.getSamples = function() {
 100 PRINT "RAINBOW WAVE  CTRL-C=STOP";
 110 NEXT F
 120 TEXT
-130 END`
+130 END`,
+
+    ml_game: `
+10 REM MACHINE LANGUAGE GAME
+20 HOME
+30 PRINT "LOADING MACHINE CODE..."
+40 FOR I = 768 TO 826
+50 READ B: POKE I,B
+60 NEXT I
+70 HOME
+80 PRINT "MACHINE LANGUAGE DEMO GAME"
+90 PRINT
+100 PRINT "PRESS ANY KEY TO START"
+110 GET A$
+120 CALL 768
+130 HOME
+140 PRINT "GAME OVER!"
+150 PRINT
+160 PRINT "PLAY AGAIN? (Y/N)"
+170 GET A$
+180 IF A$ = "Y" THEN 70
+190 END
+200 DATA 169,0,133,6,169,192,133,7
+210 DATA 160,0,169,32,145,6,200
+220 DATA 208,251,230,7,165,7,201,200
+230 DATA 208,243,169,0,133,0,169,7
+240 DATA 133,1,162,59,160,0,177,0
+250 DATA 73,127,145,0,200,208,247
+260 DATA 230,1,202,208,240,76,189,253
+270 DATA 96,0,0,0,0`
   };
 };
 '@
@@ -4401,13 +4430,9 @@ class Interpreter {
     const lines = Object.keys(this.program).map(Number).sort((a, b) => a - b);
     for (const lineNum of lines) {
       const src = this.program[lineNum];
-      const dataMatch = src.match(/^\s*DATA\s+(.*)/i);
-      if (dataMatch) {
-        this.parseDataValues(dataMatch[1]);
-      }
-      const parts = src.split(':');
-      for (let i = 1; i < parts.length; i++) {
-        const dm = parts[i].match(/^\s*DATA\s+(.*)/i);
+      const statements = this.splitStatements(src);
+      for (const stmt of statements) {
+        const dm = stmt.trim().match(/^DATA\s+(.*)/i);
         if (dm) this.parseDataValues(dm[1]);
       }
     }
@@ -5540,9 +5565,6 @@ class Interpreter {
       }
       return;
     }
-
-    // CALL 768 / $0300: Common user ML routine address — silently ignore
-    if (uaddr === 768) return;
 
     // CALL -3288 / $F328: HGR init (alternate entry)
     if (uaddr === 62248) {
