@@ -754,9 +754,10 @@ class Emulator {
       return true;
     }
 
-    // BRUN (binary run stub)
+    // BRUN (binary run — load and execute)
     if (upper.startsWith('BRUN ')) {
-      this.display.printLine('?BINARY NOT SUPPORTED');
+      this.diskActivity();
+      this.cmdBrun(upper.substring(5).trim());
       this.showPrompt();
       return true;
     }
@@ -1086,6 +1087,38 @@ class Emulator {
     }
   }
 
+  cmdBrun(argStr) {
+    const nameMatch = argStr.match(/^"?([^",]+)"?\s*(?:,\s*A\$?([0-9A-F]+))?/i);
+    if (!nameMatch) {
+      this.display.printLine('?SYNTAX ERROR');
+      return;
+    }
+    // First BLOAD the file
+    this.cmdBload(argStr);
+    // Determine the load address from the file header
+    const name = nameMatch[1].toUpperCase();
+    const fpath = this.resolveWithExt(name);
+    const result = this.fs.readFile(fpath);
+    if (result.error) return; // Error already printed by cmdBload
+    let loadAddr = nameMatch[2] ? parseInt(nameMatch[2], 16) : 0;
+    if (!nameMatch[2]) {
+      const lines = result.content.split('\n');
+      for (const line of lines) {
+        const hdr = line.match(/;\s*BINARY FILE\s+A=\$([0-9A-F]+)/i);
+        if (hdr) { loadAddr = parseInt(hdr[1], 16); break; }
+      }
+    }
+    // Execute via 6502 CPU
+    if (this.interpreter.cpu) {
+      const execResult = this.interpreter.executeMachineLanguage(loadAddr);
+      if (execResult) {
+        this.display.printLine(this.interpreter.cpu.getStateString());
+      }
+    } else {
+      this.display.printLine('?NO CPU AVAILABLE');
+    }
+  }
+
   // ===== DEL LINES =====
   cmdDelLines(range) {
     let start = 0, end = Infinity;
@@ -1242,6 +1275,70 @@ class Emulator {
     // Ctrl+C or 3D0G — return to BASIC
     if (line === '3D0G' || line === 'CTRL+C') {
       this.exitMonitor();
+      return;
+    }
+
+    // R — display CPU registers
+    if (line === 'R') {
+      if (this.interpreter.cpu) {
+        this.display.printLine(this.interpreter.cpu.getStateString());
+      } else {
+        this.display.printLine('?NO CPU');
+      }
+      this.showPrompt();
+      return;
+    }
+
+    // addrG — execute (Go) from address
+    const goMatch = line.match(/^([0-9A-F]{1,4})G$/);
+    if (goMatch) {
+      const addr = parseInt(goMatch[1], 16);
+      if (this.interpreter.cpu) {
+        this.display.printLine('');
+        const result = this.interpreter.executeMachineLanguage(addr);
+        if (result) {
+          this.display.printLine(this.interpreter.cpu.getStateString());
+          this.display.printLine(result.cycles + ' CYCLES');
+        }
+      } else {
+        this.display.printLine('?NO CPU');
+      }
+      this.showPrompt();
+      return;
+    }
+
+    // addrL — disassemble (List) from address
+    const listMatch = line.match(/^([0-9A-F]{1,4})L$/);
+    if (listMatch) {
+      const addr = parseInt(listMatch[1], 16);
+      if (this.interpreter.cpu) {
+        const lines = this.interpreter.cpu.disassemble(addr, 20);
+        for (const l of lines) {
+          this.display.printLine(l.text);
+        }
+      } else {
+        this.display.printLine('?NO CPU');
+      }
+      this.showPrompt();
+      return;
+    }
+
+    // addr.addrL — disassemble range
+    const listRangeMatch = line.match(/^([0-9A-F]{1,4})\.([0-9A-F]{1,4})L$/);
+    if (listRangeMatch) {
+      const start = parseInt(listRangeMatch[1], 16);
+      const end = parseInt(listRangeMatch[2], 16);
+      if (this.interpreter.cpu) {
+        const maxInstr = Math.min(200, end - start + 1);
+        const lines = this.interpreter.cpu.disassemble(start, maxInstr);
+        for (const l of lines) {
+          if (l.addr > end) break;
+          this.display.printLine(l.text);
+        }
+      } else {
+        this.display.printLine('?NO CPU');
+      }
+      this.showPrompt();
       return;
     }
 
@@ -1464,7 +1561,7 @@ class Emulator {
       'TAB(n)        Tab to column n',
       'SCRN(x,y)     Lo-res color at x,y',
       'PDL(n)        Paddle value 0-255 (mouse)',
-      'USR(n)        User function (stub)',
+      'USR(addr)     Execute 6502 ML, return A',
       '',
       '--- DOS 3.3 DISK COMMANDS ---',
       'CATALOG [path]  List disk directory',
@@ -1525,11 +1622,36 @@ class Emulator {
       'AI NEW           Clear AI conversation',
       'AI HELP          Show AI help',
       '',
+      '--- 6502 MACHINE LANGUAGE ---',
+      'Full 6502 CPU emulation (56 instr.)',
+      '',
+      'WRITING ML CODE:',
+      'POKE addr,opcode  Write bytes to memory',
+      'CALL addr         Execute ML at address',
+      'USR(addr)         Execute ML, return A reg',
+      'BSAVE n,Ahh,Lhh  Save ML to disk',
+      'BLOAD n[,Ahh]     Load ML from disk',
+      'BRUN n[,Ahh]      Load and execute ML',
+      '',
+      'COMMON ML LOCATIONS:',
+      '$0300 (768)    Standard ML routine area',
+      '$0400 (1024)   General data area',
+      '$F0-$FF        Zero page work area',
+      '',
+      'EXAMPLE (BASIC):',
+      'POKE 768,169:POKE 769,42  LDA #$2A',
+      'POKE 770,96               RTS',
+      'PRINT USR(768)            Prints 42',
+      '',
       '--- SYSTEM MONITOR ---',
       'CALL -151     Enter monitor (* prompt)',
       '  addr        View 8 bytes at address',
       '  addr.addr   View memory range',
       '  addr:bb bb  Write bytes to memory',
+      '  addrL       Disassemble 20 instr.',
+      '  addr.addrL  Disassemble range',
+      '  addrG       Execute ML at address',
+      '  R           Show CPU registers',
       '  Ctrl+C      Return to BASIC',
       '',
       '--- SYSTEM ---',

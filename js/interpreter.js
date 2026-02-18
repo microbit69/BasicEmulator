@@ -58,6 +58,8 @@ class Interpreter {
     this.inputCallback = null;
     this.getCallback = null;
     this.onErrLine = null;
+    // 6502 CPU emulator — shares memory with interpreter
+    this._initCPU();
     this.collectData();
   }
 
@@ -107,6 +109,84 @@ class Interpreter {
     // ROM identification
     this.memory[0xFBB3] = 0x06;  // Apple II+ identifier
     this.memory[0xFFF8] = 0x00;  // Machine ID byte
+  }
+
+  // Initialize the 6502 CPU with I/O hooks for soft switch emulation
+  _initCPU() {
+    if (typeof App.CPU6502 === 'undefined') {
+      this.cpu = null;
+      return;
+    }
+    const self = this;
+
+    // Read hook: intercept I/O addresses ($C000-$C0FF)
+    const readHook = function(addr) {
+      if (addr >= 0xC000 && addr <= 0xC0FF) {
+        // Keyboard
+        if (addr === 0xC000) return self.lastKeyPressed ? (self.lastKeyPressed | 128) : 0;
+        if (addr === 0xC010) { self.lastKeyPressed = 0; return 0; }
+        // Speaker
+        if (addr === 0xC030) { self._toggleSpeaker(); return 0; }
+        // Graphics soft switches
+        if (addr >= 0xC050 && addr <= 0xC057) return 0;
+        // Annunciators
+        if (addr >= 0xC058 && addr <= 0xC05F) {
+          const annIdx = Math.floor((addr - 0xC058) / 2);
+          self._annunciators[annIdx] = (addr & 1) === 1;
+          return 0;
+        }
+        // Paddle buttons
+        if (addr === 0xC061) return self._paddleButtons[0] ? 128 : 0;
+        if (addr === 0xC062) return self._paddleButtons[1] ? 128 : 0;
+        if (addr === 0xC063) return self._paddleButtons[2] ? 128 : 0;
+        // Paddle analog
+        if (addr >= 0xC064 && addr <= 0xC067) {
+          return self._paddleValues[addr - 0xC064] > 128 ? 128 : 0;
+        }
+        if (addr === 0xC070) return 0;
+      }
+      return null; // Use memory directly
+    };
+
+    // Write hook: intercept I/O addresses
+    const writeHook = function(addr, val) {
+      if (addr >= 0xC000 && addr <= 0xC0FF) {
+        if (addr === 0xC010) { self.lastKeyPressed = 0; return true; }
+        if (addr === 0xC030) { self._toggleSpeaker(); return true; }
+        if (addr >= 0xC050 && addr <= 0xC057) {
+          // Trigger soft switch side effects
+          self.memory[addr] = val;
+          if (addr === 0xC051) { self.textMode = true; self.display.showTextMode(); }
+          return true;
+        }
+        if (addr >= 0xC058 && addr <= 0xC05F) {
+          const annIdx = Math.floor((addr - 0xC058) / 2);
+          self._annunciators[annIdx] = (addr & 1) === 1;
+          return true;
+        }
+        return true; // Absorb other I/O writes
+      }
+      // Zero page special locations
+      if (addr === 36) { self.display.cursorX = val; }
+      if (addr === 37) { self.display.cursorY = val; }
+      return false; // Write to memory normally
+    };
+
+    this.cpu = new App.CPU6502(this.memory, readHook, writeHook);
+  }
+
+  // Execute 6502 machine language at the given address
+  // Returns: { A, X, Y, cycles } after execution completes
+  executeMachineLanguage(addr, options) {
+    if (!this.cpu) return null;
+    // Reset CPU state for a clean call
+    this.cpu.SP = 0xFD;
+    this.cpu.halted = false;
+    // Place a sentinel return address on the stack
+    // Push $FFFF-1=$FFFE so RTS will jump to $FFFF and halt
+    this.cpu.push16(0xFFFE);
+    const cycles = this.cpu.run(addr, options || {});
+    return { A: this.cpu.A, X: this.cpu.X, Y: this.cpu.Y, cycles: cycles };
   }
 
   // Collect all DATA statements
@@ -1270,7 +1350,11 @@ class Interpreter {
     // CALL -3082 / $F3F2: Same as 62450 (HGR clear to black)
     // Already handled above
 
-    // Unknown CALL - silently ignore
+    // Unknown CALL address — try executing as 6502 machine language
+    if (this.cpu) {
+      this.executeMachineLanguage(uaddr);
+    }
+    // If no CPU, silently ignore (original behavior)
   }
 
   // ===== HPLOT =====
@@ -1728,7 +1812,15 @@ class Interpreter {
       }
       case 'TAB': return ' '.repeat(Math.max(0, Math.floor(args[0])));
       case 'SPC': return ' '.repeat(Math.max(0, Math.floor(args[0])));
-      case 'USR': return 0; // stub - no machine language support
+      case 'USR': {
+        const usrAddr = Math.floor(args[0]);
+        const uAddr = usrAddr < 0 ? usrAddr + 65536 : usrAddr;
+        if (this.cpu) {
+          const result = this.executeMachineLanguage(uAddr);
+          return result ? result.A : 0;
+        }
+        return 0;
+      }
       default: throw new Error('?ILLEGAL QUANTITY ERROR');
     }
   }
